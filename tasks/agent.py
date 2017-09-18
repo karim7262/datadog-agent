@@ -117,7 +117,7 @@ def system_tests(ctx):
 
 
 @task
-def integration_tests(ctx, install_deps=False):
+def integration_tests(ctx, install_deps=False, targets=None, datadog_ci=False):
     """
     Run integration tests for the Agent
     """
@@ -125,20 +125,30 @@ def integration_tests(ctx, install_deps=False):
         deps(ctx)
 
     build_tags = get_build_tags()
+    env = {}
 
-    # config_providers
-    cmd = "go test -tags '{}' {}/test/integration/config_providers/..."
-    ctx.run(cmd.format(" ".join(build_tags), REPO_PATH))
+    # tests are being run on the internal CI
+    if datadog_ci:
+        env["DATADOG_CI"] = "1"
 
-    # listeners
-    cmd = "go test -tags '{}' {}/test/integration/listeners/..."
-    ctx.run(cmd.format(" ".join(build_tags), REPO_PATH))
+    if targets is None:
+        targets = [
+            # config_providers
+            "./test/integration/config_providers/zookeeper",
+            # "test/integration/config_providers/etcd",
+            # listeners
+            # "test/integration/listeners",
+            # autodiscovery
+            # TODO
+            # metadata_providers
+            # TODO
+        ]
+    else:
+        targets = targets.split(',')
 
-    # autodiscovery
-    # TODO
-
-    # metadata_providers
-    # TODO
+    for target in targets:
+        cmd = "go test -tags '{}' {}/{}".format(" ".join(build_tags), REPO_PATH, target)
+        ctx.run(cmd, env=env)
 
 
 @task

@@ -7,6 +7,7 @@ package zookeeper
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -86,19 +87,24 @@ func NewZkTestSuite(zkVersion, containerName string) *ZkTestSuite {
 func (suite *ZkTestSuite) SetupSuite() {
 	var err error
 
-	// pull the image, create a standalone zk container
-	imageName := "zookeeper:" + suite.zkVersion
-	containerID, err := utils.StartZkContainer(imageName, suite.containerName)
-	if err != nil {
-		// failing in SetupSuite won't call TearDownSuite, do it manually
-		suite.TearDownSuite()
-		suite.FailNow(err.Error())
-	}
+	// if the version is empty, this means the CI will take care of it
+	if suite.zkVersion == "" {
+		suite.zkURL = "127.0.0.1"
+	} else {
+		// pull the image, create a standalone zk container
+		imageName := "zookeeper:" + suite.zkVersion
+		containerID, err := utils.StartZkContainer(imageName, suite.containerName)
+		if err != nil {
+			// failing in SetupSuite won't call TearDownSuite, do it manually
+			suite.TearDownSuite()
+			suite.FailNow(err.Error())
+		}
 
-	suite.zkURL, err = utils.GetContainerIP(containerID)
-	if err != nil {
-		suite.TearDownSuite()
-		suite.FailNow(err.Error())
+		suite.zkURL, err = utils.GetContainerIP(containerID)
+		if err != nil {
+			suite.TearDownSuite()
+			suite.FailNow(err.Error())
+		}
 	}
 
 	suite.client, _, err = zk.Connect([]string{suite.zkURL}, 2*time.Second)
@@ -121,11 +127,6 @@ func (suite *ZkTestSuite) TearDownSuite() {
 
 // put configuration back in a known state before each test
 func (suite *ZkTestSuite) SetupTest() {
-	config.Datadog.Set("autoconf_template_url", suite.zkURL)
-	config.Datadog.Set("autoconf_template_dir", "/datadog/check_configs")
-	config.Datadog.Set("autoconf_template_username", "")
-	config.Datadog.Set("autoconf_template_password", "")
-
 	suite.populate()
 }
 
@@ -143,7 +144,11 @@ func (suite *ZkTestSuite) populate() error {
 }
 
 func (suite *ZkTestSuite) TestCollect() {
-	zk, err := providers.NewZookeeperConfigProvider()
+	cfg := config.ConfigurationProviders{
+		TemplateURL: suite.zkURL,
+		TemplateDir: "/datadog/check_configs",
+	}
+	zk, err := providers.NewZookeeperConfigProvider(cfg)
 	require.Nil(suite.T(), err)
 
 	templates, err := zk.Collect()
@@ -171,6 +176,10 @@ func (suite *ZkTestSuite) TestCollect() {
 }
 
 func TestZkSuite(t *testing.T) {
-	suite.Run(t, NewZkTestSuite("3.3.6", "datadog-agent-test-zk"))
-	suite.Run(t, NewZkTestSuite("3.4.10", "datadog-agent-test-zk"))
+	if os.Getenv("DATADOG_CI") == "" {
+		suite.Run(t, NewZkTestSuite("3.3.6", "datadog-agent-test-zk"))
+		suite.Run(t, NewZkTestSuite("3.4.10", "datadog-agent-test-zk"))
+	} else {
+		suite.Run(t, NewZkTestSuite("", "datadog-agent-test-zk"))
+	}
 }
