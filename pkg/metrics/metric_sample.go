@@ -19,6 +19,7 @@ const (
 	HistorateType
 	SetType
 	DistributionType
+	SummaryType
 )
 
 // String returns a string representation of MetricType
@@ -42,6 +43,8 @@ func (m MetricType) String() string {
 		return "Set"
 	case DistributionType:
 		return "Distribution"
+	case SummaryType:
+		return "Summary"
 	default:
 		return ""
 	}

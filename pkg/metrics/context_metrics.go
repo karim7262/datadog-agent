@@ -44,6 +44,8 @@ func (m ContextMetrics) AddSample(contextKey string, sample *MetricSample, times
 			m[contextKey] = NewSet()
 		case CounterType:
 			m[contextKey] = NewCounter(interval)
+		case SummaryType:
+			m[contextKey] = NewSummary()
 		default:
 			log.Error("Can't add unknown sample metric type:", sample.Mtype)
 			return
