@@ -1,5 +1,5 @@
 init_config:
-  enabled: false
+  enabled: true
 
 instances:
 - {} # default instance, if you need to customize its configuration, please comment out this instance
