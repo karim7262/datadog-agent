@@ -7,7 +7,12 @@ package legacy
 
 // `aws-sdk-go` imports go-ini like this instead of `gopkg.in/ini.v1`, let's do
 // the same to avoid checking in the dependency twice with different names.
-import "github.com/go-ini/ini"
+import (
+	"fmt"
+
+	"github.com/DataDog/datadog-agent/pkg/util"
+	"github.com/go-ini/ini"
+)
 
 // Config is a simple key/value representation of the legacy agentConfig
 // dictionary
@@ -90,7 +95,18 @@ func GetAgentConfig(datadogConfPath string) (Config, error) {
 	for _, supportedValue := range supportedValues {
 		if value, err := main.GetKey(supportedValue); err == nil {
 			config[supportedValue] = value.String()
+
 		} else {
+			// The logs-agent does not like `hostname: ""`
+			// Hack to populate `hostname` with a value
+			if supportedValue == "hostname" {
+				hostname, err := util.GetHostname()
+				if err != nil {
+					fmt.Print("couldn't set a hostname, please set one in datadog.yaml\n")
+				}
+				config[supportedValue] = hostname
+				continue
+			}
 			// provide an empty default value so we don't need to check for
 			// key existence when browsing the old configuration
 			config[supportedValue] = ""
