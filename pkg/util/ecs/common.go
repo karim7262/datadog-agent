@@ -158,9 +158,10 @@ func computeIOStats(ops []OPStat, kind string) uint64 {
 // convertECSStats is responsible for converting ecs stats structs to docker style stats
 // TODO: get rid of this by supporting ECS stats everywhere we use docker stats only.
 func convertECSStats(stats ContainerStats) (docker.CgroupTimesStat, docker.CgroupMemStat, docker.CgroupIOStat) {
+	d := time.Duration(stats.CPU.Usage.Total) * time.Nanosecond
 	cpu := docker.CgroupTimesStat{
-		System: stats.CPU.System,
-		User:   stats.CPU.User,
+		System: 0, // FIXME: Ignoring system for now
+		User:   uint64(d / time.Second),
 	}
 	mem := docker.CgroupMemStat{
 		RSS:             stats.Memory.RSS,
