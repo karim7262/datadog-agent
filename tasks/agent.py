@@ -99,15 +99,19 @@ def refresh_assets(ctx, development=True):
     dist_folder = os.path.join(BIN_PATH, "dist")
     if os.path.exists(dist_folder):
         shutil.rmtree(dist_folder)
+
     copy_tree("./cmd/agent/dist/", dist_folder)
     copy_tree("./pkg/status/dist/", dist_folder)
     copy_tree("./cmd/agent/gui/views", os.path.join(dist_folder, "views"))
+    moved = ["./cmd/agent/dist/", "./pkg/status/dist/", "./cmd/agent/gui/views"]
     if development:
         copy_tree("./dev/dist/", dist_folder)
+        moved.append("./dev/dist/")
+    print("Successfully moved {0} to {1}".format(", ".join(moved[:-1]) + " & " + moved[-1], dist_folder))
+
     # copy the dd-agent placeholder to the bin folder
     bin_ddagent = os.path.join(BIN_PATH, "dd-agent")
     shutil.move(os.path.join(dist_folder, "dd-agent"), bin_ddagent)
-
 
 @task
 def run(ctx, rebuild=False, race=False, build_include=None, build_exclude=None,

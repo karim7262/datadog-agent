@@ -8,12 +8,13 @@ package app
 import (
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/common"
+	"github.com/DataDog/datadog-agent/cmd/agent/gui"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	log "github.com/cihub/seelog"
 	"github.com/spf13/cobra"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
@@ -44,14 +45,29 @@ func launchGui(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("GUI not enabled: to enable, please set an appropriate port in your datadog.yaml file")
 	}
 
-	// Read the authentication token: can only be done if user can read from datadog.yaml
-	authToken, err := ioutil.ReadFile(filepath.Join(filepath.Dir(config.Datadog.ConfigFileUsed()), "gui_auth_token"))
+	// Read the authentication token DIRECTLY from the configuration file
+	// If the user doesn't have authorization to read it, they can't launch the GUI
+	data, err := ioutil.ReadFile(config.Datadog.ConfigFileUsed())
 	if err != nil {
 		return fmt.Errorf("unable to access GUI authentication token: " + err.Error())
 	}
+	cfg := make(map[string]interface{})
+	err = yaml.Unmarshal(data, &cfg)
+	if err != nil {
+		return err
+	}
+	authTokenRaw := cfg["GUI_auth_token"]
+	authToken, ok := authTokenRaw.(string)
+	if !ok {
+		return fmt.Errorf("error: 'GUI_auth_token' in %s is not a string", config.Datadog.ConfigFileUsed())
+	}
+
+	// TODO fix bug: gui.CsrfToken is not available from this process...
+	// probably need to write this to the config file too, or some other location that can be accessed
+	// doesn't need to persist between restarts, just needs to be available between the processes
 
 	// Open the GUI in a browser, passing the authorization tokens as parameters
-	err = open("http://127.0.0.1:" + guiPort + string(authToken))
+	err = open("http://127.0.0.1:" + guiPort + "/authenticate?authToken=" + authToken + ";csrf=" + gui.CsrfToken)
 	if err != nil {
 		log.Warnf("error opening GUI: " + err.Error())
 		return fmt.Errorf("error opening GUI: " + err.Error())

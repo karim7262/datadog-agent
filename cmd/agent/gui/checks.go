@@ -20,8 +20,8 @@ import (
 
 var (
 	configPaths = []string{
-		config.Datadog.GetString("confd_path"),        // Custom checks
-		filepath.Join(common.GetDistPath(), "conf.d"), // Default check configs
+		config.Datadog.GetString("confd_path"),        // "Regular" check config directory
+		filepath.Join(common.GetDistPath(), "conf.d"), // Development environment
 	}
 
 	checkPaths = []string{

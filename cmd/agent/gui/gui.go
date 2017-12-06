@@ -2,7 +2,6 @@ package gui
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,25 +9,23 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/common"
 	"github.com/DataDog/datadog-agent/pkg/config"
-
 	log "github.com/cihub/seelog"
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
-	listener      net.Listener
-	privateKey    *rsa.PrivateKey
-	publicKey     *rsa.PublicKey
-	csrfToken     string
-	authTokenPath string
+	listener  net.Listener
+	authToken string
+
+	// CsrfToken is passed to the GUI's authentication endpoint by app.launchGui
+	CsrfToken string
 )
 
 // Payload struct is for the JSON messages received from a client POST request
@@ -42,11 +39,6 @@ type Payload struct {
 func StopGUIServer() {
 	if listener != nil {
 		listener.Close()
-	}
-
-	err := os.Remove(authTokenPath)
-	if err != nil {
-		log.Infof("error deleting gui_auth_token file: " + err.Error())
 	}
 }
 
@@ -80,39 +72,97 @@ func StartGUIServer(port string) error {
 		return e
 	}
 	go http.Serve(listener, router)
+	log.Infof("GUI server is listening at 127.0.0.1:" + port)
 
-	return createAuthToken()
-}
-
-// Generates a JWT & CSRF token, then saves them both to a file with the same permissions as datadog.yaml
-func createAuthToken() error {
-	// Generate a pair of RSA keys
-	privateKey, e := rsa.GenerateKey(rand.Reader, 2048)
-	if e != nil {
-		return fmt.Errorf("error generating RSA key: " + e.Error())
-	}
-	publicKey = &privateKey.PublicKey
-
-	// Create a JWT signed with the private key
-	JWT := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"admin": true,
-		"name":  "Datadog Agent Manager",
-	})
-	jwtString, e := JWT.SignedString(privateKey)
-	if e != nil {
-		return fmt.Errorf("error creating JWT: " + e.Error())
-	}
-
-	// Create a CSRF token
+	// Create a CSRF token (this can be unique for each session)
 	key := make([]byte, 32)
 	_, e = rand.Read(key)
 	if e != nil {
 		return fmt.Errorf("error creating CSRF token: " + e.Error())
 	}
-	csrfToken = hex.EncodeToString(key)
+	CsrfToken = hex.EncodeToString(key)
 
-	authTokenPath = filepath.Join(filepath.Dir(config.Datadog.ConfigFileUsed()), "gui_auth_token")
-	return saveAuthToken("/authenticate?jwt=" + jwtString + ";csrf=" + csrfToken)
+	// Fetch the authentication token from the configuration file (needs to persist between sessions)
+	authToken = config.Datadog.GetString("GUI_auth_token")
+	if authToken == "" {
+		return createAuthToken()
+	}
+
+	// TODO validate the auth token (can't contain random characters)
+
+	log.Infof("*************** token: %s at %s", authToken, config.Datadog.ConfigFileUsed())
+	return nil
+}
+
+// Generates an auth token and saves it in datadog.yaml
+func createAuthToken() error {
+	// Generate auth token
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	if err != nil {
+		return fmt.Errorf("error creating auth token: " + err.Error())
+	}
+	authToken = hex.EncodeToString(key)
+
+	// Add it to datadog.yaml
+	data, err := ioutil.ReadFile(config.Datadog.ConfigFileUsed())
+	if err != nil {
+		return fmt.Errorf("unable to access GUI authentication token: " + err.Error())
+	}
+	lines := strings.Split(string(data), "\n")
+	writeAuthToken(lines, authToken)
+
+	// Save edited configuration file
+	output := strings.Join(lines, "\n")
+	err = ioutil.WriteFile(config.Datadog.ConfigFileUsed(), []byte(output), 0644)
+	if err == nil {
+		log.Infof("Added new GUI authentication token to %s", config.Datadog.ConfigFileUsed())
+	}
+	return err
+}
+
+// Writes the authentication token to datadog.yaml in the sanest way possible
+func writeAuthToken(lines []string, authToken string) error {
+	tokenLine := "GUI_auth_token: " + authToken
+	added := false
+
+	// First, check if there's a blank authentication token present
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "GUI_auth_token:" {
+			lines[i] = tokenLine
+			added = true
+		}
+	}
+
+	// If not, check if there's a commented out authentication token line
+	if !added {
+		for i, line := range lines {
+			if strings.Contains(line, "GUI_auth_token:") {
+				lines[i] = tokenLine
+				added = true
+			}
+		}
+	}
+
+	// If not, write the token under the API key
+	if !added {
+		for i, line := range lines {
+			if strings.Contains(line, "api_key:") {
+				lines[i] += "\n" + tokenLine
+				added = true
+			}
+		}
+	}
+
+	// As a last resort, write to the top of the file
+	if !added {
+		lines[0] = tokenLine + "\n" + lines[0]
+	}
+
+	// Check the result is a valid YAML file
+	output := strings.Join(lines, "\n")
+	cf := make(map[string]interface{})
+	return yaml.Unmarshal([]byte(output), &cf)
 }
 
 func generateAuthEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +172,7 @@ func generateAuthEndpoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e = t.Execute(w, map[string]interface{}{"csrf": csrfToken})
+	e = t.Execute(w, map[string]interface{}{"csrf": CsrfToken})
 	if e != nil {
 		http.Error(w, e.Error(), http.StatusInternalServerError)
 		return
@@ -135,15 +185,16 @@ func authorizeAccess(h http.Handler) http.Handler {
 		// Disable caching
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
-		cookie, _ := r.Cookie("jwt")
+		cookie, _ := r.Cookie("authToken")
 		if cookie == nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			http.Error(w, "no authorization token", 401)
 			return
 		}
 
-		e := verifyJWT(w, cookie.Value)
-		if e != nil {
+		if cookie.Value != authToken {
+			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, "invalid authorization token", 401)
 			return
 		}
 
@@ -161,30 +212,14 @@ func authorizePOST(w http.ResponseWriter, r *http.Request, next http.HandlerFunc
 		return
 	}
 
-	e := verifyJWT(w, strings.Split(authHeader[0], " ")[1])
-	if e != nil {
+	token := strings.Split(authHeader[0], " ")[1]
+	if token != authToken {
+		w.WriteHeader(http.StatusUnauthorized)
+		http.Error(w, "invalid authorization token", 401)
 		return
 	}
 
 	next(w, r)
-}
-
-func verifyJWT(w http.ResponseWriter, tokenString string) error {
-	// Use public key to verify the token
-	token, e := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return publicKey, nil
-	})
-
-	if e != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		http.Error(w, "token validation error: "+e.Error(), 500)
-	} else if !token.Valid {
-		w.WriteHeader(http.StatusUnauthorized)
-		http.Error(w, "invalid authorization token", 401)
-		e = fmt.Errorf("invalid authorization token")
-	}
-
-	return e
 }
 
 // Helper function which unmarshals a POST requests data into a Payload object

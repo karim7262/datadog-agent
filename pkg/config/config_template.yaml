@@ -72,6 +72,11 @@ api_key:
 # Default is '5002' on Windows and macOS ; turned off on Linux
 # GUI_port: -1
 
+# The authentication token used by the GUI's server for validating all requests from the
+# browser. This is automatically generated if the GUI is enabled, but if desired (for example,
+# if the token gets compromised) you can override it yourself.
+# GUI_auth_token: <random string, preferably >32 characters>
+
 # How many workers will be used to run the check (if not specified, is automatically
 # determined based on number of checks running)
 # check_runners: 4
