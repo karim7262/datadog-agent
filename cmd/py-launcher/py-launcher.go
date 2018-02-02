@@ -6,8 +6,11 @@
 package main
 
 import (
+	_ "expvar" // Blank import used because this isn't directly used in this file
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof" // Blank import used because this isn't directly used in this file
 	"os"
 	"runtime"
 
@@ -41,6 +44,8 @@ func main() {
 			fmt.Printf("unable to parse Datadog config file, running with env variables: %s", confErr)
 		}
 	}
+
+	go http.ListenAndServe("127.0.0.1:6000", http.DefaultServeMux)
 
 	runtime.LockOSThread()
 	py.Initialize()
