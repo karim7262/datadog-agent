@@ -80,7 +80,7 @@ func (c *CPUCheck) Configure(data check.ConfigData, initConfig check.ConfigData)
 	// do nothing
 	info, err := cpuInfo()
 	if err != nil {
-		return fmt.Errorf("system.CPUCheck: could not query CPU info")
+		return fmt.Errorf("system.CPUCheck: could not query CPU info - %v", err)
 	}
 	for _, i := range info {
 		c.nbCPU += float64(i.Cores)

@@ -56,7 +56,7 @@ func (c *LoadCheck) Configure(data check.ConfigData, initConfig check.ConfigData
 	// do nothing
 	info, err := cpuInfo()
 	if err != nil {
-		return fmt.Errorf("system.LoadCheck: could not query CPU info")
+		return fmt.Errorf("system.LoadCheck: could not query CPU info - %v", err)
 	}
 	for _, i := range info {
 		c.nbCPU += i.Cores
