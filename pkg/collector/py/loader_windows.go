@@ -15,13 +15,13 @@ const S_FALSE = 0x00000001
 
 func platformLoaderPrep() error {
 	// Initialize COM to multithreaded model
-	err := ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED)
-	if err != nil {
-		oleCode := err.(*ole.OleError).Code()
-		if oleCode != ole.S_OK && oleCode != S_FALSE {
-			return err
-		}
-	}
+	// err := ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED)
+	// if err != nil {
+	// 	oleCode := err.(*ole.OleError).Code()
+	// 	if oleCode != ole.S_OK && oleCode != S_FALSE {
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
