@@ -31,6 +31,8 @@ func (suite *ContainerScannerTestSuite) TestContainerScannerFilter() {
 	suite.True(suite.c.sourceShouldMonitorContainer(cfg, container))
 	container = types.Container{Image: "myapp2"}
 	suite.False(suite.c.sourceShouldMonitorContainer(cfg, container))
+	container = types.Container(Image: "sha256:c1b70247946b22975617cfe4f3fdebe8bad9114057300be745f0632c007d2cc9")
+	suite.True(suite.c.sourceShouldMonitorContainer(cfg, container))
 
 	cfg = config.NewLogSource("", &config.LogsConfig{Type: config.DockerType, Image: "myapp", Label: "mylabel"})
 	l1 := make(map[string]string)

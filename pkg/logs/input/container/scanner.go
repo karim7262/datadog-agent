@@ -174,7 +174,11 @@ func (s *Scanner) listContainers() []types.Container {
 // - If the source defines an image, the container must match it exactly.
 // - If the source defines one or several labels, at least one of them must match the labels of the container.
 func (s *Scanner) sourceShouldMonitorContainer(source *config.LogSource, container types.Container) bool {
-	if source.Config.Image != "" && container.Image != source.Config.Image {
+	d, err := docker.GetDockerUtil()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to docker, could not get docker util")
+	}
+	if source.Config.Image != "" && container.Image != d.ResolveImageName(source.Config.Image) {
 		return false
 	}
 	if source.Config.Label != "" {
