@@ -70,7 +70,8 @@ func (l *Launcher) Stop() {
 
 // setupTailer configures and starts a new tailer,
 func (l *Launcher) setupTailer(source *config.LogSource) (*Tailer, error) {
-	config := &Config{source.Config.ChannelPath, source.Config.Query}
+	// config := &Config{source.Config.ChannelPath, source.Config.Query} // FIXME
+	config := &Config{"System", source.Config.Query}
 	tailer := NewTailer(source, config, l.pipelineProvider.NextPipelineChan())
 	return tailer, nil
 }
