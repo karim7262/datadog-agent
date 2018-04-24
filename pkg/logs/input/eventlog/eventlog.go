@@ -17,6 +17,8 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+
+	log "github.com/cihub/seelog"
 )
 
 var (
@@ -80,12 +82,13 @@ func goErrorCallback(errCode C.ULONGLONG) {
 
 //export goNotificationCallback
 func goNotificationCallback(handle C.ULONGLONG) {
-	fmt.Printf("Notification Callback\n")
+	log.Info("Notification Callback\n")
+	time.Sleep(10 * time.Millisecond)
 	xml, err := EvtRender(handle)
 	if err == nil {
-		fmt.Printf("Rendered XML: %s\n", xml)
+		log.Info("Rendered XML: %s\n", xml)
 	} else {
-		fmt.Printf("Error rendering xml %v\n", err)
+		log.Info("Error rendering xml %v\n", err)
 	}
 	return
 }
@@ -118,7 +121,7 @@ const (
 )
 
 func main() {
-	fmt.Printf("starting event log watcher\n")
+	log.Info("starting event log watcher\n")
 	/*
 	   channels, err := EnumerateChannels()
 	   if err != nil {
@@ -134,7 +137,7 @@ func main() {
 	C.startEventSubscribe(C.CString("Application"),
 		C.CString("*"),
 		C.ULONGLONG(0),
-		C.int(EvtSubscribeToFutureEvents))
+		C.int(EvtSubscribeStartAtOldestRecord))
 	for {
 		time.Sleep(2 * time.Second)
 	}
