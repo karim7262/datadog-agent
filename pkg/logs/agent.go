@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/logs/auditor"
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/input/container"
+	"github.com/DataDog/datadog-agent/pkg/logs/input/eventlog"
 	"github.com/DataDog/datadog-agent/pkg/logs/input/listener"
 	"github.com/DataDog/datadog-agent/pkg/logs/input/tailer"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
@@ -27,6 +28,7 @@ import (
 type Agent struct {
 	auditor           *auditor.Auditor
 	containersScanner *container.Scanner
+	eventlogLauncher  *eventlog.Launcher
 	filesScanner      *tailer.Scanner
 	networkListener   *listener.Listener
 	pipelineProvider  pipeline.Provider
@@ -47,13 +49,16 @@ func NewAgent(sources *config.LogSources) *Agent {
 	pipelineProvider := pipeline.NewProvider(config.NumberOfPipelines, connectionManager, messageChan)
 
 	// setup the collectors
-	containersScanner := container.New(sources.GetValidSources(), pipelineProvider, auditor)
-	networkListeners := listener.New(sources.GetValidSources(), pipelineProvider)
-	filesScanner := tailer.New(sources.GetValidSources(), config.LogsAgent.GetInt("logs_config.open_files_limit"), pipelineProvider, auditor, tailer.DefaultSleepDuration)
+	validSources := sources.GetValidSources()
+	containersScanner := container.New(validSources, pipelineProvider, auditor)
+	networkListeners := listener.New(validSources, pipelineProvider)
+	filesScanner := tailer.New(validSources, config.LogsAgent.GetInt("logs_config.open_files_limit"), pipelineProvider, auditor, tailer.DefaultSleepDuration)
+	eventlogLauncher := eventlog.New(validSources, pipelineProvider, auditor)
 
 	return &Agent{
 		auditor:           auditor,
 		containersScanner: containersScanner,
+		eventlogLauncher:  eventlogLauncher,
 		filesScanner:      filesScanner,
 		networkListener:   networkListeners,
 		pipelineProvider:  pipelineProvider,
@@ -69,6 +74,7 @@ func (a *Agent) Start() {
 		a.filesScanner,
 		a.networkListener,
 		a.containersScanner,
+		a.eventlogLauncher,
 	)
 }
 
@@ -80,6 +86,7 @@ func (a *Agent) Stop() {
 			a.filesScanner,
 			a.networkListener,
 			a.containersScanner,
+			a.eventlogLauncher,
 		),
 		a.pipelineProvider,
 		a.auditor,

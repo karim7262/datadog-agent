@@ -19,10 +19,11 @@ import (
 
 // Logs source types
 const (
-	TCPType    = "tcp"
-	UDPType    = "udp"
-	FileType   = "file"
-	DockerType = "docker"
+	TCPType      = "tcp"
+	UDPType      = "udp"
+	FileType     = "file"
+	DockerType   = "docker"
+	EventLogType = "windows_event"
 )
 
 // Logs rule types
@@ -62,6 +63,8 @@ type LogsConfig struct {
 
 	Image string // Docker
 	Label string // Docker
+
+	XPath string // Windows Event
 
 	Service         string
 	Source          string
@@ -188,6 +191,7 @@ func validateConfig(config LogsConfig) error {
 	switch config.Type {
 	case FileType,
 		DockerType,
+		EventLogType,
 		TCPType,
 		UDPType:
 	default:
