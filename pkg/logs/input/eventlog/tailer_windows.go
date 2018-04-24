@@ -9,31 +9,43 @@ package eventlog
 
 import (
 	"C"
-	"fmt"
 
 	log "github.com/cihub/seelog"
 )
+import "time"
 
-// Identifier returns the unique identifier of the current event log stream being tailed.
-func (t *Tailer) Identifier() string {
-	return fmt.Sprintf("eventlog:%s", generateIdentifier(channelPath, query))
+// tail waits for message stop
+func (t *Tailer) Start() {
+	log.Warn("Starting event log tailing for channel ", t.config.ChannelPath, "query ", t.config.Query)
+	go t.tail()
 }
 
-// Start starts tailing the event log
-func (t *Tailer) Start() error {
-	log.Info("Start tailing eventlog for channel %s query %s", channelPath, query)
-	// go t.tail()
-	return nil
+// Stop stops the tailer
+func (t *Tailer) Stop() {
+	log.Warn("Stop tailing event log")
+	t.stop <- struct{}{}
+	<-t.done
 }
 
+// tail waits for message stop
 func (t *Tailer) tail() {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	for {
+		select {
+		case <-t.stop:
+			t.done <- struct{}{}
+			return
+		case <-ticker.C:
+			log.Warn("tailing file")
+		}
+	}
+}
+
+func (t *Tailer) tail2() {
 	C.startEventSubscribe(
 		C.CString(t.channelPath),
 		C.CString(t.query),
 		C.ULONGLONG(0),
 		C.int(EvtSubscribeToFutureEvents),
 	)
-	// <-t.stop
-	// log.Info("Stop tailing eventlog for channel %s query %s", channelPath, query)
-	// t.done <- struct{}{}
 }

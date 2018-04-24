@@ -6,42 +6,43 @@
 package eventlog
 
 import (
-	log "github.com/cihub/seelog"
+	"fmt"
 
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 )
 
-// Tailer collects logs from a journal.
+// Config is a event log tailer configuration
+type Config struct {
+	ChannelPath string
+	Query       string
+}
+
+// Tailer collects logs from event log.
 type Tailer struct {
-	source      *config.LogSource
-	channelPath string
-	query       string
-	outputChan  chan message.Message
-	stop        chan struct{}
-	done        chan struct{}
+	source     *config.LogSource
+	config     *Config
+	outputChan chan message.Message
+	stop       chan struct{}
+	done       chan struct{}
 }
 
 // NewTailer returns a new tailer.
-func NewTailer(source *config.LogSource, channelPath string, query string, outputChan chan message.Message) *Tailer {
+func NewTailer(source *config.LogSource, config *Config, outputChan chan message.Message) *Tailer {
 	return &Tailer{
-		source:      source,
-		channelPath: channelPath,
-		query:       query,
-		outputChan:  outputChan,
-		stop:        make(chan struct{}, 1),
-		done:        make(chan struct{}, 1),
+		source:     source,
+		config:     config,
+		outputChan: outputChan,
+		stop:       make(chan struct{}, 1),
+		done:       make(chan struct{}, 1),
 	}
 }
 
-// setup does nothing
-func (t *Tailer) setup() error {
-	log.Info("EventLog is not supported on this system.")
-	return nil
+// Identifier returns a string that uniquely identifies a source
+func Identifier(channelPath, query string) string {
+	return fmt.Sprintf("eventlog:%s;%s", channelPath, query)
 }
 
-// tail waits for message stop
-func (t *Tailer) Start() {
-	<-t.stop
-	t.done <- struct{}{}
+func (t *Tailer) Identifier() string {
+	return Identifier(t.config.ChannelPath, t.config.Query)
 }
