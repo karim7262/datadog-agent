@@ -64,7 +64,7 @@ type LogsConfig struct {
 	Image string // Docker
 	Label string // Docker
 
-	ChannelPath string // Windows Event
+	ChannelPath string `mapstructure:"channel_path"` // Windows Event
 	Query       string // Windows Event
 
 	Service         string
