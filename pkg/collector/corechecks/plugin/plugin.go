@@ -34,7 +34,10 @@ func (c *PluginCheck) Run() error {
 		sender: sender,
 	}
 
-	return c.plugin.Run(proxy, c.instance)
+	err = c.plugin.Run(proxy, c.instance)
+	sender.Commit()
+
+	return err
 }
 
 func (c *PluginCheck) Stop() {
