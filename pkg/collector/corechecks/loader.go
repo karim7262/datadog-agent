@@ -10,9 +10,13 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
+	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/plugin"
 	"github.com/DataDog/datadog-agent/pkg/collector/loaders"
 	log "github.com/cihub/seelog"
 )
+
+//HACK:Force import pluginloader
+var _ plugin.PluginCheckLoader
 
 // CheckFactory factory function type to instantiate checks
 type CheckFactory func() check.Check

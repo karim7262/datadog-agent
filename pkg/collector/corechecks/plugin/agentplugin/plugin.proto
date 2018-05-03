@@ -1,0 +1,70 @@
+syntax = "proto3";
+package agentplugin;
+
+message Empty{}
+
+
+message InitData {
+    string name = 1;
+    bytes init_config = 2;
+    repeated bytes instances = 3;
+}
+
+message RunData {
+	uint32 sender_handle = 1;
+	bytes instance = 2;
+}
+
+service Integration {
+    rpc Init(InitData) returns (Empty);
+    rpc Run(RunData) returns (Empty);
+}
+
+message MetricData {
+    string name = 1;
+    double value = 2;
+    repeated string tags = 3;
+}
+
+enum ServiceCheckStatus {
+	OK = 0;
+	WARNING = 1;
+	CRITICAL = 2;
+	UNKNOWN = 3;
+}
+
+message ServiceCheckData {
+    string name = 1;
+    ServiceCheckStatus status = 2;
+    repeated string tags = 3;
+    string message = 4;
+}
+
+service SenderHelper {
+	rpc Gauge(MetricData) returns (Empty);
+	rpc Rate(MetricData) returns (Empty);
+	rpc Count(MetricData) returns (Empty);
+	rpc MonotonicCount(MetricData) returns (Empty);
+	rpc Counter(MetricData) returns (Empty);
+	rpc Histogram(MetricData) returns (Empty);
+	rpc Historate(MetricData) returns (Empty);
+	rpc ServiceCheck(ServiceCheckData) returns (Empty);
+	//rpc Event(e metrics.Event) TODO
+}
+
+/*
+
+type Sender interface {
+	Commit()
+	Gauge(metric string, value float64, hostname string, tags []string)
+	Rate(metric string, value float64, hostname string, tags []string)
+	Count(metric string, value float64, hostname string, tags []string)
+	MonotonicCount(metric string, value float64, hostname string, tags []string)
+	Counter(metric string, value float64, hostname string, tags []string)
+	Histogram(metric string, value float64, hostname string, tags []string)
+	Historate(metric string, value float64, hostname string, tags []string)
+	ServiceCheck(checkName string, status metrics.ServiceCheckStatus, hostname string, tags []string, message string)
+	Event(e metrics.Event)
+	GetMetricStats() map[string]int64
+}
+*/

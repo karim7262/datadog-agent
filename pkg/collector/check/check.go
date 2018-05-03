@@ -64,6 +64,7 @@ type Config struct {
 	LogsConfig    ConfigData   `json:"log_config"`     // the logs config in Yaml (logs-agent only)
 	ADIdentifiers []string     `json:"ad_identifiers"` // the list of AutoDiscovery identifiers (optional)
 	Provider      string       `json:"provider"`       // the provider that issued the config
+	Plugin        string       `json:"plugin"`
 }
 
 // Check is an interface for types capable to run checks

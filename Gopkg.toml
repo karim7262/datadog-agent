@@ -119,6 +119,14 @@
   branch = "master"
   name = "github.com/lxn/win"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-plugin"
+
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  version = "~v1.1.0"
+
 [[override]]
   name = "github.com/StackExchange/wmi"
   revision = "5d049714c4a64225c3c79a7cf7d02f7fb5b96338"

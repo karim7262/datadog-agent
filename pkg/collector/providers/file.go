@@ -20,6 +20,7 @@ import (
 
 type configFormat struct {
 	ADIdentifiers []string    `yaml:"ad_identifiers"`
+	PluginCommand string      `yaml:"plugin"`
 	InitConfig    interface{} `yaml:"init_config"`
 	MetricConfig  interface{} `yaml:"jmx_metrics"`
 	LogsConfig    interface{} `yaml:"logs"`
@@ -289,6 +290,8 @@ func GetCheckConfigFromFile(name, fpath string) (check.Config, error) {
 
 	// Copy auto discovery identifiers
 	config.ADIdentifiers = cf.ADIdentifiers
+
+	config.Plugin = cf.PluginCommand
 
 	// If logs was found, add it to the config
 	if cf.LogsConfig != nil {

@@ -156,6 +156,7 @@ func (cr *ConfigResolver) resolve(tpl check.Config, svc listeners.Service) (chec
 		MetricConfig:  tpl.MetricConfig,
 		ADIdentifiers: tpl.ADIdentifiers,
 		Provider:      tpl.Provider,
+		Plugin:        tpl.Plugin,
 	}
 	copy(resolvedConfig.InitConfig, tpl.InitConfig)
 	copy(resolvedConfig.Instances, tpl.Instances)
