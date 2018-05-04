@@ -110,7 +110,7 @@ func (s *SenderProxy) Historate(metric string, value float64, tags []string) err
 	return nil
 }
 
-func (s *SenderProxy) ServiceCheck(checkName string, status metrics.ServiceCheckStatus, tags []string, message string) error {
-	s.sender.ServiceCheck(checkName, status, "", tags, message)
+func (s *SenderProxy) ServiceCheck(checkName string, status agentplugin.ServiceCheckStatus, tags []string, message string) error {
+	s.sender.ServiceCheck(checkName, metrics.ServiceCheckStatus(status), "", tags, message)
 	return nil
 }

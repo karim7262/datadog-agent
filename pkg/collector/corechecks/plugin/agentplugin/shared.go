@@ -1,7 +1,6 @@
 package agentplugin
 
 import (
-	"github.com/DataDog/datadog-agent/pkg/metrics"
 	plugin "github.com/hashicorp/go-plugin"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
@@ -26,7 +25,7 @@ type SenderHelper interface {
 	Counter(metric string, value float64, tags []string) error
 	Histogram(metric string, value float64, tags []string) error
 	Historate(metric string, value float64, tags []string) error
-	ServiceCheck(checkName string, status metrics.ServiceCheckStatus, tags []string, message string) error
+	ServiceCheck(checkName string, status ServiceCheckStatus, tags []string, message string) error
 }
 
 type Integration interface {
@@ -181,7 +180,7 @@ func (m *GRPCSenderHelperClient) Historate(metric string, value float64, tags []
 	return err
 }
 
-func (m *GRPCSenderHelperClient) ServiceCheck(checkName string, status metrics.ServiceCheckStatus, tags []string, message string) error {
+func (m *GRPCSenderHelperClient) ServiceCheck(checkName string, status ServiceCheckStatus, tags []string, message string) error {
 	_, err := m.client.ServiceCheck(context.Background(), &ServiceCheckData{
 		Name:    checkName,
 		Status:  ServiceCheckStatus(status),
@@ -225,5 +224,5 @@ func (m *GRPCSenderHelperServer) Historate(ctx context.Context, req *MetricData)
 }
 
 func (m *GRPCSenderHelperServer) ServiceCheck(ctx context.Context, req *ServiceCheckData) (resp *Empty, err error) {
-	return &Empty{}, m.Impl.ServiceCheck(req.Name, metrics.ServiceCheckStatus(req.Status), req.Tags, req.Message)
+	return &Empty{}, m.Impl.ServiceCheck(req.Name, req.Status, req.Tags, req.Message)
 }
