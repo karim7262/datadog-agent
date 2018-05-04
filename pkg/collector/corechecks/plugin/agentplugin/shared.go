@@ -89,6 +89,8 @@ func (m *GRPCClient) Run(senderHelper SenderHelper, instance []byte) error {
 			Instance:     instance,
 			SenderHandle: brokerID,
 		})
+
+	s.Stop()
 	return err
 }
 

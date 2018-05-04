@@ -31,6 +31,7 @@ func (pl *PluginCheckLoader) Load(config check.Config) ([]check.Check, error) {
 			Plugins:          agentplugin.PluginMap,
 			Cmd:              cmd,
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+			Managed:          true,
 		})
 
 		rpcClient, err := client.Client()
