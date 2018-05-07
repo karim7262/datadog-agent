@@ -383,6 +383,7 @@ deploy_deb_testing:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   tags: [ "runner:main", "size:large" ]
   script:
     - source /usr/local/rvm/scripts/rvm
@@ -411,6 +412,7 @@ deploy_rpm_testing:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   tags: [ "runner:main", "size:large" ]
   script:
     - source /usr/local/rvm/scripts/rvm
@@ -431,6 +433,7 @@ deploy_suse_rpm_testing:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   tags: [ "runner:main", "size:large" ]
   script:
     - source /usr/local/rvm/scripts/rvm
@@ -449,6 +452,7 @@ kitchen_windows:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
@@ -475,6 +479,7 @@ kitchen_centos:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
@@ -499,6 +504,7 @@ kitchen_ubuntu:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
@@ -524,6 +530,7 @@ kitchen_suse:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
@@ -548,6 +555,7 @@ kitchen_debian:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   before_script:
     - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
@@ -571,6 +579,7 @@ testkitchen_cleanup_s3:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   tags: [ "runner:main", "size:large" ]
   before_script:
     - ls
@@ -592,6 +601,7 @@ testkitchen_cleanup_azure:
   only:
     - master
     - tags
+    - arbll/flaky-kitchen
   # even if this fails, it shouldn't block the pipeline.
   allow_failure: true
   when: always
