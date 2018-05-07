@@ -87,7 +87,7 @@ if [ -z ${SERVER_PASSWORD+x} ]; then
   export SERVER_PASSWORD=$(< /dev/urandom tr -dc A-Za-z0-9 | head -c32)
 fi
 
-chef gem install net-ssh berkshelf rake psych:2.2.2 kitchen-azurerm:0.13.0 test-kitchen
+chef gem install net-ssh berkshelf rake psych:2.2.2 kitchen-azurerm:0.14.0 test-kitchen
 cp .kitchen-azure.yml .kitchen.yml
 chef exec kitchen diagnose --no-instances --loader
 
