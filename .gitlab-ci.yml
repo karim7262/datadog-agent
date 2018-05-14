@@ -377,7 +377,7 @@ dogstatsd_suse-x64:
 # deploy debian packages to apt staging repo
 deploy_deb_testing:
   stage: testkitchen_deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR
   only:
@@ -405,7 +405,7 @@ deploy_deb_testing:
 # deploy rpm packages to yum staging repo
 deploy_rpm_testing:
   stage: testkitchen_deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR
   only:
@@ -425,7 +425,7 @@ deploy_rpm_testing:
 deploy_suse_rpm_testing:
   allow_failure: true
   stage: testkitchen_deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR_SUSE
   only:
@@ -567,7 +567,7 @@ kitchen_debian:
 # run dd-agent-testing
 testkitchen_cleanup_s3:
   stage: testkitchen_cleanup
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   only:
     - master
     - tags
@@ -814,7 +814,7 @@ dogstatsd_dev_quay_master:
 # deploy debian packages to apt staging repo
 deploy_deb:
   stage: deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR
   only:
@@ -846,7 +846,7 @@ deploy_deb:
 # deploy rpm packages to yum staging repo
 deploy_rpm:
   stage: deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR
   only:
@@ -870,7 +870,7 @@ deploy_rpm:
 deploy_suse_rpm:
   allow_failure: true
   stage: deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR_SUSE
   only:
@@ -893,7 +893,7 @@ deploy_suse_rpm:
 # deploy dsd binary to staging bucket
 deploy_dsd:
   stage: deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR
   only:
@@ -908,7 +908,7 @@ deploy_dsd:
 # deploy dsd binary to staging bucket
 deploy_puppy:
   stage: deploy
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:latest
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:v375986-9550851
   before_script:
     - ls $OMNIBUS_PACKAGE_DIR
   only:
