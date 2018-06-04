@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -92,7 +93,7 @@ func GetKubeUtil() (*KubeUtil, error) {
 }
 
 // HostnameProvider kubelet implementation for the hostname provider
-func HostnameProvider(hostName string) (string, error) {
+func HostnameProvider(_ string) (string, error) {
 	ku, err := GetKubeUtil()
 	if err != nil {
 		return "", err
@@ -437,15 +438,25 @@ func (ku *KubeUtil) setupKubeletApiEndpoint() error {
 }
 
 func (ku *KubeUtil) init() error {
-	var err error
-
 	// setting the kubeletHost
 	ku.kubeletHost = config.Datadog.GetString("kubernetes_kubelet_host")
 	if ku.kubeletHost == "" {
-		ku.kubeletHost, err = docker.HostnameProvider("")
+		log.Info(`Configuration "kubernetes_kubelet_host" is unset, trying to get the nodeIP through docker ...`)
+		dockerHost, err := docker.HostnameProvider("")
 		if err != nil {
 			return fmt.Errorf("unable to get hostname from docker, please set the kubernetes_kubelet_host option: %s", err)
 		}
+		ku.kubeletHost = dockerHost
+		log.Infof("Docker provided the hostname %q", dockerHost)
+		if net.ParseIP(dockerHost) == nil {
+			ipAddress, err := net.ResolveIPAddr("", dockerHost)
+			if err != nil {
+				log.Errorf("Cannot resolve %q: %v", dockerHost, err)
+				return err
+			}
+			ku.kubeletHost = ipAddress.String()
+		}
+		log.Infof("Using %q as endpoint to reach the kubelet API", ku.kubeletHost)
 	}
 
 	// Trying connectivity insecurely with a dedicated client
@@ -463,7 +474,7 @@ func (ku *KubeUtil) init() error {
 		}
 	}
 
-	err = ku.setupKubeletApiClient()
+	err := ku.setupKubeletApiClient()
 	if err != nil {
 		return err
 	}
