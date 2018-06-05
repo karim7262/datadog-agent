@@ -114,6 +114,11 @@ Known Issues
   integrations work OK, but apiserver communication (event collection, `kube_service`
   tagging) is not implemented
 
+- On some Windows environments, CPU (``system.cpu.``) and IO (``system.io.``) metrics may stop
+  reporting after the Agent has started, or not report at all. The issue will be fixed in
+  version ``6.3.0``, until it's released please downgrade to ``6.1.4`` and/or contact
+  our support team if you're encountering this issue.
+
 Deprecation Notes
 -----------------
 
