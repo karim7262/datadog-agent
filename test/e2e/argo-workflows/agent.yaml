@@ -136,6 +136,8 @@ spec:
             - name: kubelet
               polling: true
             leader_election: true
+            collect_kubernetes_events: true
+            log_level: debug
 
           kubelet.yaml: |
             init_config:
@@ -158,7 +160,7 @@ spec:
           docker.yaml: |
             init_config:
             instances:
-            - {}
+            - collect_events: true
 
 
     - name: agent-daemonset
