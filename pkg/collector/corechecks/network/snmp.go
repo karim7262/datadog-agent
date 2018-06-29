@@ -121,8 +121,6 @@ func initCNetSnmpLib(cfg *snmpInitCfg) (err error) {
 	}()
 
 	once.Do(func() {
-		C.netsnmp_init_mib()
-
 		if cfg != nil && cfg.MibsDir != "" {
 			_, e := os.Stat(cfg.MibsDir)
 			if e == nil || !os.IsNotExist(e) {
@@ -131,6 +129,8 @@ func initCNetSnmpLib(cfg *snmpInitCfg) (err error) {
 				C.add_mibdir(mibdir)
 			}
 		}
+
+		C.netsnmp_init_mib()
 	})
 
 	return
