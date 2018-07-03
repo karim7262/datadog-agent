@@ -15,6 +15,7 @@ import (
 	"sync"
 	"unicode"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -220,6 +221,7 @@ func (cr *ConfigResolver) processNewService(svc listeners.Service) {
 		log.Errorf("Failed to get AD identifiers for service %s, it will not be monitored - %s", svc.GetID(), err)
 		return
 	}
+
 	for _, adID := range ADIdentifiers {
 		// map the AD identifier to this service for reverse lookup
 		if cr.adIDToServices[adID] == nil {
@@ -229,6 +231,11 @@ func (cr *ConfigResolver) processNewService(svc listeners.Service) {
 		tpls, err := cr.templates.Get(adID)
 		if err != nil {
 			log.Debugf("Unable to fetch templates from the cache: %v", err)
+		}
+
+		// even if we have no template, still collect pod logs if configured to do so
+		if len(tpls) == 0 && svc.IsPod() config.Datadog.GetBool("collect_all_pod_logs") {
+			// TODO: create a static template for logs
 		}
 		templates = append(templates, tpls...)
 	}
@@ -249,6 +256,8 @@ func (cr *ConfigResolver) processNewService(svc listeners.Service) {
 
 		// ask the Collector to schedule the checks
 		cr.ac.schedule(checks)
+
+		// TODO: pass to log agent
 	}
 }
 

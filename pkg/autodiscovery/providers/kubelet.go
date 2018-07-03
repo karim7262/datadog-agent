@@ -89,6 +89,8 @@ func parseKubeletPodlist(podlist []*kubelet.Pod) ([]integration.Config, error) {
 				legacyPodAnnotationPrefix, pod.Metadata.Name, newPodAnnotationPrefix)
 		}
 
+		// TODO: add a log config for the pod itself here, it will match with the PodService
+
 		for _, container := range pod.Status.Containers {
 			c, err := extractTemplatesFromMap(container.ID, pod.Metadata.Annotations,
 				fmt.Sprintf(adExtractFormat, container.Name))
