@@ -31,6 +31,7 @@ type Service interface {
 	GetTags() ([]string, error)           // tags
 	GetPid() (int, error)                 // process identifier
 	GetHostname() (string, error)         // hostname.domainname for the entity
+	IsPod() bool                          // reports if the service is a pod FIXME: for logs only, this interface is bad and shouldn't last
 }
 
 // ServiceListener monitors running services and triggers check (un)scheduling

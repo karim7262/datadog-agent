@@ -47,6 +47,14 @@ type PodContainerService struct {
 	Ports         []ContainerPort
 }
 
+// PodService implements the Service interface. It is only used for log integrations for now.
+type PodService struct {
+	ID            ID                // pod UID
+	ADIdentifiers []string          // TODO
+	Hosts         map[string]string // podIP
+	Ports         []ContainerPort   // all container ports
+}
+
 func init() {
 	Register("kubelet", NewKubeletListener)
 }
@@ -69,6 +77,7 @@ func (l *KubeletListener) Listen(newSvc chan<- Service, delSvc chan<- Service) {
 	// setup the I/O channels
 	l.newService = newSvc
 	l.delService = delSvc
+	l.newLogService = newLogSvc
 
 	go func() {
 		for {
@@ -110,11 +119,35 @@ func (l *KubeletListener) Stop() {
 }
 
 func (l *KubeletListener) processNewPod(pod *kubelet.Pod) {
+	l.createPodService(pod)
 	for _, container := range pod.Status.Containers {
 		l.createService(ID(container.ID), pod)
 	}
 }
 
+// createPodService creates a service for the pod itself.
+func (l *KubeletListener) createPodService(pod *kubelet.Pod) {
+	svc := PodService{
+		ID: pod.Metadata.UID
+		ADIdentifiers: []string{pod.Metadata.UID, pod.Metadata.Name}
+		Hosts: map[string]string{"pod": pod.Status.PodIP}
+	}
+	// Ports
+	var ports []ContainerPort
+	for _, container := range pod.Spec.Containers {
+		for _, port := range container.Ports {
+			ports = append(ports, ContainerPort{port.ContainerPort, port.Name})
+		}
+	}
+	svc.Ports = ports
+	l.m.Lock()
+	l.services[ID(id)] = &svc
+	l.m.Unlock()
+
+	l.newService <- &svc
+}
+
+// createService creates a service for a container belonging to a pod.
 func (l *KubeletListener) createService(id ID, pod *kubelet.Pod) {
 	svc := PodContainerService{
 		ID: id,
@@ -248,4 +281,49 @@ func (s *PodContainerService) GetTags() ([]string, error) {
 // GetHostname returns nil and an error because port is not supported in Kubelet
 func (s *PodContainerService) GetHostname() (string, error) {
 	return "", ErrNotSupported
+}
+
+// IsPod returns whether a service is a pod (false here)
+func (s *PodContainerService) IsPod() bool {
+	return false
+}
+
+// GetID returns the service ID (pod uid)
+func (s *PodService) GetID() ID {
+	return s.ID
+}
+
+// GetADIdentifiers returns the service AD identifiers
+func (s *PodService) GetADIdentifiers() ([]string, error) {
+	return s.ADIdentifiers
+}
+
+// GetHosts returns the pod's host (pod IP address)
+func (s *PodService) GetHosts() (map[string]string, error) {
+	return s.Hosts
+}
+
+// GetPid returns -1 and an error because it is not supported by the kubelet listener
+func (s *PodService) GetPid() (int, error) {
+	return -1, ErrNotSupported
+}
+
+// GetPorts returns a list the list of all ports from containers in the pod
+func (s *PodService) GetPorts() ([]ContainerPort, error) {
+	return s.Ports, nil
+}
+
+// GetTags retrieves tags using the tagger
+func (s *PodService) GetTags() ([]string, error) {
+	return tagger.Tag(string(s.ID), tagger.IsFullCardinality())
+}
+
+// GetHostname returns nil and an error because it is not supported in the kubelet
+func (s *PodContainerService) GetHostname() (string, error) {
+	return "", ErrNotSupported
+}
+
+// IsPod returns whether a service is a pod (true here)
+func (s *PodService) IsPod() bool {
+	return true
 }
