@@ -497,6 +497,11 @@ func (s *DockerService) GetHostname() (string, error) {
 	return s.Hostname, nil
 }
 
+// IsPod returns whether the service is a pod (false here)
+func (s *DockerService) IsPod() bool {
+	return false
+}
+
 // findKubernetesInLabels traverses a map of container labels and
 // returns true if a kubernetes label is detected
 func findKubernetesInLabels(labels map[string]string) bool {

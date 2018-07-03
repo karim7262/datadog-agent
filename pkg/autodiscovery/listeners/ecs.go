@@ -222,3 +222,8 @@ func (s *ECSService) GetPid() (int, error) {
 func (s *ECSService) GetHostname() (string, error) {
 	return "", ErrNotSupported
 }
+
+// IsPod returns whether the service is a pod (false here)
+func (s *ECSService) IsPod() bool {
+	return false
+}

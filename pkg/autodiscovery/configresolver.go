@@ -234,7 +234,7 @@ func (cr *ConfigResolver) processNewService(svc listeners.Service) {
 		}
 
 		// even if we have no template, still collect pod logs if configured to do so
-		if len(tpls) == 0 && svc.IsPod() config.Datadog.GetBool("collect_all_pod_logs") {
+		if len(tpls) == 0 && svc.IsPod() config.Datadog.GetBool("logs_config.pod_collect_all") {
 			// TODO: create a static template for logs
 		}
 		templates = append(templates, tpls...)
