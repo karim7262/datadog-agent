@@ -1,0 +1,61 @@
+##########################################
+# Preparation stage: extract and cleanup #
+##########################################
+
+FROM debian:buster-slim as extract
+ARG WITH_JMX
+COPY datadog-agent*_amd64.deb /
+WORKDIR /output
+
+# Extract and cleanup:
+#   - unused systemd unit
+#   - GPL sources for embedded software  # FIXME: move upstream
+#   - docs and manpages                  # FIXME: move upstream
+#   - static libraries                   # FIXME: move upstream
+#   - jmxfetch on nojmx build
+RUN dpkg -x /datadog-agent*_amd64.deb . \
+ && rm -rf usr etc/init lib \
+    opt/datadog-agent/sources \
+    opt/datadog-agent/embedded/share/doc \
+    opt/datadog-agent/embedded/share/man \
+    # remove libcurl 4.4.0 - it gets removed later anyway but the docker store scanner doesn't see that
+    opt/datadog-agent/embedded/lib/libcurl.so.4.4.0 \
+    # ditto for this older libsystemd
+    usr/lib/x86_64-linux-gnu/libsystemd.so.0.21.0 \
+ && find opt/datadog-agent/ -iname "*.a" -delete \
+ && if [ -z "$WITH_JMX" ]; then rm -rf opt/datadog-agent/bin/agent/dist/jmx; fi \
+ && ln -s /opt/datadog-agent/embedded/ssl etc/ssl \
+ && mkdir conf.d checks.d
+
+# Configuration:
+#   - copy default config files
+COPY datadog*.yaml etc/datadog-agent/
+
+
+FROM alpine:3.8
+
+LABEL maintainer "Datadog <package@datadoghq.com>"
+ENV DOCKER_DD_AGENT=yes \
+    PATH=/opt/datadog-agent/bin/agent/:/opt/datadog-agent/embedded/bin/:$PATH
+
+
+RUN apk --no-cache add ca-certificates wget s6 s6-portable-utils execline bash run-parts \
+ && wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://raw.githubusercontent.com/sgerrand/alpine-pkg-glibc/master/sgerrand.rsa.pub \
+ && wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.27-r0/glibc-2.27-r0.apk \
+ && apk add --no-cache glibc-2.27-r0.apk \
+ && rm glibc-2.27-r0.apk \
+ && apk del wget
+
+# Copy agent from extract stage
+COPY --from=extract /output/ /
+
+# S6 entrypoint, service definitions, healthcheck probe
+COPY s6-services /etc/services.d/
+COPY entrypoint /etc/cont-init.d/
+COPY probe.sh initlog.sh entrypoint.sh /
+
+RUN ln -s /bin/execlineb  /usr/bin/ \
+ && chmod +x /probe.sh /initlog.sh /entrypoint.sh
+
+##ENTRYPOINT ["/entrypoint.sh"]
+CMD ["s6-svscan", "/etc/services.d/"]
