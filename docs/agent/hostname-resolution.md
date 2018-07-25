@@ -1,6 +1,6 @@
 _Edit 2018-20-07 : The default value of the new `hostname_fqdn` flag is planned to change in 6.5.0 instead of 6.4.0 to give users more time to take it into account._
 
-# Difference in hostname resolution between Agent v5 and Agent v6 (<v6.5)
+# Difference in hostname resolution between Agent v5 and Agent v6 on unix-based OS (<v6.5)
 
 In some cases, it is possible to see a difference in the hostname that’s reported by your Agent when upgrading from Agent v5 to Agent v6 (for versions < 6.5). 
 
