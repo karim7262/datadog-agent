@@ -26,7 +26,7 @@ import (
 var (
 	// PyChecksPath holds the path to the python checks from integrations-core shipped with the agent
 	PyChecksPath = filepath.Join(_here, "..", "checks.d")
-	distPath     string
+	distPath     = filepath.Join(_here, "dist")
 	// ViewsPath holds the path to the folder containing the GUI support files
 	viewsPath   string
 	enabledVals = map[string]bool{"yes": true, "true": true, "1": true,
@@ -81,13 +81,6 @@ func getInstallPath() string {
 
 // GetDistPath returns the fully qualified path to the 'dist' directory
 func GetDistPath() string {
-	if len(distPath) == 0 {
-		var s string
-		if s = getInstallPath(); s == "" {
-			return ""
-		}
-		distPath = filepath.Join(s, `bin/agent/dist`)
-	}
 	return distPath
 }
 
