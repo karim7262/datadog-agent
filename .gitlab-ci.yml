@@ -163,7 +163,7 @@ build_puppy_agent-deb_x64_arm:
   artifacts:
     expire_in: 2 weeks
     paths:
-      - "./bin"
+      - "$SRC_PATH/bin"
 
 # build dogstatsd for deb-x64
 build_dogstatsd-deb_x64:
