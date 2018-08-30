@@ -48,6 +48,8 @@ var checkCmd = &cobra.Command{
 	Short: "Run the specified check",
 	Long:  `Use this to run a specific check with a specific rate`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		panic(1)
+
 		// Global Agent configuration
 		err := common.SetupConfig(confFilePath)
 		if err != nil {
