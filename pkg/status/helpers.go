@@ -77,19 +77,28 @@ func lastErrorMessage(value string) template.HTML {
 }
 
 // formatUnixTime formats the unix time to make it more readable
-func formatUnixTime(unixTime float64) string {
+func formatUnixTime(input interface{}) (string, error) {
+	ts, err := cast.ToStringE(input)
+	if err != nil {
+		return "", err
+	}
 	var (
 		sec  int64
 		nsec int64
 	)
-	ts := fmt.Sprintf("%f", unixTime)
 	secs := strings.Split(ts, ".")
-	sec, _ = strconv.ParseInt(secs[0], 10, 64)
+	sec, err = strconv.ParseInt(secs[0], 10, 64)
+	if err != nil {
+		return "", err
+	}
 	if len(secs) == 2 {
-		nsec, _ = strconv.ParseInt(secs[1], 10, 64)
+		nsec, err = strconv.ParseInt(secs[1], 10, 64)
+		if err != nil {
+			return "", err
+		}
 	}
 	t := time.Unix(sec, nsec)
-	return t.Format(timeFormat)
+	return t.Format(timeFormat), nil
 }
 
 func printDashes(s string, dash string) string {
