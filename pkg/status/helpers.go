@@ -13,8 +13,10 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/fatih/color"
+	json "github.com/json-iterator/go"
+	"github.com/spf13/cast"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -103,7 +105,11 @@ func toUnsortedList(s map[string]interface{}) string {
 }
 
 // mkHuman makes large numbers more readable
-func mkHuman(f float64) string {
+func mkHuman(input interface{}) (string, error) {
+	f, err := cast.ToFloat64E(input)
+	if err != nil {
+		return "", err
+	}
 	var str string
 	if f > 1000000.0 {
 		str = humanize.SIWithDigits(f, 1, "")
@@ -111,19 +117,27 @@ func mkHuman(f float64) string {
 		str = humanize.Commaf(f)
 	}
 
-	return str
+	return str, nil
 }
 
 // mkHumanDuration makes time values more readable
-func mkHumanDuration(f float64, unit string) string {
+func mkHumanDuration(input interface{}, unit string) (string, error) {
 	var duration time.Duration
+	var err error
+	f, err := cast.ToFloat64E(input)
+	if err != nil {
+		return "", err
+	}
 	if unit != "" {
-		duration, _ = time.ParseDuration(fmt.Sprintf("%f%s", f, unit))
+		duration, err = time.ParseDuration(fmt.Sprintf("%f%s", f, unit))
+		if err != nil {
+			return "", err
+		}
 	} else {
 		duration = time.Duration(int64(f)) * time.Second
 	}
 
-	return duration.String()
+	return duration.String(), nil
 }
 
 func stringLength(s string) int {

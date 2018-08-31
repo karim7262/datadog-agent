@@ -12,6 +12,8 @@ import (
 	"io"
 	"path/filepath"
 
+	json "github.com/json-iterator/go"
+
 	"github.com/DataDog/datadog-agent/cmd/agent/common"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/util/executable"
