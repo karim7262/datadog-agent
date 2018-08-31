@@ -1,9 +1,9 @@
 {
 	"nightly": {
-		"INTEGRATIONS_CORE_VERSION": "master",
-		"TRACE_AGENT_VERSION": "master",
-		"PROCESS_AGENT_VERSION": "master",
-		"OMNIBUS_SOFTWARE_VERSION": "master",
+		"INTEGRATIONS_CORE_VERSION": "rish/openmetricsbasecheck_kubernetes_changes",
+		"TRACE_AGENT_VERSION": "6.4.1",
+		"PROCESS_AGENT_VERSION": "6.4.1",
+		"OMNIBUS_SOFTWARE_VERSION": "6.4.1",
 		"OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
 		"JMXFETCH_VERSION": "0.20.1",
 		"JMXFETCH_HASH": "076dc742d158e888bfff914e022bd1e640bde2b27735e27ed47799dd89058752"
