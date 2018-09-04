@@ -1009,18 +1009,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:826fb9158b72d1295e7324f7db15dc264abb034926618c02847f601bed77414b"
-  name = "golang.org/x/mobile"
-  packages = [
-    "asset",
-    "internal/mobileinit",
-  ]
-  pruneopts = ""
-  revision = "bceb7ef27cc623473a5b664d2a3450576dddff0f"
-
-[[projects]]
-  branch = "master"
-  digest = "1:1b5927d8f58faa4702a58cee18096fe7aa4c074dcd20f3b5c60d23a18059676d"
   name = "golang.org/x/net"
   packages = [
     "context",

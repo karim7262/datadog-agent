@@ -237,8 +237,12 @@ func expQueues(s *Scheduler) func() interface{} {
 	return func() interface{} {
 		queues := make([]map[string]interface{}, 0)
 
-		for _, queue := range s.jobQueues {
-			queues = append(queues, queue.stats())
+		for interval, queue := range s.jobQueues {
+			queueStats := map[string]interface{}{
+				"Interval": interval / time.Second,
+				"Size":     len(queue.jobs),
+			}
+			queues = append(queues, queueStats)
 		}
 		return queues
 	}

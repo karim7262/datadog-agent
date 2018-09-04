@@ -31,10 +31,8 @@ def build(ctx, rebuild=False, build_include=None, build_exclude=None,
      Example invokation:
         inv cluster-agent.build
     """
-    build_include = DEFAULT_BUILD_TAGS if build_include is None else build_include.split(",")
-    build_exclude = [] if build_exclude is None else build_exclude.split(",")
-    build_tags = get_build_tags(build_include, build_exclude)
 
+    build_tags = get_build_tags(DEFAULT_BUILD_TAGS, [])
     # We rely on the go libs embedded in the debian stretch image to build dynamically
     ldflags, gcflags, env = get_build_flags(ctx, static=False, use_embedded_libs=use_embedded_libs)
 
@@ -59,9 +57,9 @@ def build(ctx, rebuild=False, build_include=None, build_exclude=None,
         "GOOS": "",
         "GOARCH": "",
     })
+    cmd = "go generate {}/cmd/cluster-agent"
 
-    cmd = "go generate -tags '{build_tags}' {repo_path}/cmd/cluster-agent"
-    ctx.run(cmd.format(build_tags=" ".join(build_tags), repo_path=REPO_PATH), env=env)
+    ctx.run(cmd.format(REPO_PATH), env=env)
 
 
 @task
