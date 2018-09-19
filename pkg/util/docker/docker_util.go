@@ -173,8 +173,16 @@ func (d *DockerUtil) GetStorageStats() ([]*StorageStats, error) {
 // ResolveImageName will resolve sha image name to their user-friendly name.
 // For non-sha names we will just return the name as-is.
 func (d *DockerUtil) ResolveImageName(image string) (string, error) {
+	// If no sha is present, image does not need resolving
 	if !strings.Contains(image, "sha256:") {
 		return image, nil
+	}
+
+	// If tag and sha are present (swarm), no need to inspect the image
+	firstColumn := strings.Index(image, ":")
+	shaStart := strings.Index(image, "@sha")
+	if firstColumn > 0 && firstColumn < shaStart {
+		return image[0:shaStart], nil
 	}
 
 	d.Lock()
