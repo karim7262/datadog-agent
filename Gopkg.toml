@@ -40,33 +40,46 @@
 
 [[override]]
   name = "github.com/kubernetes/apimachinery"
-  # branch = "release-1.11"
+  # branch = "release-1.12"
   #        + pinning to commit in branch above
-  version = "kubernetes-1.10.3"
+  revision = "d128f427fda3db9a4d1ebbf3d54b4949a3356662" #test from fix in apiserver
+  # revision = "1c56055d3f2ff0ae5ff61d86dc8c88d2928b7ab3" # from incubator.
+   #revision = "001f0307e2ebcfc31265ae32d8d3130c1b81b44e" # corresponds to godep for apiserver  2b9b0922e82352addb7e8a25802ece9667df0332
 
 [[override]]
   name = "github.com/kubernetes/client-go"
-  version = "~v7.0.0"
+  # revision = "615dfd3eb0c3d083e20c404dea7dfc63bd032ee1" # from incubator
+  revision = "bdfc4cfc125f556bfe46fff68207767a605b64ed" # test from fix in apiserver.
+  # revision = "4e3d951df380433be1bcb8e6a147dd4221af0af9" # same apiserver based ref
+  # version = "release-9.0"
 
 [[override]]
   name = "github.com/kubernetes/api"
-  # branch = "release-1.11"
+  # branch = "release-1.12"
   #        + pinning to commit in branch above
-  version = "kubernetes-1.10.3"
+  revision = "70491ec73e10be2989242c913738f049a37e72c7" # test from fix in apiserver
+  # revision = "00c78f6603af046dfcada47ba511ddc94e7a64ce"
 
 [[override]]
   name = "k8s.io/apiserver"
   # branch = "release-1.11"
-  version = "kubernetes-1.10.3"
+
+  # revision = "15cbd7efdeb242a93307546b08843d55dcfddc33" # from apiserver-incubator
+  revision = "4e7be504bf8670b1b36388e3ce2d097c6347373a" # test from fix in apiserver.
 
 [[override]]
   name = "k8s.io/metrics"
-  version = "kubernetes-1.10.3"
+  revision = "c368fb9b71245441cd3268fffdba58b28b9b4863"
+  #revision = "baa04983db4e01d02a16d9c9fe32dd5b478b3248"
   # branch = "release-1.11"
 
+#[[override]]
+#  name = "github.com/kubernetes-incubator/custom-metrics-apiserver"
+#  revision = "1f1cda41a301080789507a291b999807002ede46"
+
 [[override]]
-  name = "github.com/kubernetes-incubator/custom-metrics-apiserver"
-  revision = "e61f72fec56ab519d74ebd396cd3fcf31b084558"
+  name = "github.com/CharlyF/custom-metrics-apiserver"
+  revision = "8cee0380c23166fe328fedd088446df3c8254223"
 
 [[constraint]]
   name = "github.com/gorilla/mux"
