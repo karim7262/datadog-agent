@@ -98,7 +98,7 @@ def build(ctx, rebuild=False, race=False, build_include=None, build_exclude=None
 
     cmd += "-o {agent_bin} -gcflags=\"{gcflags}\" -ldflags=\"{ldflags}\" {REPO_PATH}/cmd/agent"
     args = {
-        "race_opt": "-race" if race else "",
+        "race_opt": "-race" if True else "",
         "build_type": "-a" if rebuild else ("-i" if precompile_only else ""),
         "go_build_tags": " ".join(build_tags),
         "agent_bin": os.path.join(BIN_PATH, bin_name("agent", android=False)),
