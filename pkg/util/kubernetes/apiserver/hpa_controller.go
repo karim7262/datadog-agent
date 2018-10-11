@@ -24,7 +24,6 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/clusteragent/custommetrics"
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/errors"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/apiserver/common"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/hpa"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -234,10 +233,10 @@ func (h *AutoscalersController) processNext() bool {
 
 	defer h.queue.Done(key)
 
-	err := h.syncAutoscalers(key)
+	/*err := h.syncAutoscalers(key)
 	if err != nil {
 		log.Errorf("Could not sync HPAs %s", err)
-	}
+	}*/
 
 	if h.autoscalers != nil {
 		h.autoscalers <- key
@@ -246,32 +245,13 @@ func (h *AutoscalersController) processNext() bool {
 	return true
 }
 
-func (h *AutoscalersController) syncAutoscalers(key interface{}) error {
-	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
-	if err != nil {
-		log.Errorf("Could not split the key: %v", err)
-		return err
-	}
-
-	hpa, err := h.autoscalersLister.HorizontalPodAutoscalers(ns).Get(name)
-	switch {
-	case errors.IsNotFound(err):
-		// The object was deleted before we processed the add/update handle. Local store does not have the HPA data anymore. The GC will clean up the Global Store.
-		log.Infof("HorizontalPodAutoscaler %v has been deleted but was not caught in the EventHandler. GC will cleanup.", key)
-	case err != nil:
-		log.Errorf("Unable to retrieve Horizontal Pod Autoscaler %v from store: %v", key, err)
-	default:
-		if hpa == nil {
-			log.Errorf("Could not parse empty hpa %s/%s from local store", ns, name)
-			return ErrIsEmpty
-		}
-		new := h.hpaProc.ProcessHPAs(hpa)
-		h.toStore.m.Lock()
-		h.toStore.data = append(h.toStore.data, new...)
-		log.Tracef("Local batch cache of HPA is %v", h.toStore.data)
-		h.toStore.m.Unlock()
-	}
-	return err
+func (h *AutoscalersController) syncAutoscalers(hpa *autoscalingv2.HorizontalPodAutoscaler) error {
+	new := h.hpaProc.ProcessHPAs(hpa)
+	h.toStore.m.Lock()
+	h.toStore.data = append(h.toStore.data, new...)
+	log.Tracef("Local batch cache of HPA is %v", h.toStore.data)
+	h.toStore.m.Unlock()
+	return nil
 }
 
 func (h *AutoscalersController) addAutoscaler(obj interface{}) {
@@ -281,7 +261,10 @@ func (h *AutoscalersController) addAutoscaler(obj interface{}) {
 		return
 	}
 	log.Debugf("Adding autoscaler %s/%s", newAutoscaler.Namespace, newAutoscaler.Name)
-	h.enqueue(newAutoscaler)
+	err := h.syncAutoscalers(newAutoscaler)
+	if err != nil {
+		log.Errorf("Could not sync HPAs %s", err)
+	}
 }
 
 // the AutoscalersController does not benefit from a diffing logic.
@@ -295,7 +278,10 @@ func (h *AutoscalersController) updateAutoscaler(_, obj interface{}) {
 		return
 	}
 	log.Tracef("Updating autoscaler %s/%s", newAutoscaler.Namespace, newAutoscaler.Name)
-	h.enqueue(newAutoscaler)
+	err := h.syncAutoscalers(newAutoscaler)
+	if err != nil {
+		log.Errorf("Could not sync HPAs %s", err)
+	}
 }
 
 // Processing the Delete Events in the Eventhandler as obj is deleted from the local store thereafter.
