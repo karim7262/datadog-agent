@@ -53,6 +53,18 @@ func (c *MemoryCheck) Run() error {
 		sender.Gauge("system.swap.free", float64(s.Free)/mbSize, "", nil)
 		sender.Gauge("system.swap.used", float64(s.Used)/mbSize, "", nil)
 		sender.Gauge("system.swap.pct_free", float64(100-s.UsedPercent)/100, "", nil)
+		sender.Gauge("system.mem.cached", float64(s.Cached), "", nil)
+		// Committed memory is physical memory for which space has been
+		// reserved on the disk paging file in case it must be written
+		// back to disk
+		sender.Gauge("system.mem.committed", float64(s.Committed), "", nil)
+		// physical memory used by the operating system, for objects
+		// that can be written to disk when they are not being used
+		sender.Gauge("system.mem.paged", float64(s.Paged), "", nil)
+		// physical memory used by the operating system for objects that
+		// cannot be written to disk, but must remain in physical memory
+		// as long as they are allocated.
+		sender.Gauge("system.mem.nonpaged", float64(s.Nonpaged), "", nil)
 	} else {
 		log.Errorf("system.MemoryCheck: could not retrieve swap memory stats: %s", errSwap)
 	}

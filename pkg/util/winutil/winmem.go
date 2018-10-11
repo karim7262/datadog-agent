@@ -49,6 +49,10 @@ type SwapMemoryStat struct {
 	Used        uint64
 	Free        uint64
 	UsedPercent float64
+	Cached      uint64
+	Committed   uint64
+	Paged       uint64
+	Nonpaged    uint64
 }
 
 type memoryStatusEx struct {
@@ -115,6 +119,10 @@ func SwapMemory() (*SwapMemoryStat, error) {
 		Used:        used,
 		Free:        free,
 		UsedPercent: float64(used / tot),
+		Cached: perfInfo.systemCache,
+		Committed: perfInfo.commitTotal,
+		Paged: perfInfo.kernelPaged
+		Nonpaged: perfInfo.kernelNonpaged
 	}
 
 	return ret, nil
