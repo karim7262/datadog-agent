@@ -9,12 +9,18 @@ spec:
       labels:
         app: datadog-agent
       name: datadog-agent
+      annotations:
+        container.apparmor.security.beta.kubernetes.io/datadog-agent: unconfined
     spec:
       serviceAccountName: datadog-agent
+      hostNetwork: true
       containers:
-      - image: datadog/agent:latest
+      - image: datadog/agent-dev:sunhay-packaging-and-running-network-tracer
         imagePullPolicy: Always
         name: datadog-agent
+        securityContext:
+          capabilities:
+            add: ["SYS_ADMIN", "SYS_RESOURCE"]
         ports:
           - containerPort: 8125
             name: dogstatsdport
@@ -24,13 +30,19 @@ spec:
             protocol: TCP
         env:
           - name: DD_API_KEY
-            value: <YOUR_API_KEY>
+            value: <MY-KEY>
           - name: KUBERNETES
             value: "true"
           - name: DD_KUBERNETES_KUBELET_HOST
             valueFrom:
               fieldRef:
                 fieldPath: status.hostIP
+          - name: DD_PROCESS_AGENT_ENABLED
+            value: "true"
+          - name: DD_NETWORK_TRACING_ENABLED
+            value: "true"
+          - name: DD_NETTRACER_SOCKET
+            value: "/host/var/run/nettracer.sock"
         resources:
           requests:
             memory: "256Mi"
@@ -47,6 +59,10 @@ spec:
           - name: cgroups
             mountPath: /host/sys/fs/cgroup
             readOnly: true
+          - name: var-run
+            mountPath: /host/var/run
+          - name: debugfs
+            mountPath: /sys/kernel/debug
         livenessProbe:
           exec:
             command:
@@ -64,3 +80,9 @@ spec:
         - hostPath:
             path: /sys/fs/cgroup
           name: cgroups
+        - hostPath:
+            path: /sys/kernel/debug
+          name: debugfs
+        - hostPath:
+            path: /var/run
+          name: var-run
