@@ -10,7 +10,7 @@ spec:
         app: datadog-agent
       name: datadog-agent
       annotations:
-        container.apparmor.security.beta.kubernetes.io/datadog-agent: unconfined
+        container.apparmor.security.beta.kubernetes.io/network-tracer: unconfined
     spec:
       serviceAccountName: datadog-agent
       hostNetwork: true
@@ -18,9 +18,6 @@ spec:
       - image: datadog/agent-dev:sunhay-packaging-and-running-network-tracer
         imagePullPolicy: Always
         name: datadog-agent
-        securityContext:
-          capabilities:
-            add: ["SYS_ADMIN", "SYS_RESOURCE"]
         ports:
           - containerPort: 8125
             name: dogstatsdport
@@ -30,7 +27,7 @@ spec:
             protocol: TCP
         env:
           - name: DD_API_KEY
-            value: <MY-KEY>
+            value: <API-KEY>
           - name: KUBERNETES
             value: "true"
           - name: DD_KUBERNETES_KUBELET_HOST
@@ -61,8 +58,6 @@ spec:
             readOnly: true
           - name: var-run
             mountPath: /host/var/run
-          - name: debugfs
-            mountPath: /sys/kernel/debug
         livenessProbe:
           exec:
             command:
@@ -70,6 +65,26 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 5
           timeoutSeconds: 5
+      - name: network-tracer
+        image: datadog/agent-dev:sunhay-packaging-and-running-network-tracer
+        imagePullPolicy: Always
+        securityContext:
+          capabilities:
+            add: ["SYS_ADMIN", "SYS_RESOURCE"]
+        command:
+          - /opt/datadog-agent/embedded/bin/network-tracer
+        volumeMounts:
+          - {name: debugfs, mountPath: /sys/kernel/debug}
+          - {name: var-run, mountPath: /host/var/run}
+        env:
+          - name: DD_LOG_LEVEL
+            value: "debug"
+          - name: DD_LOGS_STDOUT
+            value: "true"
+          - name: DD_NETWORK_TRACING_ENABLED
+            value: "true"
+          - name: DD_NETTRACER_SOCKET
+            value: "/host/var/run/nettracer.sock"
       volumes:
         - hostPath:
             path: /var/run/docker.sock
