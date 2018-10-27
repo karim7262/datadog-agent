@@ -38,6 +38,9 @@ spec:
             value: "true"
           - name: DD_NETWORK_TRACING_ENABLED
             value: "true"
+          # Signal that we're running the network-tracer in a separate container
+          - name: DD_NETWORK_TRACING_EXTERNAL
+            value: "true"
           - name: DD_NETTRACER_SOCKET
             value: "/host/var/run/nettracer.sock"
         resources:
