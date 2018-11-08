@@ -10,7 +10,6 @@ name 'datadog-agent-integrations'
 
 dependency 'datadog-pip'
 dependency 'datadog-agent'
-dependency 'protobuf-py'
 
 if linux?
   # add nfsiostat script
