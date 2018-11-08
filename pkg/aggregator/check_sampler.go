@@ -18,6 +18,7 @@ type CheckSampler struct {
 	series          []*metrics.Serie
 	contextResolver *ContextResolver
 	metrics         metrics.ContextMetrics
+	pendingSamples  int
 }
 
 // newCheckSampler returns a newly initialized CheckSampler
@@ -34,11 +35,13 @@ func (cs *CheckSampler) addSample(metricSample *metrics.MetricSample) {
 
 	if err := cs.metrics.AddSample(contextKey, metricSample, metricSample.Timestamp, 1); err != nil {
 		log.Debug("Ignoring sample '%s' on host '%s' and tags '%s': %s", metricSample.Name, metricSample.Host, metricSample.Tags, err)
+	} else {
+		cs.pendingSamples++
 	}
 }
 
 func (cs *CheckSampler) partialCommit(timestamp float64) {
-	if len(cs.metrics) >= 50000 {
+	if cs.pendingSamples >= 50000 {
 		log.Infof("partialCommit with %v context", len(cs.metrics))
 		// TODO cs.contextResolver.expireContexts(timestamp - defaultExpiry) is not needed
 		cs.commit(timestamp)
@@ -47,6 +50,7 @@ func (cs *CheckSampler) partialCommit(timestamp float64) {
 
 func (cs *CheckSampler) commit(timestamp float64) {
 	series, errors := cs.metrics.Flush(timestamp)
+	cs.pendingSamples = 0
 	for ckey, err := range errors {
 		context, ok := cs.contextResolver.contextsByKey[ckey]
 		if !ok {
