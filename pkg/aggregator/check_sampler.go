@@ -39,7 +39,7 @@ func (cs *CheckSampler) addSample(metricSample *metrics.MetricSample) {
 
 func (cs *CheckSampler) partialCommit(timestamp float64) {
 	if len(cs.metrics) >= 50000 {
-		log.Infof("partialCommit with %v context", cs.metrics)
+		log.Infof("partialCommit with %v context", len(cs.metrics))
 		// TODO cs.contextResolver.expireContexts(timestamp - defaultExpiry) is not needed
 		cs.commit(timestamp)
 	}
