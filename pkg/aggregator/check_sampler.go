@@ -41,8 +41,8 @@ func (cs *CheckSampler) addSample(metricSample *metrics.MetricSample) {
 }
 
 func (cs *CheckSampler) partialCommit(timestamp float64) {
-	if cs.pendingSamples >= 50000 {
-		log.Infof("partialCommit with %v context", cs.pendingSamples)
+	if cs.pendingSamples >= 20000 {
+		log.Infof("partialCommit with %v samples", cs.pendingSamples)
 		// TODO cs.contextResolver.expireContexts(timestamp - defaultExpiry) is not needed
 		cs.commit(timestamp)
 	}

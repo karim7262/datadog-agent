@@ -23,8 +23,8 @@ import (
 )
 
 // DefaultFlushInterval aggregator default flush interval
-const DefaultFlushInterval = 15 * time.Second // flush interval
-const bucketSize = 10                         // fixed for now
+const DefaultFlushInterval = 5 * time.Second // flush interval
+const bucketSize = 10                        // fixed for now
 
 // Stats stores a statistic from several past flushes allowing computations like median or percentiles
 type Stats struct {
