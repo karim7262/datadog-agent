@@ -67,8 +67,11 @@ type checkSender struct {
 type commitType int
 
 const (
+	// NoCommit tells the aggregator not to commit
 	NoCommit commitType = iota
+	// PartialCommit tells the aggregator to do a partial commit
 	PartialCommit
+	// Commit tells the aggregator to do a full commit
 	Commit
 )
 
