@@ -131,6 +131,7 @@ func SubmitEvent(check *C.PyObject, checkID *C.char, event *C.PyObject) *C.PyObj
 
 //export PartialCommit
 func PartialCommit(check *C.PyObject, checkID *C.char) *C.PyObject {
+	log.Infof("Got partial commit request")
 	return C._none()
 }
 
