@@ -163,36 +163,36 @@ func TestCheckSenderInterface(t *testing.T) {
 	assert.EqualValues(t, checkID1, gaugeSenderSample.id)
 	assert.Equal(t, metrics.GaugeType, gaugeSenderSample.metricSample.Mtype)
 	assert.Equal(t, "my-hostname", gaugeSenderSample.metricSample.Host)
-	assert.Equal(t, false, gaugeSenderSample.commit)
+	assert.Equal(t, NoCommit, gaugeSenderSample.commitType)
 
 	rateSenderSample := <-senderMetricSampleChan
 	assert.EqualValues(t, checkID1, rateSenderSample.id)
 	assert.Equal(t, metrics.RateType, rateSenderSample.metricSample.Mtype)
-	assert.Equal(t, false, rateSenderSample.commit)
+	assert.Equal(t, NoCommit, rateSenderSample.commitType)
 
 	countSenderSample := <-senderMetricSampleChan
 	assert.EqualValues(t, checkID1, countSenderSample.id)
 	assert.Equal(t, metrics.CountType, countSenderSample.metricSample.Mtype)
-	assert.Equal(t, false, countSenderSample.commit)
+	assert.Equal(t, NoCommit, countSenderSample.commitType)
 
 	monotonicCountSenderSample := <-senderMetricSampleChan
 	assert.EqualValues(t, checkID1, monotonicCountSenderSample.id)
 	assert.Equal(t, metrics.MonotonicCountType, monotonicCountSenderSample.metricSample.Mtype)
-	assert.Equal(t, false, monotonicCountSenderSample.commit)
+	assert.Equal(t, NoCommit, monotonicCountSenderSample.commitType)
 
 	CounterSenderSample := <-senderMetricSampleChan
 	assert.EqualValues(t, checkID1, CounterSenderSample.id)
 	assert.Equal(t, metrics.CounterType, CounterSenderSample.metricSample.Mtype)
-	assert.Equal(t, false, CounterSenderSample.commit)
+	assert.Equal(t, NoCommit, CounterSenderSample.commitType)
 
 	histoSenderSample := <-senderMetricSampleChan
 	assert.EqualValues(t, checkID1, histoSenderSample.id)
 	assert.Equal(t, metrics.HistogramType, histoSenderSample.metricSample.Mtype)
-	assert.Equal(t, false, histoSenderSample.commit)
+	assert.Equal(t, NoCommit, histoSenderSample.commitType)
 
 	commitSenderSample := <-senderMetricSampleChan
 	assert.EqualValues(t, checkID1, commitSenderSample.id)
-	assert.Equal(t, true, commitSenderSample.commit)
+	assert.Equal(t, Commit, commitSenderSample.commitType)
 
 	serviceCheck := <-serviceCheckChan
 	assert.Equal(t, "my_service.can_connect", serviceCheck.CheckName)
@@ -261,7 +261,7 @@ func TestCheckSenderHostname(t *testing.T) {
 			assert.EqualValues(t, checkID1, gaugeSenderSample.id)
 			assert.Equal(t, metrics.GaugeType, gaugeSenderSample.metricSample.Mtype)
 			assert.Equal(t, tc.expectedHostname, gaugeSenderSample.metricSample.Host)
-			assert.Equal(t, false, gaugeSenderSample.commit)
+			assert.Equal(t, NoCommit, gaugeSenderSample.commitType)
 
 			serviceCheck := <-serviceCheckChan
 			assert.Equal(t, "my_service.can_connect", serviceCheck.CheckName)

@@ -64,6 +64,11 @@ func (m *MockSender) Commit() {
 	m.Called()
 }
 
+//PartialCommit enables the partial commit mock call.
+func (m *MockSender) PartialCommit() {
+	m.Called()
+}
+
 //GetMetricStats enables the get metric stats mock call.
 func (m *MockSender) GetMetricStats() map[string]int64 {
 	m.Called()
