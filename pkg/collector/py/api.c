@@ -10,6 +10,7 @@
 PyObject* SubmitMetric(PyObject*, char*, MetricType, char*, float, PyObject*, char*);
 PyObject* SubmitServiceCheck(PyObject*, char*, char*, int, PyObject*, char*, char*);
 PyObject* SubmitEvent(PyObject*, char*, PyObject*);
+PyObject* PartialCommit(PyObject*, char*);
 
 // _must_ be in the same order as the MetricType enum
 char* MetricTypeNames[] = {
@@ -21,6 +22,22 @@ char* MetricTypeNames[] = {
   "HISTOGRAM",
   "HISTORATE"
 };
+
+static PyObject *partial_commit(PyObject *self, PyObject *args) {
+    PyObject *check = NULL;
+    char *check_id;
+
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+
+    if (!PyArg_ParseTuple(args, "Os", &check, &check_id)) {
+      PyGILState_Release(gstate);
+      return NULL;
+    }
+
+    PyGILState_Release(gstate);
+    return PartialCommit(check, check_id);
+}
 
 static PyObject *submit_metric(PyObject *self, PyObject *args) {
     PyObject *check = NULL;
@@ -88,6 +105,7 @@ static PyMethodDef AggMethods[] = {
   {"submit_metric", (PyCFunction)submit_metric, METH_VARARGS, "Submit metrics to the aggregator."},
   {"submit_service_check", (PyCFunction)submit_service_check, METH_VARARGS, "Submit service checks to the aggregator."},
   {"submit_event", (PyCFunction)submit_event, METH_VARARGS, "Submit events to the aggregator."},
+  {"partial_commit", (PyCFunction)partial_commit, METH_VARARGS, ""},
   {NULL, NULL}  // guards
 };
 

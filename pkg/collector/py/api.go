@@ -129,6 +129,11 @@ func SubmitEvent(check *C.PyObject, checkID *C.char, event *C.PyObject) *C.PyObj
 	return C._none()
 }
 
+//export PartialCommit
+func PartialCommit(check *C.PyObject, checkID *C.char) *C.PyObject {
+	return C._none()
+}
+
 // extractEventFromDict returns an `Event` populated with the fields of the passed event py object
 // The caller needs to check the returned `error`, any non-nil value indicates that the error flag is set
 // on the python interpreter.
