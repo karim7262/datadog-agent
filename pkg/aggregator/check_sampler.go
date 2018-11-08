@@ -37,6 +37,14 @@ func (cs *CheckSampler) addSample(metricSample *metrics.MetricSample) {
 	}
 }
 
+func (cs *CheckSampler) partialCommit(timestamp float64) {
+	if len(cs.metrics) >= 50000 {
+		log.Infof("partialCommit with %v context", cs.metrics)
+		// TODO cs.contextResolver.expireContexts(timestamp - defaultExpiry) is not needed
+		cs.commit(timestamp)
+	}
+}
+
 func (cs *CheckSampler) commit(timestamp float64) {
 	series, errors := cs.metrics.Flush(timestamp)
 	for ckey, err := range errors {

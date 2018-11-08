@@ -24,6 +24,7 @@ var senderPool *checkSenderPool
 // Sender allows sending metrics from checks/a check
 type Sender interface {
 	Commit()
+	PartialCommit()
 	Gauge(metric string, value float64, hostname string, tags []string)
 	Rate(metric string, value float64, hostname string, tags []string)
 	Count(metric string, value float64, hostname string, tags []string)
@@ -63,10 +64,18 @@ type checkSender struct {
 	eventOut                chan<- metrics.Event
 }
 
+type commitType int
+
+const (
+	NoCommit commitType = iota
+	PartialCommit
+	Commit
+)
+
 type senderMetricSample struct {
 	id           check.ID
 	metricSample *metrics.MetricSample
-	commit       bool
+	commitType   commitType
 }
 
 type checkSenderPool struct {
@@ -152,10 +161,15 @@ func (s *checkSender) DisableDefaultHostname(disable bool) {
 	s.defaultHostnameDisabled = disable
 }
 
+func (s *checkSender) PartialCommit() {
+	s.smsOut <- senderMetricSample{s.id, &metrics.MetricSample{}, PartialCommit}
+	s.cyclemetricStats()
+}
+
 // Commit commits the metric samples that were added during a check run
 // Should be called at the end of every check run
 func (s *checkSender) Commit() {
-	s.smsOut <- senderMetricSample{s.id, &metrics.MetricSample{}, true}
+	s.smsOut <- senderMetricSample{s.id, &metrics.MetricSample{}, Commit}
 	s.cyclemetricStats()
 }
 
@@ -187,7 +201,7 @@ func (s *checkSender) cyclemetricStats() {
 // SendRawMetricSample sends the raw sample
 // Useful for testing - submitting precomputed samples.
 func (s *checkSender) SendRawMetricSample(sample *metrics.MetricSample) {
-	s.smsOut <- senderMetricSample{s.id, sample, false}
+	s.smsOut <- senderMetricSample{s.id, sample, NoCommit}
 }
 
 func (s *checkSender) sendMetricSample(metric string, value float64, hostname string, tags []string, mType metrics.MetricType) {
@@ -207,7 +221,7 @@ func (s *checkSender) sendMetricSample(metric string, value float64, hostname st
 		metricSample.Host = s.defaultHostname
 	}
 
-	s.smsOut <- senderMetricSample{s.id, metricSample, false}
+	s.smsOut <- senderMetricSample{s.id, metricSample, NoCommit}
 
 	s.metricStats.Lock.Lock()
 	s.metricStats.MetricSamples++

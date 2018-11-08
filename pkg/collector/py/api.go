@@ -132,6 +132,19 @@ func SubmitEvent(check *C.PyObject, checkID *C.char, event *C.PyObject) *C.PyObj
 //export PartialCommit
 func PartialCommit(check *C.PyObject, checkID *C.char) *C.PyObject {
 	log.Infof("Got partial commit request")
+	goCheckID := C.GoString(checkID)
+	var sender aggregator.Sender
+	var err error
+
+	sender, err = aggregator.GetSender(chk.ID(goCheckID))
+
+	if err != nil || sender == nil {
+		log.Errorf("Error finding the sender for check with ID %v: %v", goCheckID, err)
+		return C._none()
+	}
+
+	sender.PartialCommit()
+
 	return C._none()
 }
 

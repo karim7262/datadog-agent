@@ -257,11 +257,14 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 	defer agg.mu.Unlock()
 
 	if checkSampler, ok := agg.checkSamplers[ss.id]; ok {
-		if ss.commit {
-			checkSampler.commit(timeNowNano())
-		} else {
+		switch ss.commitType {
+		case NoCommit:
 			ss.metricSample.Tags = deduplicateTags(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
+		case PartialCommit:
+			checkSampler.partialCommit(timeNowNano())
+		case Commit:
+			checkSampler.commit(timeNowNano())
 		}
 	} else {
 		log.Debugf("CheckSampler with ID '%s' doesn't exist, can't handle senderMetricSample", ss.id)
