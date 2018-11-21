@@ -133,3 +133,11 @@ func (rt *RulesTryer) Try(name string) (*Config, error) {
 func status2XXChecker(r *http.Response) bool {
 	return r.StatusCode/100 == 2
 }
+
+func intRange(a, b int) []int {
+	r := make([]int, 0, b-a)
+	for i := a; i < b; i++ {
+		r = append(r, i)
+	}
+	return r
+}

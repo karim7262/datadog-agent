@@ -143,3 +143,14 @@ func TestInvalidSearchSockets(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, conf)
 }
+
+func TestIntRange(t *testing.T) {
+	r := intRange(5, 10)
+
+	assert.Contains(t, r, 5)
+	assert.Contains(t, r, 6)
+	assert.Contains(t, r, 7)
+	assert.Contains(t, r, 8)
+	assert.Contains(t, r, 9)
+	assert.Equal(t, 5, len(r))
+}
