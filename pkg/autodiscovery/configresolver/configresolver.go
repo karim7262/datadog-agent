@@ -57,12 +57,11 @@ func Resolve(tpl integration.Config, svc listeners.Service) (integration.Config,
 		// Copy original content from template
 		vars := tpl.GetTemplateVariablesForInstance(i)
 		for _, v := range vars {
-			name, key := parseTemplateVar(bytes.Replace(v, tplOptionalToken, []byte(integration.TplToken), 1))
 			if f, found := templateVariables[string(v.Name)]; found {
 				resolvedVar, err := f(v.Key, svc)
 				if err != nil {
 					// If not mandatory replace by empty byte slice
-					if bytes.HasPrefix(v, tplOptionalToken) {
+					if bytes.HasPrefix(v.Name, tplOptionalToken) {
 						resolvedVar = []byte{}
 					} else {
 						return integration.Config{}, err
@@ -186,7 +185,6 @@ func getEnvvar(tplVar []byte, svc listeners.Service) ([]byte, error) {
 	}
 	return []byte(value), nil
 }
-<<<<<<< HEAD
 
 // getUnixSocket returns unix sockets used by the service
 func getUnixSocket(tplVar []byte, svc listeners.Service) ([]byte, error) {
@@ -210,22 +208,3 @@ func getUnixSocket(tplVar []byte, svc listeners.Service) ([]byte, error) {
 	}
 	return []byte(sockets[idx]), nil
 }
-
-// parseTemplateVar extracts the name of the var
-// and the key (or index if it can be cast to an int)
-func parseTemplateVar(v []byte) (name, key []byte) {
-	stripped := bytes.Map(func(r rune) rune {
-		if unicode.IsSpace(r) || r == '%' {
-			return -1
-		}
-		return r
-	}, v)
-	parts := bytes.SplitN(stripped, []byte("_"), 2)
-	name = parts[0]
-	if len(parts) == 2 {
-		return name, parts[1]
-	}
-	return name, []byte("")
-}
-=======
->>>>>>> master
