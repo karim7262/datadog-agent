@@ -18,7 +18,7 @@ type rules struct {
 	httpEndpoints []endpoint
 	socketGlobs   []string
 
-	tcpChecker  func(*net.TCPConn) bool
+	tcpChecker  func(net.Conn) bool
 	httpChecker func(*http.Response) bool
 }
 
@@ -50,15 +50,8 @@ func (r *rules) searchTCPPorts() []int {
 
 	if r.tcpPorts != nil && r.tcpChecker != nil {
 		for _, p := range r.tcpPorts {
-			addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("localhost:%d", p))
-			if err != nil {
-				// TODO logging, this should not fail
-				continue
-			}
-
-			conn, err := net.DialTCP("tcp", nil, addr)
-			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			addr := fmt.Sprintf("localhost:%d", p)
+			conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 
 			if err != nil {
 				// Probably nothing listening there

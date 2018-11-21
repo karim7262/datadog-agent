@@ -20,7 +20,7 @@ var DefaultTryer = RulesTryer{
 				"/tmp/redis*sock*",
 			},
 			tcpPorts: intRange(6375, 6386),
-			tcpChecker: func(conn *net.TCPConn) bool {
+			tcpChecker: func(conn net.Conn) bool {
 				if _, err := conn.Write([]byte("echo hi\n")); err != nil {
 					return false
 				}
