@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func status2XXChecker(r *http.Response) bool {
+	return r.StatusCode/100 == 2
+}
+
 func TestEmptyRules(t *testing.T) {
 	name := "redis"
 

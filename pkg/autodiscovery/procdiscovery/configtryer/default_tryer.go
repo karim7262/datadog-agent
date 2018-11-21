@@ -1,7 +1,10 @@
 package configtryer
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"strings"
 )
 
@@ -30,6 +33,22 @@ var DefaultTryer = RulesTryer{
 
 				s := string(raw)
 				return strings.HasPrefix(s, "$2") || strings.HasPrefix(s, "-NOAUTH Authentication required.")
+			},
+		},
+
+		// Elasticsearch rules
+		"elastic": rules{
+			httpEndpoints: endpointRange("_cluster/health", 9195, 9206),
+			httpChecker: func(r *http.Response) bool {
+				res := struct{ status string }{}
+				defer r.Body.Close()
+				raw, err := ioutil.ReadAll(r.Body)
+				if err != nil {
+					return false
+				}
+
+				err = json.Unmarshal(raw, &res)
+				return err == nil && res.status != ""
 			},
 		},
 	},

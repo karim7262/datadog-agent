@@ -130,14 +130,18 @@ func (rt *RulesTryer) Try(name string) (*Config, error) {
 	return conf, nil
 }
 
-func status2XXChecker(r *http.Response) bool {
-	return r.StatusCode/100 == 2
-}
-
 func intRange(a, b int) []int {
 	r := make([]int, 0, b-a)
 	for i := a; i < b; i++ {
 		r = append(r, i)
+	}
+	return r
+}
+
+func endpointRange(uri string, a, b int) []endpoint {
+	r := make([]endpoint, 0, b-a)
+	for _, i := range intRange(a, b) {
+		r = append(r, endpoint{uri, i})
 	}
 	return r
 }
