@@ -13,6 +13,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/procdiscovery"
+	"github.com/DataDog/datadog-agent/pkg/autodiscovery/procdiscovery/configtryer"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -122,13 +123,20 @@ func (l *ProcessListener) pollProcesses(creationTime integration.CreationTime) {
 
 	// loop on left services and create them
 	for _, proc := range pids {
-		l.createService(proc, creationTime)
+		log.Infof("Trying on %s", proc.Name)
+		conf, err := configtryer.Try(proc.Name)
+
+		if conf == nil || err != nil {
+			continue
+		}
+
+		l.createService(proc, creationTime, conf)
 	}
 }
 
 // createService takes a procdiscovery.Process, create a service for it in its cache
 // and tells the ConfigResolver that this service started.
-func (l *ProcessListener) createService(proc procdiscovery.IntegrationProcess, creationTime integration.CreationTime) {
+func (l *ProcessListener) createService(proc procdiscovery.IntegrationProcess, creationTime integration.CreationTime, conf *configtryer.Config) {
 	hostname := "127.0.0.1"
 
 	svc := &ProcessService{
@@ -140,20 +148,10 @@ func (l *ProcessListener) createService(proc procdiscovery.IntegrationProcess, c
 		creationTime:  creationTime,
 	}
 
-	ports, err := getProcessPorts(proc.PID)
-	if err != nil {
-		log.Errorf("Couldn't retrieve connections for process (%s, pid: %v): %s", proc.Cmd, proc.PID, err)
-		return
-	}
+	// TODO fix  this will return all the ports and unix sockets found
+	svc.unixSockets = conf.UnixSockets
 
-	sockets, err := getProcessUnixSockets(proc.PID)
-	if err != nil {
-		log.Errorf("Couldn't retrieve unix sockets for process (%s, pid: %v): %s", proc.Cmd, proc.PID, err)
-		return
-	}
-	svc.unixSockets = sockets
-
-	for _, port := range ports {
+	for _, port := range conf.Ports {
 		svc.ports = append(svc.ports, ContainerPort{Port: port})
 	}
 
