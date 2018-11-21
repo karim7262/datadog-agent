@@ -57,6 +57,9 @@ func (r *rules) searchTCPPorts() []int {
 			}
 
 			conn, err := net.DialTCP("tcp", nil, addr)
+			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+
 			if err != nil {
 				// Probably nothing listening there
 				continue
