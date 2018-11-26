@@ -103,22 +103,20 @@ func (series Series) Marshal() ([]byte, error) {
 // populate the Serie.Device field
 // Mutates the `series` slice in place
 //FIXME(olivier): remove this as soon as the v1 API can handle `device` as a regular tag
-func populateDeviceField(series Series) {
-	for _, serie := range series {
-		// make a copy of the tags array. Otherwise the underlying array won't have
-		// the device tag for the Nth iteration (N>1), and the device field will
-		// be lost
-		var filteredTags []string
+func populateDeviceField(serie *Serie) {
+	// make a copy of the tags array. Otherwise the underlying array won't have
+	// the device tag for the Nth iteration (N>1), and the deice field will
+	// be lostv
+	var filteredTags []string
 
-		for _, tag := range serie.Tags {
-			if strings.HasPrefix(tag, "device:") {
-				serie.Device = tag[7:]
-			} else {
-				filteredTags = append(filteredTags, tag)
-			}
+	for _, tag := range serie.Tags {
+		if strings.HasPrefix(tag, "device:") {
+			serie.Device = tag[7:]
+		} else {
+			filteredTags = append(filteredTags, tag)
 		}
-		serie.Tags = filteredTags
 	}
+	serie.Tags = filteredTags
 }
 
 // MarshalJSON serializes timeseries to JSON so it can be sent to V1 endpoints
@@ -126,7 +124,9 @@ func populateDeviceField(series Series) {
 func (series Series) MarshalJSON() ([]byte, error) {
 	// use an alias to avoid infinite recursion while serializing a Series
 	type SeriesAlias Series
-	populateDeviceField(series)
+	for _, serie := range series {
+		populateDeviceField(serie)
+	}
 
 	data := map[string][]*Serie{
 		"series": SeriesAlias(series),
@@ -227,6 +227,7 @@ func (series Series) JSONItem(i int) ([]byte, error) {
 	if i < 0 || i > len(series)-1 {
 		return nil, errors.New("out of range")
 	}
+	populateDeviceField(series[i])
 	return marshaller.Marshal(series[i])
 }
 
