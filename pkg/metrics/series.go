@@ -251,7 +251,7 @@ func encodePoints(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 		} else {
 			needComa = true
 		}
-		fmt.Fprintf(stream, "[%v, %v]", int64(p.Ts), p.Value)
+		fmt.Fprintf(stream, "[%v,%v]", int64(p.Ts), p.Value)
 	}
 	stream.Write(jsonArrayEnd)
 }
