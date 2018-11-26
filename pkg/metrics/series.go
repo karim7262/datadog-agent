@@ -99,15 +99,15 @@ func (series Series) Marshal() ([]byte, error) {
 	return proto.Marshal(payload)
 }
 
-// populateDeviceField removes any `device:` tag in the series tags and uses the value to
+// populateDeviceField removes any `device:` tag in the serie tags and uses the value to
 // populate the Serie.Device field
-// Mutates the `series` slice in place
+// Mutates the `serie` struct in place
 //FIXME(olivier): remove this as soon as the v1 API can handle `device` as a regular tag
 func populateDeviceField(serie *Serie) {
 	// make a copy of the tags array. Otherwise the underlying array won't have
-	// the device tag for the Nth iteration (N>1), and the deice field will
-	// be lostv
-	var filteredTags []string
+	// the device tag for the Nth iteration (N>1), and the device field will
+	// be lost
+	filteredTags := make([]string, 0, len(serie.Tags))
 
 	for _, tag := range serie.Tags {
 		if strings.HasPrefix(tag, "device:") {
