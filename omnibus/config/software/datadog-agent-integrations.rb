@@ -49,6 +49,10 @@ blacklist = [
   'openstack_controller',          # Check currently under active development and in beta
 ]
 
+unless linux?
+  blacklist << 'ibm_mq'
+end
+
 core_constraints_file = 'core_constraints.txt'
 agent_requirements_file = 'agent_requirements.txt'
 
