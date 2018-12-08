@@ -266,6 +266,7 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("bosh_id", "")
 
 	// JMXFetch
+	config.BindEnvAndSetDefault("jmx_java_options", []string{})
 	config.BindEnvAndSetDefault("jmx_custom_jars", []string{})
 	config.BindEnvAndSetDefault("jmx_use_cgroup_memory_limit", false)
 

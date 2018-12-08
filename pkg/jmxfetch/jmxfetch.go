@@ -150,8 +150,14 @@ func (j *JMXFetch) Start() error {
 		}
 	}
 
-	// improve on this later
-	javaOptions += defaultJvmJavaOptions
+	jmx_java_options := config.Datadog.GetStringSlice("jmx_java_options")
+	if len(jmx_java_options) > 0 {
+		for _, option := range jmx_java_options {
+			javaOptions = fmt.Sprintf("%s %s", option, javaOptions)
+		}
+	} else {
+		javaOptions += defaultJvmJavaOptions
+	}
 
 	subprocessArgs = append(subprocessArgs, strings.Fields(javaOptions)...)
 
