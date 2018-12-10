@@ -32,7 +32,7 @@ const (
 	defaultJmxCommand                 = "collect"
 	defaultJvmMaxMemoryAllocation     = " -Xmx200m"
 	defaultJvmInitialMemoryAllocation = " -Xms50m"
-	defaultJvmJavaOptions             = " -Dsun.rmi.transport.tcp.handshakeTimeout=10000 -Dsun.rmi.transport.tcp.handshakeTimeout=10000"
+	defaultJvmJavaOptions             = " -Dsun.rmi.transport.tcp.handshakeTimeout=10000 -Dsun.rmi.transport.tcp.responseTimeout=10000"
 	jvmCgroupMemoryAwareness          = " -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
 	defaultJavaBinPath                = "java"
 	defaultLogLevel                   = "info"
