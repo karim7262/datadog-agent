@@ -20,6 +20,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
 	core "github.com/DataDog/datadog-agent/pkg/collector/corechecks"
+	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/shirou/gopsutil/net"
 	yaml "gopkg.in/yaml.v2"
@@ -234,8 +235,12 @@ func submitConnectionsMetrics(sender aggregator.Sender, protocolName string, sta
 }
 
 func netstatTCPExtCounters() (map[string]int64, error) {
+	procfsPath := "/proc"
+	if config.Datadog.IsSet("procfs_path") {
+		procfsPath = config.Datadog.GetString("procfs_path")
+	}
 
-	f, err := os.Open("/proc/net/netstat")
+	f, err := os.Open(strings.Join(procfsPath, "/net/netstat"))
 	if err != nil {
 		return nil, err
 	}
