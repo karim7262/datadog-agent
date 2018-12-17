@@ -16,8 +16,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/cihub/seelog"
+
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 const logFileMaxSize = 10 * 1024 * 1024         // 10MB
@@ -121,6 +122,7 @@ func SetupLogger(logLevel, logFile, uri string, rfc, logToConsole, jsonFormat bo
 	seelog.ReplaceLogger(logger)
 
 	log.SetupDatadogLogger(logger, seelogLogLevel)
+	setupGlog(logFile)
 	return nil
 }
 
