@@ -270,7 +270,7 @@ func initConfig(config Config) {
 	// JMXFetch
 	config.BindEnvAndSetDefault("jmx_custom_jars", []string{})
 	config.BindEnvAndSetDefault("jmx_use_cgroup_memory_limit", false)
-	config.BindEnvAndSetDefault("jmx_max_max_restarts", int64(3))
+	config.BindEnvAndSetDefault("jmx_max_restarts", int64(3))
 	config.BindEnvAndSetDefault("jmx_max_restart_interval", int64(5))
 
 	// Go_expvar server port
