@@ -50,7 +50,7 @@ func (r *runner) initRunner() {
 }
 
 func (r *runner) startRunner() error {
-	err := r.jmxfetch.Start()
+	err := r.jmxfetch.Start(true)
 	if err != nil {
 		return err
 	}
