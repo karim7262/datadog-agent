@@ -252,9 +252,10 @@ func (j *JMXFetch) Monitor() {
 		stopTimes[idx] = time.Now()
 		oldestIdx := (idx + maxRestarts + 1) % maxRestarts
 
-		if stopTimes[idx].Sub(stopTimes[oldestIdx]).Seconds() < float64(config.Datadog.GetInt("jmx_restart_interval")) {
+		if stopTimes[idx].Sub(stopTimes[oldestIdx]).Seconds() <= float64(config.Datadog.GetInt("jmx_restart_interval")) {
 			log.Errorf("Too many JMXFetch restarts (%v) in time interval (%vs) - giving up")
 			close(j.stopped)
+			return
 		}
 
 		idx = (idx + 1) % maxRestarts
@@ -266,7 +267,7 @@ func (j *JMXFetch) Monitor() {
 		default:
 			// restart
 			log.Warnf("JMXFetch process had to be restarted.")
-			j.cmd.Start()
+			j.Start(false)
 		}
 	}
 }
