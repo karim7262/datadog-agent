@@ -272,11 +272,11 @@ func (j *JMXFetch) Monitor() {
 				}
 
 				idx = (idx + 1) % maxRestarts
-			}
 
-			// restart
-			log.Warnf("JMXFetch process had to be restarted.")
-			j.Start(false)
+				// restart
+				log.Warnf("JMXFetch process had to be restarted.")
+				j.Start(false)
+			}
 		}
 	}
 }
