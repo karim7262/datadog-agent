@@ -14,9 +14,14 @@ import (
 	"os"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/app"
+	reaper "github.com/ramr/go-reaper"
 )
 
 func main() {
+	// TODO: docker only
+	// Reap orphaned child processes
+	go reaper.Reap()
+
 	// Invoke the Agent
 	if err := app.AgentCmd.Execute(); err != nil {
 		os.Exit(-1)
