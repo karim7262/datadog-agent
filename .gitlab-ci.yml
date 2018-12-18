@@ -433,6 +433,7 @@ agent_android_apk:
     # GOPATH to the project folder would be too complex (we'd need to replicate the `src/github/project` scheme).
     # So we copy the agent sources to / and bootstrap from there the vendor dependencies before running any job.
     - echo running default before_script
+    - export PATH=$GOPATH/bin:$PATH
     - pip install -U pip
     - pip install -r requirements.txt
     - inv -e deps --android
