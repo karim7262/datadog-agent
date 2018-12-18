@@ -248,35 +248,35 @@ func (j *JMXFetch) Monitor() {
 	ival := float64(config.Datadog.GetInt("jmx_restart_interval"))
 	stopTimes := make([]time.Time, maxRestarts)
 	health := health.Register("jmxfetch")
+	defer health.Deregister()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
-		// TODO: what should we do with the exit codes?
-		if up, _ := j.Up(); up {
-			select {
-			case <-health.C:
-			}
-		} else {
-			j.Wait()
-			stopTimes[idx] = time.Now()
-			oldestIdx := (idx + maxRestarts + 1) % maxRestarts
+		select {
+		case <-health.C:
+		case <-j.shutdown:
+			close(j.stopped)
+			return
+		case <-ticker.C:
+			// TODO: what should we do with the exit codes?
+			if up, _ := j.Up(); !up {
+				j.Wait()
+				stopTimes[idx] = time.Now()
+				oldestIdx := (idx + maxRestarts + 1) % maxRestarts
 
-			if stopTimes[idx].Sub(stopTimes[oldestIdx]).Seconds() <= ival {
-				log.Errorf("Too many JMXFetch restarts (%v) in time interval (%vs) - giving up")
-				close(j.stopped)
-				return
+				if stopTimes[idx].Sub(stopTimes[oldestIdx]).Seconds() <= ival {
+					log.Errorf("Too many JMXFetch restarts (%v) in time interval (%vs) - giving up")
+					close(j.stopped)
+					return
+				}
+
+				idx = (idx + 1) % maxRestarts
 			}
 
-			idx = (idx + 1) % maxRestarts
-
-			select {
-			case <-j.shutdown:
-				close(j.stopped)
-				return
-			default:
-				// restart
-				log.Warnf("JMXFetch process had to be restarted.")
-				j.Start(false)
-			}
+			// restart
+			log.Warnf("JMXFetch process had to be restarted.")
+			j.Start(false)
 		}
 	}
 }
