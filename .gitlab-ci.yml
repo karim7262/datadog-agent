@@ -55,6 +55,8 @@ before_script:
   # GOPATH to the project folder would be too complex (we'd need to replicate the `src/github/project` scheme).
   # So we copy the agent sources to / and bootstrap from there the vendor dependencies before running any job.
   - echo running default before_script
+  - pwd
+  - mkdir -p /go/src/github.com/DataDog/datadog-agent
   - pip install --upgrade --ignore-installed pip setuptools
   - pip install -r requirements.txt
   - inv -e deps
