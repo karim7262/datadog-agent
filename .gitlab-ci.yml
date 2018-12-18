@@ -14,8 +14,8 @@ stages:
   - e2e
 
 variables:
-  SRC_PATH: /src/github.com/DataDog/datadog-agent
-  DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
+  GOPATH: /go
+  SRC_PATH: /go/src/github.com/DataDog/datadog-agent
   OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/.omnibus/
   OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/.omnibus/pkg/
   # make sure the types of RPM packages are kept separate
@@ -55,8 +55,6 @@ before_script:
   # GOPATH to the project folder would be too complex (we'd need to replicate the `src/github/project` scheme).
   # So we copy the agent sources to / and bootstrap from there the vendor dependencies before running any job.
   - echo running default before_script
-  - rsync -azr --delete ./ $SRC_PATH
-  - cd $SRC_PATH
   - pip install --upgrade --ignore-installed pip setuptools
   - pip install -r requirements.txt
   - inv -e deps
@@ -434,8 +432,6 @@ agent_android_apk:
     # GOPATH to the project folder would be too complex (we'd need to replicate the `src/github/project` scheme).
     # So we copy the agent sources to / and bootstrap from there the vendor dependencies before running any job.
     - echo running default before_script
-    - rsync -azr --delete ./ $SRC_PATH
-    - cd $SRC_PATH
     - pip install -U pip
     - pip install -r requirements.txt
     - inv -e deps --android
@@ -620,7 +616,6 @@ kitchen_windows:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:latest
   <<: *run_when_testkitchen_triggered
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
   script:
     - cd $CI_PROJECT_DIR
@@ -644,7 +639,6 @@ kitchen_windows_installer:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:latest
   <<: *run_when_testkitchen_triggered
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
   script:
     - cd $CI_PROJECT_DIR
@@ -666,7 +660,6 @@ kitchen_centos:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:latest
   <<: *run_when_testkitchen_triggered
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
   script:
     - cd $CI_PROJECT_DIR
@@ -688,7 +681,6 @@ kitchen_ubuntu:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:latest
   <<: *run_when_testkitchen_triggered
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
   script:
     - cd $CI_PROJECT_DIR
@@ -711,7 +703,6 @@ kitchen_suse:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:latest
   <<: *run_when_testkitchen_triggered
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
   script:
     - cd $CI_PROJECT_DIR
@@ -733,7 +724,6 @@ kitchen_debian:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:latest
   <<: *run_when_testkitchen_triggered
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   tags: [ "runner:main", "size:large" ]
   script:
     - cd $CI_PROJECT_DIR
@@ -777,7 +767,6 @@ testkitchen_cleanup_azure:
   when: always
   tags: [ "runner:main", "size:large" ]
   before_script:
-    - rsync -azr --delete ./ $SRC_PATH
   script:
     - cd $DD_AGENT_TESTING_DIR
     - bash -l tasks/clean.sh
