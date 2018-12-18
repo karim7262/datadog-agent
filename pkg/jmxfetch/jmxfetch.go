@@ -22,6 +22,7 @@ import (
 	api "github.com/DataDog/datadog-agent/pkg/api/util"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/util/executable"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -244,30 +245,38 @@ func (j *JMXFetch) Start(manage bool) error {
 func (j *JMXFetch) Monitor() {
 	idx := 0
 	maxRestarts := config.Datadog.GetInt("jmx_max_restarts")
+	ival := float64(config.Datadog.GetInt("jmx_restart_interval"))
 	stopTimes := make([]time.Time, maxRestarts)
+	health := health.Register("jmxfetch")
 
 	for {
-		// TODO: what should we do with the exit codes
-		j.Wait()
-		stopTimes[idx] = time.Now()
-		oldestIdx := (idx + maxRestarts + 1) % maxRestarts
+		// TODO: what should we do with the exit codes?
+		if up, _ := j.Up(); up {
+			select {
+			case <-health.C:
+			}
+		} else {
+			j.Wait()
+			stopTimes[idx] = time.Now()
+			oldestIdx := (idx + maxRestarts + 1) % maxRestarts
 
-		if stopTimes[idx].Sub(stopTimes[oldestIdx]).Seconds() <= float64(config.Datadog.GetInt("jmx_restart_interval")) {
-			log.Errorf("Too many JMXFetch restarts (%v) in time interval (%vs) - giving up")
-			close(j.stopped)
-			return
-		}
+			if stopTimes[idx].Sub(stopTimes[oldestIdx]).Seconds() <= ival {
+				log.Errorf("Too many JMXFetch restarts (%v) in time interval (%vs) - giving up")
+				close(j.stopped)
+				return
+			}
 
-		idx = (idx + 1) % maxRestarts
+			idx = (idx + 1) % maxRestarts
 
-		select {
-		case <-j.shutdown:
-			close(j.stopped)
-			return
-		default:
-			// restart
-			log.Warnf("JMXFetch process had to be restarted.")
-			j.Start(false)
+			select {
+			case <-j.shutdown:
+				close(j.stopped)
+				return
+			default:
+				// restart
+				log.Warnf("JMXFetch process had to be restarted.")
+				j.Start(false)
+			}
 		}
 	}
 }
@@ -317,4 +326,18 @@ func (j *JMXFetch) Stop() error {
 // Wait waits for the end of the JMXFetch process and returns the error code
 func (j *JMXFetch) Wait() error {
 	return j.cmd.Wait()
+}
+
+// Up returns if JMXFetch is up - used by healthcheck
+func (j *JMXFetch) Up() (bool, error) {
+	// TODO: write windows implementation
+	process, err := os.FindProcess(j.cmd.Process.Pid)
+	if err != nil {
+		return false, fmt.Errorf("Failed to find process: %s\n", err)
+	}
+
+	// from man kill(2):
+	// if sig is 0, then no signal is sent, but error checking is still performed
+	err = process.Signal(syscall.Signal(0))
+	return err == nil, err
 }
