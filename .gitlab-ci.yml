@@ -15,7 +15,6 @@ stages:
 
 variables:
   GOPATH: /go
-  PATH: $PATH:/go/bin
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
   OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/.omnibus/
   OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/.omnibus/pkg/
@@ -56,6 +55,7 @@ before_script:
   # GOPATH to the project folder would be too complex (we'd need to replicate the `src/github/project` scheme).
   # So we copy the agent sources to / and bootstrap from there the vendor dependencies before running any job.
   - echo running default before_script
+  - export PATH=$GOPATH/bin:$PATH
   - pip install --upgrade --ignore-installed pip setuptools
   - pip install -r requirements.txt
   - inv -e deps
