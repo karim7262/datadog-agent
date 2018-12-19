@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/collector/py"
-	python "github.com/sbinet/go-python"
+	python "github.com/DataDog/go-python3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,10 +23,10 @@ func TestGetAgentConfig(t *testing.T) {
 	configModule := python.PyImport_ImportModule("config")
 	if configModule == nil {
 		_, err, _ := python.PyErr_Fetch()
-		fmt.Println(python.PyString_AsString(err.Str()))
+		fmt.Println(python.PyUnicode_AsUTF8(err.Str()))
 	}
 	require.NotNil(t, configModule)
-	agentConfigPy := configModule.CallMethod("main")
+	agentConfigPy := configModule.CallMethodArgs("main")
 	require.NotNil(t, agentConfigPy)
 
 	// load configuration from Go
@@ -38,9 +38,9 @@ func TestGetAgentConfig(t *testing.T) {
 	value := new(python.PyObject)
 	var pos = 0
 	for python.PyDict_Next(agentConfigPy, &pos, &key, &value) {
-		keyStr := python.PyString_AS_STRING(key.Str())
+		keyStr := python.PyUnicode_AsUTF8(key.Str())
 
-		valueStr := python.PyString_AS_STRING(value.Str())
+		valueStr := python.PyUnicode_AsUTF8(value.Str())
 
 		goValue, found := agentConfigGo[keyStr]
 		// histogram_aggregates value was converted from string to list
