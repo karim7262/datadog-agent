@@ -167,12 +167,20 @@ func ScrapeAllCgroups() (map[string]*ContainerCgroup, error) {
 		if cg, ok := cgs[containerID]; ok {
 			// Assumes that the paths will always be the same for a container id.
 			cg.Pids = append(cg.Pids, int32(pid))
+			fmt.Printf("\nPre-existing container %s: PID %d\n", containerID, pid)
+			for k, v := range paths {
+				fmt.Printf("\t%s\t\t%s\n", k, v)
+			}
 		} else {
 			cgs[containerID] = &ContainerCgroup{
 				ContainerID: containerID,
 				Pids:        []int32{int32(pid)},
 				Paths:       paths,
 				Mounts:      mountPoints}
+			fmt.Printf("\nNew container %s: PID %d\n", containerID, pid)
+			for k, v := range paths {
+				fmt.Printf("\t%s\t\t%s\n", k, v)
+			}
 		}
 	}
 	return cgs, nil
