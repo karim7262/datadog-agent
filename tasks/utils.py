@@ -141,14 +141,14 @@ def get_root():
     """
     Get the root of the Go project
     """
-    return check_output(['git', 'rev-parse', '--show-toplevel']).strip()
+    return check_output(['git', 'rev-parse', '--show-toplevel'], universal_newlines=True).strip()
 
 
 def get_git_branch_name():
     """
     Return the name of the current git branch
     """
-    return check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
+    return check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], universal_newlines=True).strip()
 
 
 def query_version(ctx, git_sha_length=7, match=None):
