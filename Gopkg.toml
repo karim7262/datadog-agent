@@ -1,3 +1,5 @@
+ignored = ["github.com/DataDog/datadog-agent*"]
+
 [[constraint]]
   name = "github.com/DataDog/agent-payload"
   version = "4.7.1"
