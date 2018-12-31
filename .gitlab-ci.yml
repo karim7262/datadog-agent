@@ -394,6 +394,7 @@ build_windows_msi_x64:
   ## this is a weird workaround. Can't use the built-in CI_PROJECT_DIR because the path separators
   ## are wrong.  Record the PROJECT dir with the correct path separators to be used later
   before_script:
+    - set GOPATH=
     - set WIN_CI_PROJECT_DIR=%CD%
     - if exist .omnibus rd /s/q .omnibus
     - mkdir .omnibus\pkg
