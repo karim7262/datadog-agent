@@ -15,7 +15,7 @@ stages:
 
 variables:
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
-  PATH: $PATH:/go/bin
+  GOPATH: /go
   # DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
   OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/.omnibus/
   OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/.omnibus/pkg/
@@ -53,6 +53,7 @@ variables:
 # you NEED to overwrite it.
 before_script:
   - echo running default before_script
+  - export PATH=$GOPATH/bin:$PATH
   - rsync -azr --delete ./ $SRC_PATH
   - cd $SRC_PATH
   - pip install --upgrade --ignore-installed pip setuptools
