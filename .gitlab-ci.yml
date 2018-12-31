@@ -15,6 +15,7 @@ stages:
 
 variables:
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
+  PATH: $PATH:/go/bin
   # DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
   OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/.omnibus/
   OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/.omnibus/pkg/
