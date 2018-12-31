@@ -15,7 +15,6 @@ stages:
 
 variables:
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
-  GOPATH: /go
   # DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
   OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/.omnibus/
   OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/.omnibus/pkg/
@@ -53,6 +52,7 @@ variables:
 # you NEED to overwrite it.
 before_script:
   - echo running default before_script
+  - export GOPATH=/go
   - export PATH=$GOPATH/bin:$PATH
   - rsync -azr --delete ./ $SRC_PATH
   - cd $SRC_PATH
@@ -394,7 +394,8 @@ build_windows_msi_x64:
   ## this is a weird workaround. Can't use the built-in CI_PROJECT_DIR because the path separators
   ## are wrong.  Record the PROJECT dir with the correct path separators to be used later
   before_script:
-    - set GOPATH=
+    - echo "GOPATH used on Windows"
+    - echo %GOPATH%
     - set WIN_CI_PROJECT_DIR=%CD%
     - if exist .omnibus rd /s/q .omnibus
     - mkdir .omnibus\pkg
