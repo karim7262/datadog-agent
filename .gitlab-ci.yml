@@ -52,6 +52,8 @@ variables:
 # you NEED to overwrite it.
 before_script:
   - echo running default before_script
+  - echo "Original GOPATH"
+  - echo $GOPATH
   - export GOPATH=/go
   - export PATH=$GOPATH/bin:$PATH
   - rsync -azr --delete ./ $SRC_PATH
