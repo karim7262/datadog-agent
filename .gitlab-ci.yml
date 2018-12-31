@@ -52,8 +52,6 @@ variables:
 # you NEED to overwrite it.
 before_script:
   - echo running default before_script
-  - env
-  - export PATH=$GOPATH/bin:$PATH
   - rsync -azr --delete ./ $SRC_PATH
   - cd $SRC_PATH
   - pip install --upgrade --ignore-installed pip setuptools
