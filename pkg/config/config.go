@@ -73,6 +73,7 @@ type Proxy struct {
 }
 
 func init() {
+	osinit()
 	// Configure Datadog global configuration
 	Datadog = NewConfig("datadog", "DD", strings.NewReplacer(".", "_"))
 	// Configuration defaults
@@ -304,6 +305,7 @@ func initConfig(config Config) {
 	// Internal Use Only: avoid modifying those configuration parameters, this could lead to unexpected results.
 	config.BindEnvAndSetDefault("logset", "")
 	config.BindEnvAndSetDefault("logs_config.run_path", defaultRunPath)
+
 	config.BindEnvAndSetDefault("logs_config.dd_url", "agent-intake.logs.datadoghq.com")
 	config.BindEnvAndSetDefault("logs_config.dd_port", 10516)
 	config.BindEnvAndSetDefault("logs_config.dev_mode_use_proto", true)
