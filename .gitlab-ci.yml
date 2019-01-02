@@ -17,10 +17,10 @@ variables:
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
   # DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
   OMNIBUS_BASE_DIR: /.omnibus
-  OMNIBUS_PACKAGE_DIR: $OMNIBUS_BASE_DIR/pkg
+  OMNIBUS_PACKAGE_DIR: $OMNIBUS_BASE_DIR/pkg/
   # make sure the types of RPM packages are kept separate
   OMNIBUS_BASE_DIR_SUSE: $OMNIBUS_BASE_DIR/suse
-  OMNIBUS_PACKAGE_DIR_SUSE: $OMNIBUS_BASE_DIR_SUSE/pkg
+  OMNIBUS_PACKAGE_DIR_SUSE: $OMNIBUS_BASE_DIR_SUSE/pkg/
   OMNIBUS_BASE_DIR_WIN: c:\omni-base\$CI_RUNNER_ID
   OMNIBUS_BASE_DIR_WIN_OMNIBUS: c:/omni-base/$CI_RUNNER_ID
   DD_AGENT_TESTING_DIR: $CI_PROJECT_DIR/test/kitchen
