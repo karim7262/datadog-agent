@@ -16,11 +16,11 @@ stages:
 variables:
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
   # DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
-  OMNIBUS_BASE_DIR: /.omnibus
-  OMNIBUS_PACKAGE_DIR: $OMNIBUS_BASE_DIR/pkg/
+  OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/omnibus/
+  OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/omnibus/pkg/
   # make sure the types of RPM packages are kept separate
-  OMNIBUS_BASE_DIR_SUSE: $OMNIBUS_BASE_DIR/suse
-  OMNIBUS_PACKAGE_DIR_SUSE: $OMNIBUS_BASE_DIR_SUSE/pkg/
+  OMNIBUS_BASE_DIR_SUSE: $CI_PROJECT_DIR/omnibus/suse
+  OMNIBUS_PACKAGE_DIR_SUSE: $CI_PROJECT_DIR/omnibus/pkg/suse
   OMNIBUS_BASE_DIR_WIN: c:\omni-base\$CI_RUNNER_ID
   OMNIBUS_BASE_DIR_WIN_OMNIBUS: c:/omni-base/$CI_RUNNER_ID
   DD_AGENT_TESTING_DIR: $CI_PROJECT_DIR/test/kitchen
@@ -52,8 +52,6 @@ variables:
 # you NEED to overwrite it.
 before_script:
   - echo running default before_script
-  - env
-  - rsync -azr --delete ./ $SRC_PATH
   - cd $SRC_PATH
   - pip install --upgrade --ignore-installed pip setuptools
   - pip install -r requirements.txt
@@ -283,9 +281,6 @@ agent_deb-x64:
     # Artifacts and cache must live within project directory but we run omnibus
     # from the GOPATH (see above). We then call `invoke` passing --base-dir,
     # pointing to a gitlab-friendly location.
-    - echo $OMNIBUS_BASE_DIR
-    - ls -la /
-    - ls -la $SRC_PATH
     - inv -e agent.omnibus-build --release-version "$RELEASE_VERSION" --base-dir $OMNIBUS_BASE_DIR --omnibus-s3-cache
     - dpkg -c $OMNIBUS_PACKAGE_DIR/datadog-agent*_amd64.deb
     - $S3_CP_CMD $OMNIBUS_PACKAGE_DIR/datadog-agent*_amd64.deb $S3_ARTEFACTS_URI/datadog-agent_amd64.deb
