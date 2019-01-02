@@ -16,10 +16,10 @@ stages:
 variables:
   SRC_PATH: /go/src/github.com/DataDog/datadog-agent
   # DEPPROJECTROOT: /src/github.com/DataDog/datadog-agent
-  OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/omnibus/
+  OMNIBUS_BASE_DIR: $CI_PROJECT_DIR/omnibus/build
   OMNIBUS_PACKAGE_DIR: $CI_PROJECT_DIR/omnibus/pkg/
   # make sure the types of RPM packages are kept separate
-  OMNIBUS_BASE_DIR_SUSE: $CI_PROJECT_DIR/omnibus/suse
+  OMNIBUS_BASE_DIR_SUSE: $CI_PROJECT_DIR/omnibus/build/suse
   OMNIBUS_PACKAGE_DIR_SUSE: $CI_PROJECT_DIR/omnibus/pkg/suse
   OMNIBUS_BASE_DIR_WIN: c:\omni-base\$CI_RUNNER_ID
   OMNIBUS_BASE_DIR_WIN_OMNIBUS: c:/omni-base/$CI_RUNNER_ID
