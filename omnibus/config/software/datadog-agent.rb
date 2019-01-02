@@ -22,7 +22,6 @@ relative_path 'src/github.com/DataDog/datadog-agent'
 build do
   # set GOPATH on the omnibus source dir for this software
   gopath = Pathname.new(project_dir) + '../../../..'
-  puts gopath
   etc_dir = "/etc/datadog-agent"
   env = {
     'GOPATH' => gopath.to_path,
