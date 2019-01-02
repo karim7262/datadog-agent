@@ -280,6 +280,9 @@ agent_deb-x64:
   script:
     # remove artifacts from previous pipelines that may come from the cache
     - rm -rf $OMNIBUS_PACKAGE_DIR/*
+    - echo "ENV"
+    - echo $GOPATH
+    - echo $PATH
     # Artifacts and cache must live within project directory but we run omnibus
     # from the GOPATH (see above). We then call `invoke` passing --base-dir,
     # pointing to a gitlab-friendly location.
