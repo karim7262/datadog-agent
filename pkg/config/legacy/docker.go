@@ -62,6 +62,11 @@ type legacyDockerInstance struct {
 	Include     []string `yaml:"include"`
 }
 
+type legacyDockerConfig struct {
+	containers.DockerConfig
+	Tags []string `yaml:"tags"`
+}
+
 // ImportDockerConf read the configuration from docker_daemon check (agent5)
 // and create the configuration for the new docker check (agent 6) and move
 // needed option to datadog.yaml
@@ -95,14 +100,14 @@ func ImportDockerConf(src, dst string, overwrite bool) error {
 		fmt.Printf("Warning: %s contains more than one instance: converting only the first one", src)
 	}
 
-	dc := containers.DockerConfig{}
+	dc := legacyDockerConfig{}
 	if err := dc.Parse([]byte(c.Instances[0])); err != nil {
 		return fmt.Errorf("Could not parse instance from %s: %s", src, err)
 	}
 
 	// write docker.yaml
 	newCfg := map[string][]*containers.DockerConfig{
-		"instances": {&dc},
+		"instances": {&dc.DockerConfig},
 	}
 
 	data, err := yaml.Marshal(newCfg)
