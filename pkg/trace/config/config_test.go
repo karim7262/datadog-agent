@@ -274,7 +274,7 @@ func TestFullYamlConfig(t *testing.T) {
 
 	noProxy := true
 	if _, ok := os.LookupEnv("NO_PROXY"); ok {
-		// Happens in CircleCI: if the enviornment variable is set,
+		// Happens in CircleCI: if the environment variable is set,
 		// it will overwrite our loaded configuration and will cause
 		// this test to fail.
 		noProxy = false
