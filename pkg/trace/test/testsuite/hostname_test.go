@@ -12,7 +12,7 @@ import (
 )
 
 func TestHostname(t *testing.T) {
-	r := test.Runner{}
+	r := test.Runner{Verbose: true}
 	if err := r.Start(); err != nil {
 		t.Fatal(err)
 	}
