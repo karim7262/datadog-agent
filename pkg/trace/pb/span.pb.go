@@ -137,7 +137,7 @@ func (m *Span) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintSpan(data, i, uint64(m.Error))
 	}
 	if len(m.Meta) > 0 {
-		for k, _ := range m.Meta {
+		for k := range m.Meta {
 			data[i] = 0x52
 			i++
 			v := m.Meta[k]
@@ -154,7 +154,7 @@ func (m *Span) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if len(m.Metrics) > 0 {
-		for k, _ := range m.Metrics {
+		for k := range m.Metrics {
 			data[i] = 0x5a
 			i++
 			v := m.Metrics[k]

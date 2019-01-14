@@ -174,10 +174,10 @@ func TestFullIniConfig(t *testing.T) {
 	}, c.AnalyzedRateByServiceLegacy)
 
 	assert.Equal(map[string]map[string]float64{
-		"service3": map[string]float64{
+		"service3": {
 			"op3": 1.3,
 		},
-		"service4": map[string]float64{
+		"service4": {
 			"op4": 1.4,
 			"op5": 1.5,
 		},
