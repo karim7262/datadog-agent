@@ -162,12 +162,10 @@ func (t TagSet) MatchFilters(filters []string) TagSet {
 
 	for _, f := range filters {
 		g, v := SplitTag(f)
-		m, ok := filterMap[g]
+		_, ok := filterMap[g]
 		if !ok {
-			m = make(map[string]struct{})
-			filterMap[g] = m
+			filterMap[g] = make(map[string]struct{})
 		}
-
 		if v != "" {
 			filterMap[g][v] = struct{}{}
 		}

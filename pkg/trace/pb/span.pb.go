@@ -613,7 +613,6 @@ func (m *Span) Unmarshal(data []byte) error {
 					return io.ErrUnexpectedEOF
 				}
 				mapvalue := string(data[iNdEx:postStringIndexmapvalue])
-				iNdEx = postStringIndexmapvalue
 				m.Meta[mapkey] = mapvalue
 			} else {
 				var mapvalue string
