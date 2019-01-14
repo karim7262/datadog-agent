@@ -23,6 +23,7 @@ import (
 
 var elog debug.Log
 
+// ServiceName specifies the service name used in the operating system.
 const ServiceName = "datadog-trace-agent"
 
 type myservice struct{}
