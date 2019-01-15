@@ -88,9 +88,13 @@ func createDCAArchive(zipFilePath string, local bool, confSearchPaths SearchPath
 	}
 
 	err = zipConfigFiles(tempDir, hostname, confSearchPaths, permsInfos)
-
 	if err != nil {
 		return "", err
+	}
+
+	err = zipClusterAgentConfigCheck(tempDir, hostname)
+	if err != nil {
+		log.Errorf("Could not zip config check: %s", err)
 	}
 
 	err = zipExpVar(tempDir, hostname)
@@ -253,4 +257,14 @@ func zipHPAStatus(tempDir, hostname string) error {
 		return err
 	}
 	return err
+}
+
+func zipClusterAgentConfigCheck(tempDir, hostname string) error {
+	var b bytes.Buffer
+
+	writer := bufio.NewWriter(&b)
+	GetClusterAgentConfigCheck(writer, true)
+	writer.Flush()
+
+	return writeConfigCheck(tempDir, hostname, b.Bytes())
 }
