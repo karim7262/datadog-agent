@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"runtime"
 	"testing"
 	"time"
 
-	"github.com/shirou/gopsutil/process"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -221,26 +219,5 @@ func BenchmarkNet(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		_ = Net()
-	}
-}
-
-func BenchmarkCPUTimes(b *testing.B) {
-	b.ResetTimer()
-	b.ReportAllocs()
-	p, err := process.NewProcess(int32(os.Getpid()))
-	if err != nil {
-		b.Fatalf("unable to create Process: %v", err)
-	}
-	for i := 0; i < b.N; i++ {
-		_, _ = p.Times()
-	}
-}
-
-func BenchmarkReadMemStats(b *testing.B) {
-	var ms runtime.MemStats
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		runtime.ReadMemStats(&ms)
 	}
 }
