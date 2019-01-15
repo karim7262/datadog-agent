@@ -171,14 +171,6 @@ func doTestNetHigh(t *testing.T, n int) {
 	assert.True(info.Connections <= int32(n*3), fmt.Sprintf("not enough connections %d > %d * 3", info.Connections, n))
 }
 
-func TestNetHigh(t *testing.T) {
-	doTestNetHigh(t, 10)
-	if testing.Short() {
-		return
-	}
-	doTestNetHigh(t, 200)
-}
-
 func TestNetLow(t *testing.T) {
 	assert := assert.New(t)
 	runtime.GC()
