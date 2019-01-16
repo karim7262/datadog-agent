@@ -7,6 +7,8 @@ require "./lib/ostools.rb"
 require 'pathname'
 
 name "datadog-trace-agent"
+
+source path: '..'
 relative_path 'src/github.com/DataDog/datadog-agent'
 
 build do
