@@ -126,7 +126,7 @@ dependency 'datadog-agent-env-check'
 dependency 'jmxfetch'
 
 # External agents
-dependency 'datadog-trace-agent'
+dependency 'dd-trace-agent'
 dependency 'datadog-process-agent' # Includes network-tracer
 
 if osx?
