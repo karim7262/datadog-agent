@@ -32,9 +32,6 @@ def build(ctx, rebuild=False, race=False, precompile_only=False, use_embedded_li
             patch_ver=patch_ver
         ))
 
-    # generate versioning information
-    ctx.run("go generate ./pkg/trace/info")
-
     ldflags, gcflags, env = get_build_flags(ctx, use_embedded_libs=use_embedded_libs, use_venv=use_venv)
     build_include = DEFAULT_BUILD_TAGS if build_include is None else build_include.split(",")
     build_exclude = [] if build_exclude is None else build_exclude.split(",")
@@ -58,6 +55,7 @@ def build(ctx, rebuild=False, race=False, precompile_only=False, use_embedded_li
         "REPO_PATH": REPO_PATH,
     }
 
+    ctx.run("go generate {REPO_PATH}/pkg/trace/info".format(**args), env=env)
     ctx.run(cmd.format(**args), env=env)
 
 @task
