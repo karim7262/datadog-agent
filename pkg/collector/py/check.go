@@ -255,7 +255,9 @@ func (c *PythonCheck) Configure(data integration.Data, initConfig integration.Da
 	}
 
 	// try getting an instance with the new style api, without passing agentConfig
+	fmt.Printf("getInstance without agentConfig\n")
 	instance, err := c.getInstance(nil, kwargs) // don't `DecRef` instance since we keep it around in c.instance
+	fmt.Printf("getInstance without agentConfig Done: %v %s\n", instance, err)
 	if err != nil {
 		log.Warnf("could not get a check instance with the new api: %s", err)
 		log.Warn("trying to instantiate the check with the old api, passing agentConfig to the constructor")
@@ -278,7 +280,9 @@ func (c *PythonCheck) Configure(data integration.Data, initConfig integration.Da
 		gstate.unlock()
 
 		// ...and retry to get an instance
+		fmt.Printf("getInstance with agentConfig\n")
 		instance, err = c.getInstance(nil, kwargs)
+		fmt.Printf("getInstance with agentConfig Done: %v %s\n", instance, err)
 		if err != nil {
 			return fmt.Errorf("could not invoke python check constructor: %s", err)
 		}

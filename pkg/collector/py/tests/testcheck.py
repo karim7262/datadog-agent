@@ -3,6 +3,10 @@
 # This product includes software developed at Datadog (https://www.datadoghq.com/).
 # Copyright 2016-2019 Datadog, Inc.
 
+import gc
+
+#gc.disable()
+
 from checks import AgentCheck
 
 

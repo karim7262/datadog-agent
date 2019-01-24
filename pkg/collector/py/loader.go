@@ -120,7 +120,9 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 	var loadedAsWheel bool
 	for _, name = range modules {
 		// import python module containing the check
+		fmt.Printf("importing name: %s\n", name)
 		checkModule = python.PyImport_ImportModule(name)
+		fmt.Printf("importing name: %s Done: %v\n", name, checkModule)
 		if checkModule != nil {
 			if strings.HasPrefix(name, fmt.Sprintf("%s.", wheelNamespace)) {
 				loadedAsWheel = true
@@ -189,7 +191,6 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 				log.Debugf("python check '%s' doesn't have a '__version__' attribute: %s", config.Name, errors.New(pyErr))
 			}
 			log.Debugf("python check '%s' doesn't have a '__version__' attribute", config.Name)
-
 		}
 
 		if !agentConfig.Datadog.GetBool("disable_py3_validation") && !loadedAsWheel {
@@ -244,8 +245,10 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 	for _, i := range config.Instances {
 		check := NewPythonCheck(moduleName, checkClass)
 
+		fmt.Printf("calling Configure: %v\n", config.InitConfig)
 		// The GIL should be unlocked at this point, `check.Configure` uses its own stickyLock and stickyLocks must not be nested
 		if err := check.Configure(i, config.InitConfig); err != nil {
+			fmt.Printf("configure error: %s\n", err)
 			addExpvarConfigureError(fmt.Sprintf("%s (%s)", moduleName, wheelVersion), err.Error())
 			continue
 		}
