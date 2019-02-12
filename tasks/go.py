@@ -219,9 +219,9 @@ def deps(ctx, no_checks=False, core_dir=None, verbose=False, android=False):
     # source level deps
     print("calling dep ensure")
     start = datetime.datetime.now()
-    ctx.run("dep ensure{}".format(verbosity))
+    ctx.run("dep ensure -vvv{}".format(verbosity))
     dep_done = datetime.datetime.now()
-    
+
     # If github.com/DataDog/datadog-agent gets vendored too - nuke it
     #
     # This may happen as a result of having to introduce DEPPROJECTROOT
