@@ -122,13 +122,19 @@ func (l *KubeletListener) processNewPods(pods []*kubelet.Pod, firstRun bool) {
 		// Ignore pending/failed/succeeded/unknown states
 		if pod.Status.Phase == "Running" {
 			for _, container := range pod.Status.Containers {
-				l.createService(container.ID, pod, firstRun)
+				l.createStatusService(container.ID, pod, firstRun)
+			}
+		} else if pod.Status.Phase == "Pending" {
+			for _, container := range pod.Spec.Containers {
+				l.createSpecService(container.Name, pod, firstRun)
 			}
 		}
 	}
 }
 
-func (l *KubeletListener) createService(entity string, pod *kubelet.Pod, firstRun bool) {
+// createStatusService creates an autodiscovery service based on the pod status.
+// It applies to non-static pods.
+func (l *KubeletListener) createStatusService(entity string, pod *kubelet.Pod, firstRun bool) {
 	var crTime integration.CreationTime
 	if firstRun {
 		crTime = integration.Before
@@ -180,6 +186,83 @@ func (l *KubeletListener) createService(entity string, pod *kubelet.Pod, firstRu
 	svc.hosts = map[string]string{"pod": podIp}
 
 	// Ports
+	svc.ports = buildPortList(pod, containerName)
+	if len(svc.ports) == 0 {
+		// Port might not be specified in pod spec
+		log.Debugf("No ports found for pod %s", podName)
+	}
+
+	l.m.Lock()
+	l.services[entity] = &svc
+	l.m.Unlock()
+
+	l.newService <- &svc
+}
+
+// createSpecService creates an autodiscovery service based on the pod spec.
+// It applies to static pods.
+func (l *KubeletListener) createSpecService(kubeCtrName string, pod *kubelet.Pod, firstRun bool) {
+	podName := pod.Metadata.Name
+	entity := kubelet.MakeStaticPodContainerEntityName(pod.Metadata.Namespace, pod.Metadata.Name, kubeCtrName)
+
+	var crTime integration.CreationTime
+	if firstRun {
+		crTime = integration.Before
+	} else {
+		crTime = integration.After
+	}
+	svc := KubeContainerService{
+		entity:       entity,
+		creationTime: crTime,
+	}
+
+	// AD Identifiers
+	for _, container := range pod.Spec.Containers {
+		if container.Name == kubeCtrName {
+			if l.filter.IsExcluded(container.Name, container.Image) {
+				log.Debugf("container %q filtered out: image %q", container.Name, container.Image)
+				return
+			}
+
+			// Add container uid as ID
+			svc.adIdentifiers = append(svc.adIdentifiers, kubeCtrName)
+
+			// Stop here if we find an AD template annotation
+			if podHasADTemplate(pod.Metadata.Annotations, kubeCtrName) {
+				break
+			}
+
+			// Add other identifiers if no template found
+			svc.adIdentifiers = append(svc.adIdentifiers, container.Image)
+			_, short, _, err := containers.SplitImageName(container.Image)
+			if err != nil {
+				log.Warnf("Error while spliting image name: %s", err)
+			}
+			if len(short) > 0 && short != container.Image {
+				svc.adIdentifiers = append(svc.adIdentifiers, short)
+			}
+			break
+		}
+	}
+
+	// Hosts can't be filled as the status is not available in the pod list for static pods
+	log.Warnf("Unable to get pod %s IP as it is a static pod. Using %%host%% in config templates will not work", podName)
+
+	// Ports
+	svc.ports = buildPortList(pod, kubeCtrName)
+	if len(svc.ports) == 0 {
+		// Port might not be specified in pod spec
+		log.Debugf("No ports found for pod %s", podName)
+	}
+
+	l.m.Lock()
+	l.services[entity] = &svc
+	l.m.Unlock()
+
+	l.newService <- &svc
+}
+
+func buildPortList(pod *kubelet.Pod, containerName string) []ContainerPort {
 	var ports []ContainerPort
 	for _, container := range pod.Spec.Containers {
 		if container.Name == containerName {
@@ -192,17 +275,7 @@ func (l *KubeletListener) createService(entity string, pod *kubelet.Pod, firstRu
 	sort.Slice(ports, func(i, j int) bool {
 		return ports[i].Port < ports[j].Port
 	})
-	svc.ports = ports
-	if len(svc.ports) == 0 {
-		// Port might not be specified in pod spec
-		log.Debugf("No ports found for pod %s", podName)
-	}
-
-	l.m.Lock()
-	l.services[entity] = &svc
-	l.m.Unlock()
-
-	l.newService <- &svc
+	return ports
 }
 
 // podHasADTemplate looks in pod annotations and looks for annotations containing an

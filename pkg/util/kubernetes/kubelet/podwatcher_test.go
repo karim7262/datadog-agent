@@ -126,8 +126,8 @@ func (suite *PodwatcherTestSuite) TestPodWatcherExpireDelay() {
 
 	_, err = watcher.computeChanges(sourcePods)
 	require.Nil(suite.T(), err)
-	// 7 pods (including 2 statics) + 5 container statuses (static pods don't report these)
-	require.Len(suite.T(), watcher.lastSeen, 12)
+	// 7 pods (including 2 statics pods) + 5 container statuses + 3 static pod containers
+	require.Len(suite.T(), watcher.lastSeen, 15)
 
 	expire, err := watcher.Expire()
 	require.Nil(suite.T(), err)
@@ -148,7 +148,7 @@ func (suite *PodwatcherTestSuite) TestPodWatcherExpireDelay() {
 	require.Nil(suite.T(), err)
 	require.Len(suite.T(), expire, 1)
 	require.Equal(suite.T(), testContainerID, expire[0])
-	require.Len(suite.T(), watcher.lastSeen, 11)
+	require.Len(suite.T(), watcher.lastSeen, 14)
 }
 
 func (suite *PodwatcherTestSuite) TestPodWatcherExpireWholePod() {
@@ -163,7 +163,7 @@ func (suite *PodwatcherTestSuite) TestPodWatcherExpireWholePod() {
 
 	_, err = watcher.computeChanges(sourcePods)
 	require.Nil(suite.T(), err)
-	require.Len(suite.T(), watcher.lastSeen, 12)
+	require.Len(suite.T(), watcher.lastSeen, 15)
 
 	expire, err := watcher.Expire()
 	require.Nil(suite.T(), err)
@@ -180,22 +180,22 @@ func (suite *PodwatcherTestSuite) TestPodWatcherExpireWholePod() {
 
 	_, err = watcher.computeChanges(sourcePods[0:5])
 	require.Nil(suite.T(), err)
-	require.Len(suite.T(), watcher.lastSeen, 12)
+	require.Len(suite.T(), watcher.lastSeen, 15)
 
-	// That one should expire, we'll have 9 entities left
+	// last ones should expire, we'll have 9 entities left
 	expire, err = watcher.Expire()
 	require.Nil(suite.T(), err)
 	expectedExpire := []string{
 		"kubernetes_pod://d91aa43c-0769-11e8-afcc-000c29dea4f6",
 		"docker://3e13513f94b41d23429804243820438fb9a214238bf2d4f384741a48b575670a",
 		"kubernetes_pod://260c2b1d43b094af6d6b4ccba082c2db",
+		"kube-system/kube-proxy-gke-haissam-default-pool-be5066f1-wnvn/kube-proxy",
 	}
-
 	require.Equal(suite.T(), len(expectedExpire), len(expire))
 	for _, expectedEntity := range expectedExpire {
 		assert.Contains(suite.T(), expire, expectedEntity)
 	}
-	require.Len(suite.T(), watcher.lastSeen, 9)
+	require.Len(suite.T(), watcher.lastSeen, 11)
 }
 
 func (suite *PodwatcherTestSuite) TestPullChanges() {

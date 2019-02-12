@@ -102,45 +102,96 @@ func (c *KubeletCollector) parsePods(pods []*kubelet.Pod) ([]*TagInfo, error) {
 		}
 
 		// container tags
-		for _, container := range pod.Status.Containers {
-			cTags := tags.Copy()
-			cTags.AddLow("kube_container_name", container.Name)
-			cTags.AddHigh("container_id", kubelet.TrimRuntimeFromCID(container.ID))
-			if container.Name != "" && pod.Metadata.Name != "" {
-				cTags.AddHigh("display_container_name", fmt.Sprintf("%s_%s", container.Name, pod.Metadata.Name))
-			}
-
-			// check image tag in spec
-			for _, containerSpec := range pod.Spec.Containers {
-				if containerSpec.Name == container.Name {
-					imageName, shortImage, imageTag, err := containers.SplitImageName(containerSpec.Image)
-					if err != nil {
-						log.Debugf("Cannot split %s: %s", containerSpec.Image, err)
-						break
-					}
-					cTags.AddLow("image_name", imageName)
-					cTags.AddLow("short_image", shortImage)
-					if imageTag == "" {
-						// k8s default to latest if tag is omitted
-						imageTag = "latest"
-					}
-					cTags.AddLow("image_tag", imageTag)
-					break
-				}
-			}
-
-			cLow, cOrch, cHigh := cTags.Compute()
-			info := &TagInfo{
-				Source:               kubeletCollectorName,
-				Entity:               container.ID,
-				HighCardTags:         cHigh,
-				OrchestratorCardTags: cOrch,
-				LowCardTags:          cLow,
-			}
+		var cTags []*TagInfo
+		if len(pod.Status.Containers) > 0 {
+			cTags = c.buildContainerTagsListFromStatus(pod, tags)
+		} else {
+			// if it's a static pod we iterate over pod.Spec.Containers instead
+			cTags = c.buildContainerTagsListFromSpec(pod, tags)
+		}
+		for _, info := range cTags {
 			output = append(output, info)
 		}
 	}
 	return output, nil
+}
+
+func (c *KubeletCollector) buildContainerTagsListFromStatus(pod *kubelet.Pod, tags *utils.TagList) []*TagInfo {
+	var res []*TagInfo
+
+	for _, container := range pod.Status.Containers {
+		cTags := tags.Copy()
+		cTags.AddLow("kube_container_name", container.Name)
+		cTags.AddHigh("container_id", kubelet.TrimRuntimeFromCID(container.ID))
+		if container.Name != "" && pod.Metadata.Name != "" {
+			cTags.AddHigh("display_container_name", fmt.Sprintf("%s_%s", container.Name, pod.Metadata.Name))
+		}
+
+		// check image tag in spec
+		for _, containerSpec := range pod.Spec.Containers {
+			if containerSpec.Name == container.Name {
+				imageName, shortImage, imageTag, err := containers.SplitImageName(containerSpec.Image)
+				if err != nil {
+					log.Debugf("Cannot split %s: %s", containerSpec.Image, err)
+					break
+				}
+				cTags.AddLow("image_name", imageName)
+				cTags.AddLow("short_image", shortImage)
+				if imageTag == "" {
+					// k8s default to latest if tag is omitted
+					imageTag = "latest"
+				}
+				cTags.AddLow("image_tag", imageTag)
+				break
+			}
+		}
+
+		cLow, cOrch, cHigh := cTags.Compute()
+		info := &TagInfo{
+			Source:               kubeletCollectorName,
+			Entity:               container.ID,
+			HighCardTags:         cHigh,
+			OrchestratorCardTags: cOrch,
+			LowCardTags:          cLow,
+		}
+		res = append(res, info)
+	}
+	return res
+}
+
+func (c *KubeletCollector) buildContainerTagsListFromSpec(pod *kubelet.Pod, tags *utils.TagList) []*TagInfo {
+	var res []*TagInfo
+
+	for _, container := range pod.Spec.Containers {
+		cTags := tags.Copy()
+		cTags.AddLow("kube_container_name", container.Name)
+		if container.Name != "" && pod.Metadata.Name != "" {
+			cTags.AddHigh("display_container_name", fmt.Sprintf("%s_%s", container.Name, pod.Metadata.Name))
+		}
+
+		imageName, shortImage, imageTag, err := containers.SplitImageName(container.Image)
+		if err != nil {
+			log.Debugf("Cannot split %s: %s", container.Image, err)
+		}
+		cTags.AddLow("image_name", imageName)
+		cTags.AddLow("short_image", shortImage)
+		if imageTag == "" {
+			// k8s default to latest if tag is omitted
+			imageTag = "latest"
+		}
+		cTags.AddLow("image_tag", imageTag)
+
+		cLow, cOrch, cHigh := cTags.Compute()
+		info := &TagInfo{
+			Source:               kubeletCollectorName,
+			Entity:               kubelet.MakeStaticPodContainerEntityName(pod.Metadata.Namespace, pod.Metadata.Name, container.Name),
+			HighCardTags:         cHigh,
+			OrchestratorCardTags: cOrch,
+			LowCardTags:          cLow,
+		}
+		res = append(res, info)
+	}
+	return res
 }
 
 // parseDeploymentForReplicaset gets the deployment name from a replicaset,

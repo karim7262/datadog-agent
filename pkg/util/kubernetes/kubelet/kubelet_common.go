@@ -30,6 +30,11 @@ func PodUIDToEntityName(uid string) string {
 	return fmt.Sprintf("%s%s", KubePodPrefix, uid)
 }
 
+// MakeStaticPodContainerEntityName builds an entity name for static pods' containers
+func MakeStaticPodContainerEntityName(namespace, podName, containerName string) string {
+	return namespace + "/" + podName + "/" + containerName
+}
+
 // ParseMetricFromRaw parses a metric from raw prometheus text
 func ParseMetricFromRaw(raw []byte, metric string) (string, error) {
 	bytesReader := bytes.NewReader(raw)

@@ -35,6 +35,9 @@ func TestParsePods(t *testing.T) {
 			},
 		},
 	}
+	staticPodStatus := kubelet.Status{
+		Phase: "Pending",
+	}
 
 	dockerEntityID2 := "docker://ff242fc32d53137526dc365e7c86ef43b5f50b6f72dfd53dcb948eff4560376f"
 	dockerTwoContainersStatus := kubelet.Status{
@@ -138,7 +141,7 @@ func TestParsePods(t *testing.T) {
 			desc: "two containers + pod",
 			pod: &kubelet.Pod{
 				Metadata: kubelet.PodMetadata{
-					Name:      "dd-agent-rc-qd876",
+					Name:      "dd-agent-rc-deadb",
 					Namespace: "default",
 					UID:       "5e8e05",
 					Owners: []kubelet.PodOwner{
@@ -162,7 +165,7 @@ func TestParsePods(t *testing.T) {
 						"kube_daemon_set:dd-agent-rc",
 					},
 					OrchestratorCardTags: []string{
-						"pod_name:dd-agent-rc-qd876",
+						"pod_name:dd-agent-rc-deadb",
 					},
 					HighCardTags: []string{},
 				},
@@ -178,11 +181,11 @@ func TestParsePods(t *testing.T) {
 						"short_image:docker-dd-agent",
 					},
 					OrchestratorCardTags: []string{
-						"pod_name:dd-agent-rc-qd876",
+						"pod_name:dd-agent-rc-deadb",
 					},
 					HighCardTags: []string{
 						"container_id:d0242fc32d53137526dc365e7c86ef43b5f50b6f72dfd53dcb948eff4560376f",
-						"display_container_name:dd-agent_dd-agent-rc-qd876",
+						"display_container_name:dd-agent_dd-agent-rc-deadb",
 					},
 				},
 				{
@@ -197,11 +200,11 @@ func TestParsePods(t *testing.T) {
 						"short_image:docker-filter",
 					},
 					OrchestratorCardTags: []string{
-						"pod_name:dd-agent-rc-qd876",
+						"pod_name:dd-agent-rc-deadb",
 					},
 					HighCardTags: []string{
 						"container_id:ff242fc32d53137526dc365e7c86ef43b5f50b6f72dfd53dcb948eff4560376f",
-						"display_container_name:filter_dd-agent-rc-qd876",
+						"display_container_name:filter_dd-agent-rc-deadb",
 					},
 				},
 			},
@@ -488,6 +491,46 @@ func TestParsePods(t *testing.T) {
 				HighCardTags:         []string{"container_id:d0242fc32d53137526dc365e7c86ef43b5f50b6f72dfd53dcb948eff4560376f"},
 			}},
 		},
+		{
+			desc: "static pod",
+			pod: &kubelet.Pod{
+				Metadata: kubelet.PodMetadata{
+					Labels: map[string]string{
+						"component":         "kube-proxy",
+						"tier":              "node",
+						"k8s-app":           "kubernetes-dashboard",
+						"pod-template-hash": "490794276",
+					},
+					Name:      "kube-proxy-abcde",
+					Namespace: "kube-system",
+				},
+				Status: staticPodStatus,
+				Spec:   dockerContainerSpec,
+			},
+			labelsAsTags: map[string]string{
+				"*":         "foo_%%label%%",
+				"component": "component",
+			},
+			annotationsAsTags: map[string]string{},
+			expectedInfo: []*TagInfo{{
+				Source: "kubelet",
+				Entity: kubelet.MakeStaticPodContainerEntityName("kube-system", "kube-proxy-abcde", "dd-agent"),
+				LowCardTags: []string{
+					"foo_component:kube-proxy",
+					"component:kube-proxy",
+					"foo_tier:node",
+					"foo_k8s-app:kubernetes-dashboard",
+					"foo_pod-template-hash:490794276",
+					"image_name:datadog/docker-dd-agent",
+					"image_tag:latest5",
+					"kube_container_name:dd-agent",
+					"kube_namespace:kube-system",
+					"short_image:docker-dd-agent",
+				},
+				OrchestratorCardTags: []string{"pod_name:kube-proxy-abcde"},
+				HighCardTags:         []string{"display_container_name:dd-agent_kube-proxy-abcde"},
+			}},
+		},
 	} {
 		t.Run(fmt.Sprintf("case %d: %s", nb, tc.desc), func(t *testing.T) {
 			collector := &KubeletCollector{
@@ -500,6 +543,16 @@ func TestParsePods(t *testing.T) {
 			if tc.expectedInfo == nil {
 				assert.Len(t, infos, 0)
 			} else {
+				// fmt.Println("\t pod:", tc.pod.Metadata.Name)
+				// fmt.Println("\t status:", tc.pod.Status)
+				fmt.Println("\t infos:")
+				for _, i := range infos {
+					fmt.Println("\t", i)
+				}
+				// fmt.Println("\t expectedInfo:")
+				// for _, i := range tc.expectedInfo {
+				// 	fmt.Println("\t", i)
+				// }
 				assertTagInfoListEqual(t, tc.expectedInfo, infos)
 			}
 		})

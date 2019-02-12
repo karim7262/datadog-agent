@@ -125,6 +125,30 @@ func getMockedPods() []*kubelet.Pod {
 		HostIP:     "127.0.0.2",
 		Containers: containerStatuses,
 	}
+
+	staticContainerSpecs := []kubelet.ContainerSpec{
+		{
+			Name:  "foo",
+			Image: "bar:foo",
+			Ports: []kubelet.ContainerPortSpec{
+				{
+					ContainerPort: 1339,
+					HostPort:      1340,
+					Name:          "test",
+					Protocol:      "UDP",
+				},
+			},
+		},
+	}
+
+	staticStatus := kubelet.Status{
+		Phase: "Pending",
+	}
+	staticSpec := kubelet.Spec{
+		NodeName:   "mockn-node",
+		Containers: staticContainerSpecs,
+	}
+
 	return []*kubelet.Pod{
 		{
 			Spec:   kubeletSpec,
@@ -133,6 +157,17 @@ func getMockedPods() []*kubelet.Pod {
 				Name: "mock-pod",
 				Annotations: map[string]string{
 					"ad.datadoghq.com/baz.instances": "[]",
+				},
+			},
+		},
+		{
+			Spec:   staticSpec,
+			Status: staticStatus,
+			Metadata: kubelet.PodMetadata{
+				Name:      "mock-pod1",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"ad.datadoghq.com/foo.instances": "[]",
 				},
 			},
 		},
@@ -231,10 +266,33 @@ func TestProcessNewPod(t *testing.T) {
 		assert.FailNow(t, "fourth service not in channel")
 	}
 
-	// Fifth container is filtered out
+	select {
+	case service := <-services:
+		assert.Equal(
+			t,
+			kubelet.MakeStaticPodContainerEntityName(
+				"default", "mock-pod1", "foo"),
+			string(service.GetEntity()),
+		)
+		adIdentifiers, err := service.GetADIdentifiers()
+		assert.Nil(t, err)
+		assert.Equal(t, []string{"foo"}, adIdentifiers)
+		hosts, err := service.GetHosts()
+		assert.Nil(t, err)
+		assert.Equal(t, map[string]string(nil), hosts)
+		ports, err := service.GetPorts()
+		assert.Nil(t, err)
+		assert.Equal(t, []ContainerPort{{1339, "test"}}, ports)
+		_, err = service.GetPid()
+		assert.Equal(t, ErrNotSupported, err)
+	default:
+		assert.FailNow(t, "fifth service not in channel")
+	}
+
+	// One container from the first pod is filtered out
 	select {
 	case <-services:
-		assert.FailNow(t, "five services in channel, filtering is broken")
+		assert.FailNow(t, "six services in channel, filtering is broken")
 	default:
 		// all good
 	}
