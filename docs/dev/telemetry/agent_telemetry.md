@@ -87,7 +87,7 @@ Total number of events sent by a specific integration (sum of all the integratio
 
 The Aggregator is responsible for receiving metrics, events and service checks and aggregation before passing them to the forwarder. Currently it has two sources: Integrations and Dogstatsd. It computes rates and histograms and passes them to the Serializer. Every metrics, events and service checks go through the aggregator.
 
-Every 15s the aggregator flushes every metrics, events and service checks he received during that timeframe and sends them to the serializer. During that process aggregated metrics become series (regular metrics) and sketches (distribution metrics).
+Every 15s the aggregator flushes every metrics, events and service checks it received during that timeframe and sends them to the serializer. During that process aggregated metrics become series (regular metrics) and sketches (distribution metrics).
 
 #### `datadog.agent.aggregator.metrics` - *count*
 
