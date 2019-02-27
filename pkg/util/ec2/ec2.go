@@ -25,12 +25,23 @@ var (
 
 // GetInstanceID fetches the instance id for current host from the EC2 metadata API
 func GetInstanceID() (string, error) {
-	return getMetadataItem("/instance-id")
+	return getMetadataItemWithMaxLength("/instance-id", 255)
 }
 
 // GetHostname fetches the hostname for current host from the EC2 metadata API
 func GetHostname() (string, error) {
-	return getMetadataItem("/hostname")
+	return getMetadataItemWithMaxLength("/hostname", 255)
+}
+
+func getMetadataItemWithMaxLength(endpoint string, maxLength int) (string, error) {
+	metadataItem, err := getMetadataItem(metadataURL)
+	if err != nil {
+		return "", err
+	}
+	if len(metadataItem) > maxLength {
+		return "", fmt.Errorf("ec2 metadata item %v is too long (%v)", endpoint, maxLength)
+	}
+	return metadataItem, nil
 }
 
 func getMetadataItem(endpoint string) (string, error) {
