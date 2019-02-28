@@ -34,7 +34,7 @@ func GetHostname() (string, error) {
 }
 
 func getMetadataItemWithMaxLength(endpoint string, maxLength int) (string, error) {
-	metadataItem, err := getMetadataItem(metadataURL)
+	metadataItem, err := getMetadataItem(endpoint)
 	if err != nil {
 		return "", err
 	}
