@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/config"
 )
 
 // declare these as vars not const to ease testing
@@ -40,7 +42,8 @@ type gceProjectMetadata struct {
 
 // GetHostname returns the hostname querying GCE Metadata api
 func GetHostname() (string, error) {
-	hostname, err := getResponse(metadataURL + "/instance/hostname")
+	hostname, err := getResponseWithMaxLength(metadataURL+"/instance/hostname",
+		config.Datadog.GetInt("metadata_endpoints_max_hostname_size"))
 	if err != nil {
 		return "", fmt.Errorf("unable to retrieve hostname from GCE: %s", err)
 	}
@@ -49,17 +52,30 @@ func GetHostname() (string, error) {
 
 // GetHostAlias returns the host alias from GCE
 func GetHostAlias() (string, error) {
-	instanceName, err := getResponse(metadataURL + "/instance/hostname")
+	instanceName, err := getResponseWithMaxLength(metadataURL+"/instance/hostname",
+		config.Datadog.GetInt("metadata_endpoints_max_hostname_size"))
 	if err != nil {
 		return "", fmt.Errorf("unable to retrieve hostname from GCE: %s", err)
 	}
 	instanceName = strings.SplitN(instanceName, ".", 2)[0]
 
-	projectID, err := getResponse(metadataURL + "/project/project-id")
+	projectID, err := getResponseWithMaxLength(metadataURL+"/project/project-id",
+		config.Datadog.GetInt("metadata_endpoints_max_hostname_size"))
 	if err != nil {
 		return "", fmt.Errorf("unable to retrieve project ID from GCE: %s", err)
 	}
 	return fmt.Sprintf("%s.%s", instanceName, projectID), nil
+}
+
+func getResponseWithMaxLength(endpoint string, maxLength int) (string, error) {
+	result, err := getResponse(endpoint)
+	if err != nil {
+		return result, err
+	}
+	if len(result) > maxLength {
+		return "", fmt.Errorf("%v gave a response with length > to %v", endpoint, maxLength)
+	}
+	return result, err
 }
 
 func getResponse(url string) (string, error) {
