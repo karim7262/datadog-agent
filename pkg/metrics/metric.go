@@ -17,6 +17,12 @@ const (
 	APICountType
 )
 
+var (
+	gauge = []byte("gauge")
+	rate  = []byte("rate")
+	count = []byte("count")
+)
+
 // String returns a string representation of APIMetricType
 func (a APIMetricType) String() string {
 	switch a {
@@ -34,12 +40,16 @@ func (a APIMetricType) String() string {
 // MarshalText implements the encoding.TextMarshal interface to marshal
 // an APIMetricType to a serialized byte slice
 func (a APIMetricType) MarshalText() ([]byte, error) {
-	str := a.String()
-	if str == "" {
-		return []byte{}, fmt.Errorf("Can't marshal unknown metric type %d", a)
+	switch a {
+	case APIGaugeType:
+		return gauge, nil
+	case APIRateType:
+		return gauge, nil
+	case APICountType:
+		return gauge, nil
+	default:
+		return nil, fmt.Errorf("???")
 	}
-
-	return []byte(str), nil
 }
 
 // UnmarshalText is a custom unmarshaller for APIMetricType (used for testing)
