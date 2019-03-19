@@ -1,0 +1,8 @@
+BenchmarkJSONStream1-4          	   10000	    150786 ns/op	  830913 B/op	      36 allocs/op
+BenchmarkJSONStream10-4         	   10000	    170712 ns/op	  831352 B/op	      72 allocs/op
+BenchmarkJSONStream100-4        	    5000	    325924 ns/op	  850091 B/op	     432 allocs/op
+BenchmarkJSONStream1000-4       	    1000	   2068056 ns/op	 1159019 B/op	    4032 allocs/op
+BenchmarkJSONStream10000-4      	     100	  20000203 ns/op	 3638100 B/op	   40032 allocs/op
+BenchmarkJSONStream100000-4     	      10	 200823638 ns/op	11597990 B/op	  400033 allocs/op
+BenchmarkJSONStream1000000-4    	       1	2004454972 ns/op	68699280 B/op	 4000138 allocs/op
+BenchmarkJSONStream10000000-4   	       1	19945298095 ns/op	525016968 B/op	40001010 allocs/op

@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/DataDog/datadog-agent/pkg/forwarder"
@@ -45,11 +46,12 @@ func (d *dummyMarshaller) Len() int {
 	return len(d.items)
 }
 
-func (d *dummyMarshaller) JSONItem(i int) ([]byte, error) {
+func (d *dummyMarshaller) WriteItem(j *jsoniter.Stream, i int) error {
 	if i < 0 || i > d.Len()-1 {
-		return nil, errors.New("out of range")
+		return errors.New("out of range")
 	}
-	return []byte(d.items[i]), nil
+	_, err := j.Write([]byte(d.items[i]))
+	return err
 }
 
 func (d *dummyMarshaller) DescribeItem(i int) string {

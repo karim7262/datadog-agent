@@ -29,12 +29,6 @@ var marshaller = jsoniter.Config{
 	ObjectFieldMustBeSimpleString: true,
 }.Froze()
 
-var (
-	jsonSeparator  = []byte(",")
-	jsonArrayStart = []byte("[")
-	jsonArrayEnd   = []byte("]")
-)
-
 // Point represents a metric value at a specific time
 type Point struct {
 	Ts    float64
@@ -234,13 +228,14 @@ func (series Series) Len() int {
 	return len(series)
 }
 
-// JSONItem prints the json representation of an item
-func (series Series) JSONItem(i int) ([]byte, error) {
+// WriteItem writes the json representation of an item
+func (series Series) WriteItem(s *jsoniter.Stream, i int) error {
 	if i < 0 || i > len(series)-1 {
-		return nil, errors.New("out of range")
+		return errors.New("out of range")
 	}
 	populateDeviceField(series[i])
-	return marshaller.Marshal(series[i])
+	s.WriteVal(series[i])
+	return s.Error
 }
 
 // JSONFooter prints the payload footer for this type
@@ -261,23 +256,27 @@ func (series Series) DescribeItem(i int) string {
 // Called when using jsoniter
 func encodePoints(ptr unsafe.Pointer, stream *jsoniter.Stream) {
 	if ptr == nil {
-		stream.Write(jsonArrayStart)
-		stream.Write(jsonArrayEnd)
-		return
+		stream.WriteEmptyArray()
 	}
 
 	points := *(*[]Point)(ptr)
+	comma := []byte(",")
 	var needComa bool
-	stream.Write(jsonArrayStart)
+
+	stream.WriteArrayStart()
 	for _, p := range points {
 		if needComa {
-			stream.Write(jsonSeparator)
+			stream.Write(comma)
 		} else {
 			needComa = true
 		}
-		fmt.Fprintf(stream, "[%v,%v]", int64(p.Ts), p.Value)
+		stream.WriteArrayStart()
+		stream.WriteInt64(int64(p.Ts))
+		stream.Write(comma)
+		stream.WriteFloat64(p.Value)
+		stream.WriteArrayEnd()
 	}
-	stream.Write(jsonArrayEnd)
+	stream.WriteArrayEnd()
 }
 
 func init() {

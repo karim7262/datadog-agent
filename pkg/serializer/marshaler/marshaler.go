@@ -5,6 +5,10 @@
 
 package marshaler
 
+import (
+	"github.com/json-iterator/go"
+)
+
 // Marshaler is an interface for metrics that are able to serialize themselves to JSON and protobuf
 type Marshaler interface {
 	MarshalJSON() ([]byte, error)
@@ -17,7 +21,7 @@ type StreamJSONMarshaler interface {
 	Marshaler
 	JSONHeader() []byte
 	Len() int
-	JSONItem(i int) ([]byte, error)
+	WriteItem(*jsoniter.Stream, int) error
 	DescribeItem(i int) string
 	JSONFooter() []byte
 }
