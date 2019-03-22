@@ -232,6 +232,7 @@ func initConfig(config Config) {
 
 	// Docker
 	config.BindEnvAndSetDefault("docker_query_timeout", int64(5))
+	config.BindEnvAndSetDefault("docker_use_cgroups", true)
 	config.BindEnvAndSetDefault("docker_labels_as_tags", map[string]string{})
 	config.BindEnvAndSetDefault("docker_env_as_tags", map[string]string{})
 	config.BindEnvAndSetDefault("kubernetes_pod_labels_as_tags", map[string]string{})

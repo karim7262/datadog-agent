@@ -9,6 +9,7 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -44,12 +45,15 @@ type DockerUtil struct {
 	imageNameBySha map[string]string
 	// event subscribers and state
 	eventState *eventStreamState
+	// use cgroups or docker stats endpoint
+	useCgroups bool
 }
 
 // init makes an empty DockerUtil bootstrap itself.
 // This is not exposed as public API but is called by the retrier embed.
 func (d *DockerUtil) init() error {
 	d.queryTimeout = config.Datadog.GetDuration("docker_query_timeout") * time.Second
+	d.useCgroups = config.Datadog.GetBool("docker_use_cgroups")
 
 	// Major failure risk is here, do that first
 	ctx, cancel := context.WithTimeout(context.Background(), d.queryTimeout)
@@ -168,6 +172,22 @@ func (d *DockerUtil) GetStorageStats() ([]*StorageStats, error) {
 		return []*StorageStats{}, fmt.Errorf("unable to get Docker info: %s", err)
 	}
 	return parseStorageStatsFromInfo(info)
+}
+
+// getDockerStats returns the docker performance stats for a given container
+// by using the docker API (no use of cgroups)
+func (d *DockerUtil) getDockerStats(id string) (*types.StatsJSON, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), d.queryTimeout)
+	defer cancel()
+	r, err := d.cli.ContainerStats(ctx, id, false)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	stats := &types.StatsJSON{}
+	return stats, decoder.Decode(stats)
 }
 
 // ResolveImageName will resolve sha image name to their user-friendly name.

@@ -26,21 +26,29 @@ var healthRe = regexp.MustCompile(`\(health: (\w+)\)`)
 
 // ContainerListConfig allows to pass listing options
 type ContainerListConfig struct {
-	IncludeExited bool
-	FlagExcluded  bool
+	IncludeExited  bool
+	FlagExcluded   bool
+	PopulateLimits bool
 }
 
 // Containers gets a list of all containers on the current node using a mix of
 // the Docker APIs and cgroups stats. We attempt to limit syscalls where possible.
 func (d *DockerUtil) ListContainers(cfg *ContainerListConfig) ([]*containers.Container, error) {
-	cgByContainer, err := metrics.ScrapeAllCgroups()
-	if err != nil {
-		return nil, fmt.Errorf("could not get cgroups: %s", err)
+	if !d.useCgroups {
+		cfg.PopulateLimits = true
 	}
-
 	cList, err := d.dockerContainers(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("could not get docker containers: %s", err)
+	}
+
+	if !d.useCgroups {
+		return cList, d.updateContainerMetricsNoCgroups(cList)
+	}
+
+	cgByContainer, err := metrics.ScrapeAllCgroups()
+	if err != nil {
+		return nil, fmt.Errorf("could not get cgroups: %s", err)
 	}
 
 	for _, container := range cList {
@@ -59,6 +67,7 @@ func (d *DockerUtil) ListContainers(cfg *ContainerListConfig) ([]*containers.Con
 			continue
 		}
 	}
+
 	err = d.UpdateContainerMetrics(cList)
 	return cList, err
 }
@@ -66,6 +75,10 @@ func (d *DockerUtil) ListContainers(cfg *ContainerListConfig) ([]*containers.Con
 // UpdateContainerMetrics updates cgroup / network performance metrics for
 // a provided list of Container objects
 func (d *DockerUtil) UpdateContainerMetrics(cList []*containers.Container) error {
+	if !d.useCgroups {
+		return d.updateContainerMetricsNoCgroups(cList)
+	}
+
 	for _, container := range cList {
 		if container.State != containers.ContainerRunningState || container.Excluded {
 			continue
@@ -92,6 +105,26 @@ func (d *DockerUtil) UpdateContainerMetrics(cList []*containers.Container) error
 				log.Debugf("Cannot get network stats for container %s: %s", container.ID, err)
 				continue
 			}
+		}
+	}
+	return nil
+}
+
+func (d *DockerUtil) updateContainerMetricsNoCgroups(cList []*containers.Container) error {
+	for _, container := range cList {
+		if container.State != containers.ContainerRunningState || container.Excluded {
+			continue
+		}
+		stats, err := d.getDockerStats(container.ID)
+		if err != nil {
+			log.Debugf("Cannot get metrics for container %s: %s", container.ID[:12], err)
+			continue
+		}
+
+		err = fillContainerStats(container, stats)
+		if err != nil {
+			log.Debugf("Cannot get metrics for container %s: %s", container.ID[:12], err)
+			continue
 		}
 	}
 	return nil
@@ -149,6 +182,19 @@ func (d *DockerUtil) dockerContainers(cfg *ContainerListConfig) ([]*containers.C
 			Health:   parseContainerHealth(c.Status),
 		}
 
+		if cfg.PopulateLimits {
+			i, err := d.Inspect(c.ID, false)
+			if err == nil && i.HostConfig != nil {
+				container.MemLimit = uint64(i.HostConfig.Memory)
+				container.SoftMemLimit = uint64(i.HostConfig.MemoryReservation)
+				if (i.HostConfig.CPUPeriod > 0) && (i.HostConfig.CPUQuota > 0) {
+					container.CPULimit = (float64(i.HostConfig.CPUQuota) / float64(i.HostConfig.CPUPeriod)) * 100.0
+				} else {
+					container.CPULimit = 100.0
+				}
+			}
+		}
+
 		ret = append(ret, container)
 	}
 
@@ -202,4 +248,121 @@ func (d *DockerUtil) cleanupCaches(containers []types.Container) {
 		}
 	}
 	d.Unlock()
+}
+
+// fillContainerStats uses docker stats info to populate the container metrics
+// For now, only fields used in the docker check are populated
+func fillContainerStats(c *containers.Container, s *types.StatsJSON) error {
+	if c == nil || s == nil {
+		return errors.New("nil pointer input")
+	}
+
+	// CPU stats
+	c.CPU = &metrics.CgroupTimesStat{
+		System:     s.CPUStats.CPUUsage.UsageInKernelmode,
+		User:       s.CPUStats.CPUUsage.UsageInUsermode,
+		UsageTotal: float64(s.CPUStats.CPUUsage.TotalUsage),
+	}
+	c.CPUNrThrottled = s.CPUStats.ThrottlingData.ThrottledPeriods
+
+	// Mem stats
+	c.Memory = &metrics.CgroupMemStat{}
+	for k, v := range s.MemoryStats.Stats {
+		switch k {
+		case "cache":
+			c.Memory.Cache = v
+		case "swap":
+			c.Memory.Swap = v
+			c.Memory.SwapPresent = true
+		case "rss":
+			c.Memory.RSS = v
+		case "rss_huge":
+			c.Memory.RSSHuge = v
+		case "mapped_file":
+			c.Memory.MappedFile = v
+		case "pgpgin":
+			c.Memory.Pgpgin = v
+		case "pgpgout":
+			c.Memory.Pgpgout = v
+		case "pgfault":
+			c.Memory.Pgfault = v
+		case "pgmajfault":
+			c.Memory.Pgmajfault = v
+		case "inactive_anon":
+			c.Memory.InactiveAnon = v
+		case "active_anon":
+			c.Memory.ActiveAnon = v
+		case "inactive_file":
+			c.Memory.InactiveFile = v
+		case "active_file":
+			c.Memory.ActiveFile = v
+		case "unevictable":
+			c.Memory.Unevictable = v
+		case "hierarchical_memory_limit":
+			c.Memory.HierarchicalMemoryLimit = v
+		case "hierarchical_memsw_limit":
+			c.Memory.HierarchicalMemSWLimit = v
+		case "total_cache":
+			c.Memory.TotalCache = v
+		case "total_rss":
+			c.Memory.TotalRSS = v
+		case "total_rssHuge":
+			c.Memory.TotalRSSHuge = v
+		case "total_mapped_file":
+			c.Memory.TotalMappedFile = v
+		case "total_pgpgin":
+			c.Memory.TotalPgpgIn = v
+		case "total_pgpgout":
+			c.Memory.TotalPgpgOut = v
+		case "total_pgfault":
+			c.Memory.TotalPgFault = v
+		case "total_pgmajfault":
+			c.Memory.TotalPgMajFault = v
+		case "total_inactive_anon":
+			c.Memory.TotalInactiveAnon = v
+		case "total_active_anon":
+			c.Memory.TotalActiveAnon = v
+		case "total_inactive_file":
+			c.Memory.TotalInactiveFile = v
+		case "total_active_file":
+			c.Memory.TotalActiveFile = v
+		case "total_unevictable":
+			c.Memory.TotalUnevictable = v
+		}
+	}
+	c.MemFailCnt = s.MemoryStats.Failcnt
+
+	// Net stats
+	for net, netstats := range s.Networks {
+		n := &metrics.InterfaceNetStats{
+			NetworkName: net,
+			BytesSent:   netstats.TxBytes,
+			BytesRcvd:   netstats.RxBytes,
+			PacketsSent: netstats.TxPackets,
+			PacketsRcvd: netstats.RxPackets,
+		}
+		c.Network = append(c.Network, n)
+	}
+
+	// IO stats, only sum is exposed
+	c.IO = sumBlkioStatEntry(s.BlkioStats.IoServiceBytesRecursive)
+
+	// Thread stats
+	c.ThreadCount = s.PidsStats.Current
+	c.ThreadLimit = s.PidsStats.Limit
+
+	return nil
+}
+
+func sumBlkioStatEntry(entries []types.BlkioStatEntry) *metrics.CgroupIOStat {
+	s := &metrics.CgroupIOStat{}
+	for _, e := range entries {
+		switch e.Op {
+		case "Read":
+			s.ReadBytes += e.Value
+		case "Write":
+			s.WriteBytes += e.Value
+		}
+	}
+	return s
 }
