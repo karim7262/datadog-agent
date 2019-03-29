@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
-	"github.com/DataDog/datadog-agent/pkg/trace/stats"
 	"github.com/DataDog/datadog-agent/pkg/trace/traceutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -87,10 +86,10 @@ func TestTracerServiceExtractor(t *testing.T) {
 	}
 
 	traceutil.ComputeTopLevel(trace)
-	wt := stats.NewWeightedTrace(trace, trace[0])
+	traceutil.SetTopLevel(trace[0], true)
 
 	go func() {
-		testExtractor.Process(wt)
+		testExtractor.Process(trace)
 	}()
 
 	metadata := <-testChan

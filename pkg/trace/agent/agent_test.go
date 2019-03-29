@@ -362,12 +362,11 @@ func TestSampling(t *testing.T) {
 			if tt.hasErrors {
 				root.Error = 1
 			}
-			pt := ProcessedTrace{Trace: pb.Trace{root}, Root: root}
 			if tt.hasPriority {
-				sampler.SetSamplingPriority(pt.Root, 1)
+				sampler.SetSamplingPriority(root, 1)
 			}
 
-			sampled, rate := a.sample(pt)
+			sampled, rate := a.sample(pb.Trace{root}, root, "")
 			assert.EqualValues(t, tt.wantRate, rate)
 			assert.EqualValues(t, tt.wantSampled, sampled)
 		})

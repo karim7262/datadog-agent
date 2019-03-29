@@ -228,53 +228,45 @@ func (a *Agent) Process(t pb.Trace) {
 		stats.SetSublayersOnSpan(subtrace.Root, subtraceSublayers)
 	}
 
-	pt := ProcessedTrace{
-		Trace:         t,
-		WeightedTrace: stats.NewWeightedTrace(t, root),
-		Root:          root,
-		Env:           a.conf.DefaultEnv,
-		Sublayers:     sublayers,
-	}
-	// Replace Agent-configured environment with `env` coming from span tag.
+	env := a.conf.DefaultEnv
 	if tenv := traceutil.GetEnv(t); tenv != "" {
-		pt.Env = tenv
+		env = tenv
 	}
 
 	go func() {
 		defer watchdog.LogOnPanic()
-		a.ServiceExtractor.Process(pt.WeightedTrace)
+		a.ServiceExtractor.Process(t)
 	}()
 
-	go func(pt ProcessedTrace) {
+	go func() {
 		defer watchdog.LogOnPanic()
 		// Everything is sent to concentrator for stats, regardless of sampling.
 		a.Concentrator.Add(&stats.Input{
-			Trace:     pt.WeightedTrace,
-			Sublayers: pt.Sublayers,
-			Env:       pt.Env,
+			Trace:     stats.NewWeightedTrace(t, root),
+			Sublayers: sublayers,
+			Env:       env,
 		})
-	}(pt)
+	}()
 
 	// Don't go through sampling for < 0 priority traces
 	if priority < 0 {
 		return
 	}
 	// Run both full trace sampling and transaction extraction in another goroutine.
-	go func(pt ProcessedTrace) {
+	go func() {
 		defer watchdog.LogOnPanic()
 
 		tracePkg := writer.TracePackage{}
 
-		sampled, rate := a.sample(pt)
+		sampled, rate := a.sample(t, root, env)
 
 		if sampled {
-			pt.Sampled = sampled
-			sampler.AddGlobalRate(pt.Root, rate)
-			tracePkg.Trace = pt.Trace
+			sampler.AddGlobalRate(root, rate)
+			tracePkg.Trace = t
 		}
 
 		// NOTE: Events can be processed on non-sampled traces.
-		events, numExtracted := a.EventProcessor.Process(pt.Root, pt.Trace)
+		events, numExtracted := a.EventProcessor.Process(root, t)
 		tracePkg.Events = events
 
 		atomic.AddInt64(&ts.EventsExtracted, int64(numExtracted))
@@ -283,21 +275,21 @@ func (a *Agent) Process(t pb.Trace) {
 		if !tracePkg.Empty() {
 			a.tracePkgChan <- &tracePkg
 		}
-	}(pt)
+	}()
 }
 
-func (a *Agent) sample(pt ProcessedTrace) (sampled bool, rate float64) {
+func (a *Agent) sample(trace pb.Trace, root *pb.Span, env string) (sampled bool, rate float64) {
 	var sampledPriority, sampledScore bool
 	var ratePriority, rateScore float64
 
-	if _, ok := pt.GetSamplingPriority(); ok {
-		sampledPriority, ratePriority = a.PrioritySampler.Add(pt)
+	if _, ok := sampler.GetSamplingPriority(root); ok {
+		sampledPriority, ratePriority = a.PrioritySampler.Add(trace, root, env)
 	}
 
-	if traceContainsError(pt.Trace) {
-		sampledScore, rateScore = a.ErrorsScoreSampler.Add(pt)
+	if traceContainsError(trace) {
+		sampledScore, rateScore = a.ErrorsScoreSampler.Add(trace, root, env)
 	} else {
-		sampledScore, rateScore = a.ScoreSampler.Add(pt)
+		sampledScore, rateScore = a.ScoreSampler.Add(trace, root, env)
 	}
 
 	return sampledScore || sampledPriority, sampler.CombineRates(ratePriority, rateScore)

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
-	"github.com/DataDog/datadog-agent/pkg/trace/stats"
+	"github.com/DataDog/datadog-agent/pkg/trace/traceutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -128,11 +128,11 @@ func NewTraceServiceExtractor(out chan pb.ServicesMetadata) *TraceServiceExtract
 }
 
 // Process extracts service metadata from top-level spans and sends it downstream
-func (ts *TraceServiceExtractor) Process(t stats.WeightedTrace) {
+func (ts *TraceServiceExtractor) Process(t pb.Trace) {
 	meta := make(pb.ServicesMetadata)
 
 	for _, s := range t {
-		if !s.TopLevel {
+		if !traceutil.HasTopLevel(s) {
 			continue
 		}
 
