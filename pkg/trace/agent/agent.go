@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -52,6 +53,9 @@ type Agent struct {
 
 	// Used to synchronize on a clean exit
 	ctx context.Context
+
+	// wg waits for active goroutines
+	wg sync.WaitGroup
 }
 
 // NewAgent returns a new Agent object, ready to be started. It takes a context
@@ -134,7 +138,11 @@ func (a *Agent) start() {
 
 func (a *Agent) loop() {
 	ticker := time.NewTicker(a.conf.WatchdogInterval)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		a.wg.Wait()
+		a.shutdown()
+	}()
 	for {
 		select {
 		case t := <-a.Receiver.Out:
@@ -142,22 +150,25 @@ func (a *Agent) loop() {
 		case <-ticker.C:
 			a.watchdog()
 		case <-a.ctx.Done():
-			log.Info("exiting")
-			if err := a.Receiver.Stop(); err != nil {
-				log.Error(err)
-			}
-			a.Concentrator.Stop()
-			a.TraceWriter.Stop()
-			a.StatsWriter.Stop()
-			a.ServiceMapper.Stop()
-			a.ServiceWriter.Stop()
-			a.ScoreSampler.Stop()
-			a.ErrorsScoreSampler.Stop()
-			a.PrioritySampler.Stop()
-			a.EventProcessor.Stop()
 			return
 		}
 	}
+}
+
+func (a *Agent) shutdown() {
+	log.Info("exiting")
+	if err := a.Receiver.Stop(); err != nil {
+		log.Error(err)
+	}
+	a.Concentrator.Stop()
+	a.TraceWriter.Stop()
+	a.StatsWriter.Stop()
+	a.ServiceMapper.Stop()
+	a.ServiceWriter.Stop()
+	a.ScoreSampler.Stop()
+	a.ErrorsScoreSampler.Stop()
+	a.PrioritySampler.Stop()
+	a.EventProcessor.Stop()
 }
 
 // Process is the default work unit that receives a trace, transforms it and
@@ -240,13 +251,16 @@ func (a *Agent) Process(t pb.Trace) {
 		pt.Env = tenv
 	}
 
-	go func() {
-		defer watchdog.LogOnPanic()
-		a.ServiceExtractor.Process(pt.WeightedTrace)
-	}()
-
+	a.wg.Add(1)
+	atomic.AddInt64(&ts.ProcessGoRoutines, 1)
 	go func(pt ProcessedTrace) {
-		defer watchdog.LogOnPanic()
+		defer func() {
+			watchdog.LogOnPanic()
+			a.wg.Done()
+			atomic.AddInt64(&ts.ProcessGoRoutines, -1)
+		}()
+
+		a.ServiceExtractor.Process(pt.WeightedTrace)
 		// Everything is sent to concentrator for stats, regardless of sampling.
 		a.Concentrator.Add(&stats.Input{
 			Trace:     pt.WeightedTrace,
@@ -260,8 +274,14 @@ func (a *Agent) Process(t pb.Trace) {
 		return
 	}
 	// Run both full trace sampling and transaction extraction in another goroutine.
+	a.wg.Add(1)
+	atomic.AddInt64(&ts.ProcessGoRoutines, 1)
 	go func(pt ProcessedTrace) {
-		defer watchdog.LogOnPanic()
+		defer func() {
+			watchdog.LogOnPanic()
+			a.wg.Done()
+			atomic.AddInt64(&ts.ProcessGoRoutines, -1)
+		}()
 
 		tracePkg := writer.TracePackage{}
 

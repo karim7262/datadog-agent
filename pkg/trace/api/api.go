@@ -242,15 +242,15 @@ func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.
 
 	// normalize data
 	for _, trace := range traces {
-		spans := len(trace)
+		spanCount := int64(len(trace))
 
 		atomic.AddInt64(&ts.TracesReceived, 1)
-		atomic.AddInt64(&ts.SpansReceived, int64(spans))
+		atomic.AddInt64(&ts.SpansReceived, spanCount)
 
 		err := normalizeTrace(trace)
 		if err != nil {
 			atomic.AddInt64(&ts.TracesDropped, 1)
-			atomic.AddInt64(&ts.SpansDropped, int64(spans))
+			atomic.AddInt64(&ts.SpansDropped, spanCount)
 
 			msg := fmt.Sprintf("dropping trace; reason: %s", err)
 			if len(msg) > 150 && !r.debug {
@@ -259,14 +259,14 @@ func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.
 			}
 			log.Errorf(msg)
 		} else {
+			atomic.AddInt64(&ts.SpansWaiting, spanCount)
 			select {
 			case r.Out <- trace:
-				// if our downstream consumer is slow, we drop the trace on the floor
-				// this is a safety net against us using too much memory
-				// when clients flood us
+				atomic.AddInt64(&ts.SpansWaiting, -spanCount)
+				atomic.StoreInt64(&ts.QueueLoad, int64(len(r.Out)*100/cap(r.Out)))
 			default:
 				atomic.AddInt64(&ts.TracesDropped, 1)
-				atomic.AddInt64(&ts.SpansDropped, int64(spans))
+				atomic.AddInt64(&ts.SpansDropped, spanCount)
 
 				log.Errorf("dropping trace; reason: rate-limited")
 			}

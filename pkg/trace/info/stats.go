@@ -153,6 +153,10 @@ func (ts *TagStats) publish() {
 	metrics.Count("datadog.trace_agent.receiver.services_bytes", servicesBytes, tags, 1)
 	metrics.Count("datadog.trace_agent.receiver.events_extracted", eventsExtracted, tags, 1)
 	metrics.Count("datadog.trace_agent.receiver.events_sampled", eventsSampled, tags, 1)
+
+	metrics.Gauge("datadog.trace_agent.process.active_goroutines", float64(atomic.LoadInt64(&ts.ProcessGoRoutines)), tags, 1)
+	metrics.Gauge("datadog.trace_agent.process.queue.spans", float64(atomic.LoadInt64(&ts.SpansWaiting)), tags, 1)
+	metrics.Gauge("datadog.trace_agent.process.queue.fill_percent", float64(atomic.LoadInt64(&ts.QueueLoad)), tags, 1)
 }
 
 // Stats holds the metrics that will be reported every 10s by the agent.
@@ -190,6 +194,12 @@ type Stats struct {
 	EventsExtracted int64
 	// EventsSampled is the total number of APM events sampled.
 	EventsSampled int64
+	// ProcessGoRoutines keeps track of the total number of active goroutines in the trace processor.
+	ProcessGoRoutines int64
+	// SpansWaiting specifies the amount of spans waiting to be processed in the output channel.
+	SpansWaiting int64
+	// QueueLoad keeps track of the size (lenght) of the receiver's output channel.
+	QueueLoad int64
 }
 
 func (s *Stats) update(recent *Stats) {
@@ -209,6 +219,10 @@ func (s *Stats) update(recent *Stats) {
 	atomic.AddInt64(&s.ServicesBytes, atomic.LoadInt64(&recent.ServicesBytes))
 	atomic.AddInt64(&s.EventsExtracted, atomic.LoadInt64(&recent.EventsExtracted))
 	atomic.AddInt64(&s.EventsSampled, atomic.LoadInt64(&recent.EventsSampled))
+
+	atomic.StoreInt64(&s.ProcessGoRoutines, atomic.LoadInt64(&recent.ProcessGoRoutines))
+	atomic.StoreInt64(&s.SpansWaiting, atomic.LoadInt64(&recent.SpansWaiting))
+	atomic.StoreInt64(&s.QueueLoad, atomic.LoadInt64(&recent.QueueLoad))
 }
 
 func (s *Stats) reset() {
@@ -228,6 +242,9 @@ func (s *Stats) reset() {
 	atomic.StoreInt64(&s.ServicesBytes, 0)
 	atomic.StoreInt64(&s.EventsExtracted, 0)
 	atomic.StoreInt64(&s.EventsSampled, 0)
+	atomic.StoreInt64(&s.ProcessGoRoutines, 0)
+	atomic.StoreInt64(&s.SpansWaiting, 0)
+	atomic.StoreInt64(&s.QueueLoad, 0)
 }
 
 func (s *Stats) isEmpty() bool {
