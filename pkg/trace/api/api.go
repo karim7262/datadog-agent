@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"runtime"
 	"net/http/pprof"
 	"sort"
 	"strings"
@@ -71,6 +72,7 @@ type HTTPReceiver struct {
 
 	maxRequestBodyLength int64
 	debug                bool
+	refuse               int64 // when set to 1 agent will refuse payloads
 
 	wg   sync.WaitGroup // waits for all requests to be processed
 	exit chan struct{}
@@ -225,6 +227,14 @@ func (r *HTTPReceiver) replyTraces(v Version, w http.ResponseWriter) {
 
 // handleTraces knows how to handle a bunch of traces
 func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.Request) {
+	if atomic.LoadInt64(&r.refuse) == 1 {
+		// using too much memory
+		io.Copy(ioutil.Discard, req.Body)
+		w.WriteHeader(http.StatusNotAcceptable)
+		io.WriteString(w, "request rejected; trace-agent is past memory threshold (apm_config.max_memory)")
+		metrics.Gauge("datadog.trace_agent.receiver.refused", 1, []string{"reason:mem"}, 1)
+		return
+	}
 	if !r.PreSampler.Sample(req) {
 		// using too much CPU
 		io.Copy(ioutil.Discard, req.Body)
