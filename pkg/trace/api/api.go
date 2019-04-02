@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"runtime"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -210,6 +211,10 @@ func (r *HTTPReceiver) replyTraces(v Version, w http.ResponseWriter) {
 
 // handleTraces knows how to handle a bunch of traces
 func (r *HTTPReceiver) handleTraces(v Version, w http.ResponseWriter, req *http.Request) {
+	now := time.Now()
+	defer func() {
+		metrics.Gauge("gyg.request.time_ms", float64(time.Since(now)/1000/1000), nil, 1)
+	}()
 	if !r.PreSampler.Sample(req) {
 		io.Copy(ioutil.Discard, req.Body)
 		r.replyTraces(v, w)
@@ -317,11 +322,23 @@ func (r *HTTPReceiver) logStats() {
 
 	t := time.NewTicker(10 * time.Second)
 	defer t.Stop()
+	t2 := time.NewTicker(5 * time.Second)
+	defer t.Stop()
 
 	for {
 		select {
 		case <-r.exit:
 			return
+		case <-t2.C:
+			print("\033[H\033[2J")
+			var ms runtime.MemStats
+			runtime.ReadMemStats(&ms)
+			fmt.Printf("%-20s %d KB\n", "Allocated:", ms.Alloc/1024)
+			fmt.Printf("%-20s %d\n", "Objects in heap:", ms.HeapObjects)
+			fmt.Printf("%-20s %d KB\n", "Idle:", ms.HeapIdle/1024)
+			fmt.Printf("%-20s %d KB\n", "Released:", ms.HeapReleased/1024)
+			fmt.Printf("%-20s %d KB\n", "Stack:", ms.StackInuse/1024)
+			metrics.Gauge("gyg.mem.alloc_bytes", float64(ms.Alloc), nil, 1)
 		case now := <-t.C:
 			metrics.Gauge("datadog.trace_agent.heartbeat", 1, nil, 1)
 
