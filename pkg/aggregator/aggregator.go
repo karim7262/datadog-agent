@@ -582,6 +582,10 @@ func (agg *BufferedAggregator) run() {
 				agg.addEvent(*event)
 			}
 
+			case heartbeats := <- agg.bufferedHeartbeatIn:
+				for range heartbeats{
+				}
+
 		case h := <-agg.hostnameUpdate:
 			aggregatorHostnameUpdate.Add(1)
 			agg.hostname = h
