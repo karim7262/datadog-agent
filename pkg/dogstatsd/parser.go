@@ -105,6 +105,53 @@ func parseTags(rawTags []byte, defaultHostname string) ([]string, string) {
 	return tagsList, host
 }
 
+func parseHeartbeatMessage(message []byte, defaultHostname string) (*metrics.Heartbeat, error) {
+	// _hb|[metadata|...]
+
+	separatorCount := bytes.Count(message, fieldSeparator)
+	if separatorCount < 2 {
+		return nil, fmt.Errorf("invalid field number for %q", message)
+	}
+	rawName, remainder := nextField(message[4:], fieldSeparator)
+
+	if len(rawName) == 0 {
+		return nil, fmt.Errorf("Invalid ServiceCheck message format: empty 'name' or 'status' field")
+	}
+
+	heartbeat := metrics.Heartbeat{
+		Service: string(rawName),
+	}
+
+	// Handle hostname, with a priority to the h: field, then the host:
+	// tag and finally the defaultHostname value
+	var hostFromField string
+	hostFromTags := defaultHostname
+
+	// Metadata
+	for {
+		var rawMetadataField []byte
+		rawMetadataField, remainder = nextField(remainder, fieldSeparator)
+		if rawMetadataField == nil {
+			break
+		}
+
+		if bytes.HasPrefix(rawMetadataField, []byte("h:")) {
+			hostFromField = string(rawMetadataField[2:])
+		} else if bytes.HasPrefix(rawMetadataField, []byte("#")) {
+			_, hostFromTags = parseTags(rawMetadataField[1:], defaultHostname)
+		} else {
+			log.Warnf("unknown metadata type: '%s'", rawMetadataField)
+		}
+	}
+
+	if hostFromField != "" {
+		heartbeat.Host = hostFromField
+	} else {
+		heartbeat.Host = hostFromTags
+	}
+	return &heartbeat, nil
+}
+
 func parseServiceCheckMessage(message []byte, defaultHostname string) (*metrics.ServiceCheck, error) {
 	// _sc|name|status|[metadata|...]
 

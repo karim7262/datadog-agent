@@ -329,7 +329,7 @@ func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.
 			}
 		}
 	}
-	return metricSamples, events, serviceChecks
+	return metricSamples, events, serviceChecks, heartbeats
 }
 
 // Stop stops a running Dogstatsd server
