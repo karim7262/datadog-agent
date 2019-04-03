@@ -9,6 +9,7 @@ import (
 	"expvar"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -178,6 +179,8 @@ type BufferedAggregator struct {
 	TickerChan         <-chan time.Time // For test/benchmark purposes: it allows the flush to be controlled from the outside
 	health             *health.Handle
 	agentName          string // Name of the agent for telemetry metrics (agent / cluster-agent)
+	services		   []string
+	servicesTag		   string
 }
 
 // NewBufferedAggregator instantiates a BufferedAggregator
@@ -204,6 +207,8 @@ func NewBufferedAggregator(s serializer.MetricSerializer, hostname, agentName st
 		hostnameUpdateDone: make(chan struct{}),
 		health:             health.Register("aggregator"),
 		agentName:          agentName,
+		services:			make([]string,0),
+		servicesTag:		"services:",
 	}
 
 	return aggregator
@@ -538,6 +543,23 @@ func (agg *BufferedAggregator) flush(start time.Time) {
 	agg.flushEvents(start)
 }
 
+func (agg *BufferedAggregator) addService(service string){
+	// add the service name to the tag set
+	if agg.services == nil {
+		agg.services = make([]string)
+	}
+
+	// check that this service isn't in the set
+	normService := strings.ToLower(service)
+	for _,svc := range agg.services {
+		if svc == normService {
+			return
+		}
+	}
+
+	agg.services = append(agg.services, normService)
+}
+
 func (agg *BufferedAggregator) run() {
 	if agg.TickerChan == nil {
 		flushPeriod := agg.flushInterval
@@ -582,9 +604,10 @@ func (agg *BufferedAggregator) run() {
 				agg.addEvent(*event)
 			}
 
-			case heartbeats := <- agg.bufferedHeartbeatIn:
-				for range heartbeats{
-				}
+		case heartbeats := <- agg.bufferedHeartbeatIn:
+			for _, hb := range heartbeats{
+				agg.addService(hb.Service)
+			}
 
 		case h := <-agg.hostnameUpdate:
 			aggregatorHostnameUpdate.Add(1)
