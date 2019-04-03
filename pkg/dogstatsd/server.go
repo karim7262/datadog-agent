@@ -229,7 +229,7 @@ func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<
 			heartbeats := make([]*metrics.Heartbeat, 0, len(packets))
 
 			for _, packet := range packets {
-				metricSamples, events, serviceChecks = s.parsePacket(packet, metricSamples, events, serviceChecks)
+				metricSamples, events, serviceChecks, heartbeats = s.parsePacket(packet, metricSamples, events, serviceChecks, heartbeats)
 				s.packetPool.Put(packet)
 			}
 
@@ -249,7 +249,7 @@ func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<
 	}
 }
 
-func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.MetricSample, events []*metrics.Event, serviceChecks []*metrics.ServiceCheck) ([]*metrics.MetricSample, []*metrics.Event, []*metrics.ServiceCheck) {
+func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.MetricSample, events []*metrics.Event, serviceChecks []*metrics.ServiceCheck, heartbeats []*metrics.Heartbeat) ([]*metrics.MetricSample, []*metrics.Event, []*metrics.ServiceCheck, []*metrics.Heartbeat) {
 	extraTags := s.extraTags
 
 	if packet.Origin != listeners.NoOrigin {
@@ -299,6 +299,13 @@ func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.
 			}
 			dogstatsdEventPackets.Add(1)
 			events = append(events, event)
+		} else if bytes.HasPrefix(message, []byte("_hb")){
+			heartbeat, err := parseHeartbeatMessage(message, s.defaultHostname)
+			if err != nil {
+				log.Errorf("dogstatsd: error parsing heartbeat: %s", err)
+				continue
+			}
+			heartbeats = append(heartbeats, heartbeat)
 		} else {
 			sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 			if err != nil {
