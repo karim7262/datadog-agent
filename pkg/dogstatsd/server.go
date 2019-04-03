@@ -75,7 +75,7 @@ type metricStat struct {
 }
 
 // NewServer returns a running Dogstatsd server
-func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) (*Server, error) {
+func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck, heartbeatOut chan<- []*metrics.Heartbeat) (*Server, error) {
 	var stats *util.Stats
 	if config.Datadog.GetBool("dogstatsd_stats_enable") == true {
 		buff := config.Datadog.GetInt("dogstatsd_stats_buffer")
@@ -171,12 +171,12 @@ func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metr
 		}
 	}
 
-	s.handleMessages(metricOut, eventOut, serviceCheckOut)
+	s.handleMessages(metricOut, eventOut, serviceCheckOut, heartbeatOut)
 
 	return s, nil
 }
 
-func (s *Server) handleMessages(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) {
+func (s *Server) handleMessages(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck, heartbeatOut chan<- []*metrics.Heartbeat) {
 	if s.Statistics != nil {
 		go s.Statistics.Process()
 		go s.Statistics.Update(&dogstatsdPacketsLastSec)
@@ -194,7 +194,7 @@ func (s *Server) handleMessages(metricOut chan<- []*metrics.MetricSample, eventO
 	}
 
 	for i := 0; i < workers; i++ {
-		go s.worker(metricOut, eventOut, serviceCheckOut)
+		go s.worker(metricOut, eventOut, serviceCheckOut, heartbeatOut)
 	}
 }
 
@@ -216,7 +216,7 @@ func (s *Server) forwarder(fcon net.Conn, packetsChannel chan listeners.Packets)
 	}
 }
 
-func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) {
+func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck, heartbeatOut chan<- []*metrics.Heartbeat) {
 	for {
 		select {
 		case <-s.stopChan:
@@ -226,6 +226,7 @@ func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<
 			events := make([]*metrics.Event, 0, len(packets))
 			serviceChecks := make([]*metrics.ServiceCheck, 0, len(packets))
 			metricSamples := make([]*metrics.MetricSample, 0, len(packets))
+			heartbeats := make([]*metrics.Heartbeat, 0, len(packets))
 
 			for _, packet := range packets {
 				metricSamples, events, serviceChecks = s.parsePacket(packet, metricSamples, events, serviceChecks)
@@ -240,6 +241,9 @@ func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<
 			}
 			if len(serviceChecks) != 0 {
 				serviceCheckOut <- serviceChecks
+			}
+			if len(heartbeats) != 0 {
+				heartbeatOut <- heartbeats
 			}
 		}
 	}

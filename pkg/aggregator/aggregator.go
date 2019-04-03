@@ -156,6 +156,7 @@ type BufferedAggregator struct {
 	bufferedMetricIn       chan []*metrics.MetricSample
 	bufferedServiceCheckIn chan []*metrics.ServiceCheck
 	bufferedEventIn        chan []*metrics.Event
+	bufferedHeartbeatIn    chan []*metrics.Heartbeat
 
 	metricIn       chan *metrics.MetricSample
 	eventIn        chan metrics.Event
@@ -185,6 +186,7 @@ func NewBufferedAggregator(s serializer.MetricSerializer, hostname, agentName st
 		bufferedMetricIn:       make(chan []*metrics.MetricSample, 100), // TODO make buffer size configurable
 		bufferedServiceCheckIn: make(chan []*metrics.ServiceCheck, 100), // TODO make buffer size configurable
 		bufferedEventIn:        make(chan []*metrics.Event, 100),        // TODO make buffer size configurable
+		bufferedHeartbeatIn:    make(chan []*metrics.Heartbeat, 100),
 
 		metricIn:       make(chan *metrics.MetricSample, 100), // TODO make buffer size configurable
 		serviceCheckIn: make(chan metrics.ServiceCheck, 100),  // TODO make buffer size configurable
@@ -246,8 +248,8 @@ func (agg *BufferedAggregator) GetChannels() (chan *metrics.MetricSample, chan m
 }
 
 // GetBufferedChannels returns a channel which can be subsequently used to send MetricSamples, Event or ServiceCheck
-func (agg *BufferedAggregator) GetBufferedChannels() (chan []*metrics.MetricSample, chan []*metrics.Event, chan []*metrics.ServiceCheck) {
-	return agg.bufferedMetricIn, agg.bufferedEventIn, agg.bufferedServiceCheckIn
+func (agg *BufferedAggregator) GetBufferedChannels() (chan []*metrics.MetricSample, chan []*metrics.Event, chan []*metrics.ServiceCheck, chan []*metrics.Heartbeat) {
+	return agg.bufferedMetricIn, agg.bufferedEventIn, agg.bufferedServiceCheckIn, agg.bufferedHeartbeatIn
 }
 
 // SetHostname sets the hostname that the aggregator uses by default on all the data it sends
