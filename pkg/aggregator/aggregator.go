@@ -299,6 +299,7 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 		if ss.commit {
 			checkSampler.commit(timeNowNano())
 		} else {
+			ss.metricSample.Tags = append(ss.metricSample.Tags, agg.servicesTag)
 			ss.metricSample.Tags = deduplicateTags(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
 		}
@@ -546,7 +547,7 @@ func (agg *BufferedAggregator) flush(start time.Time) {
 func (agg *BufferedAggregator) addService(service string){
 	// add the service name to the tag set
 	if agg.services == nil {
-		agg.services = make([]string)
+		agg.services = make([]string, 0)
 	}
 
 	// check that this service isn't in the set
@@ -558,6 +559,10 @@ func (agg *BufferedAggregator) addService(service string){
 	}
 
 	agg.services = append(agg.services, normService)
+
+	if len(agg.services) > 0 {
+		agg.servicesTag = "service:" + strings.Join(agg.services, ",")
+	}
 }
 
 func (agg *BufferedAggregator) run() {
