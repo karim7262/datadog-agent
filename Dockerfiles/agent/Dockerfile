@@ -62,10 +62,10 @@ ENV DOCKER_DD_AGENT=true \
     # Allow readonlyrootfs
     S6_READ_ONLY_ROOT=1
 
-# Install openjdk-8-jre-headless on jmx flavor
+# Install openjdk-11-jre-headless on jmx flavor
 RUN if [ -n "$WITH_JMX" ]; then apt-get update \
  && mkdir /usr/share/man/man1 \
- && apt-get install --no-install-recommends -y openjdk-8-jre-headless \
+ && apt-get install --no-install-recommends -y openjdk-11-jre-headless \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; fi
 
