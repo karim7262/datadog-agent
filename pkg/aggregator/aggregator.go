@@ -208,7 +208,7 @@ func NewBufferedAggregator(s serializer.MetricSerializer, hostname, agentName st
 		health:             health.Register("aggregator"),
 		agentName:          agentName,
 		services:			make([]string,0),
-		servicesTag:		"services:",
+		servicesTag:		"",
 	}
 
 	return aggregator
@@ -299,8 +299,10 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 		if ss.commit {
 			checkSampler.commit(timeNowNano())
 		} else {
-			log.Infof("Adding serviceTag: ", agg.servicesTag)
-			ss.metricSample.Tags = append(ss.metricSample.Tags, agg.servicesTag)
+			if len(agg.servicesTag) > 0 {
+				log.Infof("Adding serviceTag: ", agg.servicesTag)
+				ss.metricSample.Tags = append(ss.metricSample.Tags, agg.servicesTag)
+			}
 			ss.metricSample.Tags = deduplicateTags(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
 		}
@@ -563,6 +565,8 @@ func (agg *BufferedAggregator) addService(service string){
 
 	if len(agg.services) > 0 {
 		agg.servicesTag = "service:" + strings.Join(agg.services, ",")
+	} else {
+		agg.servicesTag = ""
 	}
 }
 
