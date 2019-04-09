@@ -2,7 +2,9 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -95,6 +97,7 @@ func (sl *rateLimitedListener) Accept() (net.Conn, error) {
 
 // Close wraps the Close method of the underlying tcp listener
 func (sl *rateLimitedListener) Close() error {
+	fmt.Println(string(debug.Stack()))
 	sl.exit <- struct{}{}
 	<-sl.exit
 	return sl.TCPListener.Close()
