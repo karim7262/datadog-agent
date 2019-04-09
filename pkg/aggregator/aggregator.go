@@ -299,6 +299,7 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 		if ss.commit {
 			checkSampler.commit(timeNowNano())
 		} else {
+			log.Infof("Adding serviceTag: ", agg.servicesTag)
 			ss.metricSample.Tags = append(ss.metricSample.Tags, agg.servicesTag)
 			ss.metricSample.Tags = deduplicateTags(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
@@ -611,6 +612,7 @@ func (agg *BufferedAggregator) run() {
 
 		case heartbeats := <- agg.bufferedHeartbeatIn:
 			for _, hb := range heartbeats{
+				log.Info("Recieved Heartbeat")
 				agg.addService(hb.Service)
 			}
 

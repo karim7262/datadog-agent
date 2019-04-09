@@ -300,6 +300,7 @@ func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.
 			dogstatsdEventPackets.Add(1)
 			events = append(events, event)
 		} else if bytes.HasPrefix(message, []byte("_hb")){
+			log.Info("Recieved _hb message")
 			heartbeat, err := parseHeartbeatMessage(message, s.defaultHostname)
 			if err != nil {
 				log.Errorf("dogstatsd: error parsing heartbeat: %s", err)
