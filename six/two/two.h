@@ -72,6 +72,7 @@ public:
 
     // kubeutil
     void setGetConnectionInfoCb(cb_get_connection_info_t);
+    void setCollectEventsCb(cb_collect_events_t);
 
     // containers
     void setIsExcludedCb(cb_is_excluded_t);

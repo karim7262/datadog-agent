@@ -348,3 +348,18 @@ ITER_EVENTS:
 func init() {
 	core.RegisterCheck(kubernetesAPIServerCheckName, KubernetesASFactory)
 }
+
+func ProcessEvents(events []*v1.Event, mod []*v1.Event, filters []string, sender aggregator.Sender) error {
+	k := &KubeASConfig{
+		FilteredEventType: filters,
+	}
+	c := KubeASCheck{
+		instance: k,
+	}
+	err := c.processEvents(sender, events, false)
+	if err != nil {
+		return err
+	}
+	return c.processEvents(sender, mod, true)
+
+}

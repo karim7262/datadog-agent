@@ -36,6 +36,23 @@ func TestGetConnectionInfo(t *testing.T) {
 	}
 }
 
+func TestCollectEvents(t *testing.T) {
+	code := fmt.Sprintf(
+		`
+	d = kubeutil.collect_events()
+	print d
+	with open(r'%s', 'w') as f:
+		f.write("{}".format(d))
+	`, tmpfile.Name())
+	out, err := run(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "'13'" {
+		t.Errorf("Unexpected printed value: '%s'", out)
+	}
+}
+
 func TestGetConnectionInfoNoKubeutil(t *testing.T) {
 	returnNull = true
 	defer func() { returnNull = false }()

@@ -385,6 +385,12 @@ void set_get_connection_info_cb(six_t *six, cb_get_connection_info_t cb)
     AS_TYPE(Six, six)->setGetConnectionInfoCb(cb);
 }
 
+void set_collect_events_cb(six_t *six, cb_collect_events_t cb)
+{
+    AS_TYPE(Six, six)->setCollectEventsCb(cb);
+}
+
+
 /*
  * containers API
  */

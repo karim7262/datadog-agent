@@ -84,6 +84,7 @@ public:
 
     // kubeutil API
     virtual void setGetConnectionInfoCb(cb_get_connection_info_t) = 0;
+    virtual void setCollectEventsCb(cb_collect_events_t) = 0;
 
     // containers API
     virtual void setIsExcludedCb(cb_is_excluded_t) = 0;

@@ -79,6 +79,7 @@ DATADOG_AGENT_SIX_API void set_tags_cb(six_t *, cb_tags_t);
 
 // KUBEUTIL API
 DATADOG_AGENT_SIX_API void set_get_connection_info_cb(six_t *, cb_get_connection_info_t);
+DATADOG_AGENT_SIX_API void set_collect_events_cb(six_t *, cb_collect_events_t);
 
 // CONTAINERS
 DATADOG_AGENT_SIX_API void set_is_excluded_cb(six_t *, cb_is_excluded_t);

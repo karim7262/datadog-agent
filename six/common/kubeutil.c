@@ -9,12 +9,15 @@
 
 // these must be set by the Agent
 static cb_get_connection_info_t cb_get_connection_info = NULL;
+static cb_collect_events_t cb_collect_events = NULL;
 
 // forward declarations
 static PyObject *get_connection_info();
+static PyObject *collect_events();
 
 static PyMethodDef methods[] = {
     { "get_connection_info", (PyCFunction)get_connection_info, METH_NOARGS, "Get kubelet connection information." },
+    { "collect_events", (PyCFunction)collect_events, METH_NOARGS, "runs the event collection"},
     { NULL, NULL } // guards
 };
 
@@ -40,6 +43,32 @@ void Py2_init_kubeutil()
 void _set_get_connection_info_cb(cb_get_connection_info_t cb)
 {
     cb_get_connection_info = cb;
+}
+
+void _set_collect_events_cb(cb_collect_events_t cb)
+{
+    cb_collect_events = cb;
+}
+
+PyObject *collect_events(PyObject *self, PyObject *args)
+{
+    // callback must be set
+    if (cb_collect_events == NULL)
+        Py_RETURN_NONE;
+
+    char *data;
+    cb_collect_events(&data);
+
+    // create a new ref
+    PyObject *res_ver = PyStringFromCString(data);
+
+    // free the memory allocated by the Agent
+    cgo_free(data);
+
+    if (res_ver == NULL ) {
+        return PyDict_New();
+    }
+    return res_ver;
 }
 
 PyObject *get_connection_info(PyObject *self, PyObject *args)

@@ -121,9 +121,11 @@ void initContainersModule(six_t *six) {
 //
 
 void GetKubeletConnectionInfo(char *);
+void CollectEvents(char *);
 
 void initkubeutilModule(six_t *six) {
 	set_get_connection_info_cb(six, GetKubeletConnectionInfo);
+    set_collect_events_cb(six, CollectEvents);
 }
 */
 import "C"

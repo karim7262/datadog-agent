@@ -694,6 +694,11 @@ void Two::setGetConnectionInfoCb(cb_get_connection_info_t cb)
     _set_get_connection_info_cb(cb);
 }
 
+void Two::setCollectEventsCb(cb_collect_events_t cb)
+{
+    _set_collect_events_cb(cb);
+}
+
 void Two::setIsExcludedCb(cb_is_excluded_t cb)
 {
     _set_is_excluded_cb(cb);

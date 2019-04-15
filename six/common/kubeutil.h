@@ -23,6 +23,8 @@ void Py2_init_kubeutil();
 
 void _set_get_connection_info_cb(cb_get_connection_info_t);
 
+void _set_collect_events_cb(cb_collect_events_t);
+
 #ifdef __cplusplus
 }
 #endif

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
@@ -367,4 +367,13 @@ func convertmetadataMapperBundleToAPI(input *metadataMapperBundle) *apiv1.Metada
 		output.Services[key] = val
 	}
 	return output
+}
+
+func CollectEvents(eventToken string) ([]*v1.Event, []*v1.Event, string, error) {
+	cl, err := GetAPIClient()
+	if err != nil {
+		log.Warnf("Could not connect to apiserver: %s", err)
+		return nil, nil, "0", err
+	}
+	return cl.LatestEvents(eventToken, 1*time.Minute)
 }

@@ -20,8 +20,11 @@ import (
 //
 // extern void getConnectionInfo(char **);
 //
+// extern void collectEvents(char **);
+//
 // static void initKubeUtilTests(six_t *six) {
 //    set_get_connection_info_cb(six, getConnectionInfo);
+//    set_collect_events_cb(six, collectEvents);
 // }
 import "C"
 
@@ -98,6 +101,19 @@ func getConnectionInfo(in **C.char) {
 		"FooKey": "FooValue",
 		"BarKey": "BarValue",
 	}
+	retval, _ := json.Marshal(h)
+
+	*in = C.CString(string(retval))
+}
+
+//export collectEvents
+func collectEvents(in **C.char) {
+	if returnNull {
+		return
+	}
+
+	h := "13"
+
 	retval, _ := json.Marshal(h)
 
 	*in = C.CString(string(retval))

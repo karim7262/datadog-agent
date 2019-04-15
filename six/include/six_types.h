@@ -112,6 +112,8 @@ typedef char **(*cb_tags_t)(char *, int);
 //
 // (json_result)
 typedef void (*cb_get_connection_info_t)(char **);
+// (res_ver)
+typedef void (*cb_collect_events_t)(char **);
 
 // containers
 //
