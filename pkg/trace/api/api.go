@@ -10,6 +10,8 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -96,6 +98,14 @@ func NewHTTPReceiver(
 
 // Start starts doing the HTTP server and is ready to receive traces
 func (r *HTTPReceiver) Start() {
+	seriesURL, _ := url.Parse("https://api.datadoghq.com/api/v1/series")
+	seriesProxy := httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL = seriesURL
+			req.URL.RawQuery = "api_key=" + r.conf.Endpoints[0].APIKey
+		},
+	}
+
 	// FIXME[1.x]: remove all those legacy endpoints + code that goes with it
 	http.HandleFunc("/spans", r.httpHandleWithVersion(v01, r.handleTraces))
 	http.HandleFunc("/services", r.httpHandleWithVersion(v01, r.handleServices))
@@ -109,6 +119,7 @@ func (r *HTTPReceiver) Start() {
 	// current collector API
 	http.HandleFunc("/v0.4/traces", r.httpHandleWithVersion(v04, r.handleTraces))
 	http.HandleFunc("/v0.4/services", r.httpHandleWithVersion(v04, r.handleServices))
+	http.Handle("/v0.4/series", &seriesProxy)
 
 	// expvar implicitly publishes "/debug/vars" on the same port
 	addr := fmt.Sprintf("%s:%d", r.conf.ReceiverHost, r.conf.ReceiverPort)
