@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"runtime"
+	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
 	"sync/atomic"
 	"time"
 
@@ -174,6 +175,11 @@ func (a *Agent) loop() {
 // Process is the default work unit that receives a trace, transforms it and
 // passes it downstream.
 func (a *Agent) Process(t pb.Trace) {
+	now := time.Now()
+	defer func() {
+		metrics.Timing("datadog.trace_agent.receiver.process_single_trace_ms", time.Since(now), nil, 1)
+	}()
+
 	if len(t) == 0 {
 		log.Debugf("Skipping received empty trace")
 		return
@@ -251,9 +257,12 @@ func (a *Agent) Process(t pb.Trace) {
 		pt.Env = tenv
 	}
 
+	now = time.Now()
+
 	go func() {
 		defer watchdog.LogOnPanic()
 		a.ServiceExtractor.Process(pt.WeightedTrace)
+		metrics.Timing("datadog.trace_agent.receiver.process.service_extractor.time", time.Since(now), nil, 1)
 	}()
 
 	go func(pt ProcessedTrace) {
@@ -264,6 +273,7 @@ func (a *Agent) Process(t pb.Trace) {
 			Sublayers: pt.Sublayers,
 			Env:       pt.Env,
 		})
+		metrics.Timing("datadog.trace_agent.receiver.process.concentrator_add.time", time.Since(now), nil, 1)
 	}(pt)
 
 	// Don't go through sampling for < 0 priority traces
@@ -285,6 +295,7 @@ func (a *Agent) Process(t pb.Trace) {
 		}
 
 		// NOTE: Events can be processed on non-sampled traces.
+
 		events, numExtracted := a.EventProcessor.Process(pt.Root, pt.Trace)
 		tracePkg.Events = events
 
@@ -294,6 +305,7 @@ func (a *Agent) Process(t pb.Trace) {
 		if !tracePkg.Empty() {
 			a.tracePkgChan <- &tracePkg
 		}
+		metrics.Timing("datadog.trace_agent.receiver.process.trace_pkg_chan.time", time.Since(now), nil, 1)
 	}(pt)
 }
 

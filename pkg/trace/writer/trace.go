@@ -201,6 +201,11 @@ func (w *TraceWriter) handleSampledTrace(pkg *TracePackage) {
 }
 
 func (w *TraceWriter) flush() {
+	now := time.Now()
+	defer func() {
+		metrics.Timing("datadog.trace_agent.writer.flush.time", time.Since(now), nil, 1)
+	}()
+
 	numTraces := len(w.traces)
 	numEvents := len(w.events)
 
