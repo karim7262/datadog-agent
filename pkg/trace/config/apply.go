@@ -417,7 +417,9 @@ func readQueueablePayloadSenderConfigYaml(yc queueablePayloadSender) writerconfi
 		c.MaxQueuedPayloads = yc.MaxQueuedPayloads
 	}
 
-	if yc.MaxInflightPayloads != 0 {
+	if yc.MaxInflightPayloads > 0 {
+		// since we're using this as a semaphore it must always be a buffered channel with size greater than zero
+		// if it's unbuffered then there can never be any inflight payloads and we can't send anything
 		c.MaxInflightPayloads = yc.MaxInflightPayloads
 	}
 

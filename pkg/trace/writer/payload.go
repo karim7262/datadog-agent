@@ -211,7 +211,9 @@ func (s *queuableSender) isQueueing() bool {
 // sendOrQueue sends the provided payload or queues it if this sender is currently queueing payloads.
 func (s *queuableSender) sendOrQueue(payload *payload) {
 	if s.isQueueing() {
-		s.enqueue(payload)
+		if err := s.enqueue(payload); err != nil {
+			s.notifyError(payload, err, sendStats{})
+		}
 		return
 	}
 
@@ -221,7 +223,9 @@ func (s *queuableSender) sendOrQueue(payload *payload) {
 			retryNum, delay := s.backoffTimer.ScheduleRetry(err)
 			log.Debugf("Got retriable error. Starting a queue. delay=%s, err=%v", delay, err)
 			s.notifyRetry(payload, err, delay, retryNum)
-			s.enqueue(payload)
+			if err := s.enqueue(payload); err != nil {
+				s.notifyError(payload, err, stats)
+			}
 		} else {
 			log.Debugf("Error while sending or queueing payload. err=%v", err)
 			s.notifyError(payload, err, stats)
