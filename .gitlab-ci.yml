@@ -385,7 +385,7 @@ agent_suse-x64:
   allow_failure: true  # FIXME: allow to fail until we fix Six build on the builder image
 
   stage: package_build
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/suse_x64:v1260773-d8bf437
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/suse_x64:v1261107-1b586a2
   tags: [ "runner:main", "size:2xlarge" ]
   variables:
     AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
