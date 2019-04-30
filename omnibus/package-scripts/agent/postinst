@@ -20,6 +20,11 @@ if [ -n "$DOCKER_DD_AGENT" ]; then
     exit 0
 fi
 
+no_start=
+if [ -n "$DD_INSTALL_ONLY" ]; then
+    no_start=true
+fi
+
 # Linux installation
 if [ "$DISTRIBUTION" != "Darwin" ]; then
     if [ -f "/etc/debian_version" ] || [ "$DISTRIBUTION" = "Debian" ] || [ "$DISTRIBUTION" = "Ubuntu" ]; then
@@ -90,9 +95,10 @@ if [ "$DISTRIBUTION" != "Darwin" ]; then
             echo "[ WARNING ]\tCannot detect a supported init system. The datadog-agent package only provides service files for systemd, upstart and sysvinit."
         fi
 
-        if [ -n "$DD_INSTALL_ONLY" ]; then
+        if [ $no_start ]; then
             # The env var to prevent the agent from starting exists, we are not starting the agent
             echo "DD_INSTALL_ONLY enabled, not starting the agent"
+            exit 0
         # TODO: Use a configcheck command on the agent to determine if it's safe to restart,
         # and avoid restarting when a check conf is invalid
         elif [ -f "$CONFIG_DIR/datadog.yaml" ]; then
