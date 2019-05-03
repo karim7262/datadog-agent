@@ -3,9 +3,7 @@ package writer
 import (
 	"bytes"
 	"compress/gzip"
-	"runtime"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -68,7 +66,6 @@ type TraceWriter struct {
 
 	sender payloadSender
 	exit   chan struct{}
-	flushMux               sync.Mutex
 }
 
 // NewTraceWriter returns a new writer for traces.
@@ -90,7 +87,6 @@ func NewTraceWriter(conf *config.AgentConfig, in <-chan *TracePackage) *TraceWri
 
 		sender: sender,
 		exit:   make(chan struct{}),
-
 	}
 }
 
@@ -142,16 +138,10 @@ func (w *TraceWriter) Run() {
 
 	log.Debug("Starting trace writer")
 
-	n := 1
-	if config.HasFeature("parallel_process") {
-		n = runtime.NumCPU()
-	}
-	for i := 0; i < n; i++ {
-		go w.work()
-	}
-
 	for {
 		select {
+		case sampledTrace := <-w.in:
+			w.handleSampledTrace(sampledTrace)
 		case <-flushTicker.C:
 			log.Debug("Flushing current traces")
 			w.flush()
@@ -166,22 +156,6 @@ func (w *TraceWriter) Run() {
 		}
 	}
 }
-
-func (w *TraceWriter) work() {
-	for {
-		select {
-		case sampledTrace := <-w.in:
-			w.handleSampledTrace(sampledTrace)
-		case <-w.exit:
-			log.Info("Exiting trace writer, flushing all remaining traces")
-			w.flush()
-			w.updateInfo()
-			log.Info("Flushed. Exiting")
-			return
-		}
-	}
-}
-
 
 // Stop stops the main Run loop.
 func (w *TraceWriter) Stop() {
@@ -227,21 +201,18 @@ func (w *TraceWriter) handleSampledTrace(pkg *TracePackage) {
 }
 
 func (w *TraceWriter) flush() {
-	w.flushMux.Lock()
-	defer w.flushMux.Unlock()
+	now := time.Now()
+	defer func() {
+		metrics.Timing("datadog.trace_agent.writer.flush.time", time.Since(now), nil, 1)
+	}()
 
 	numTraces := len(w.traces)
 	numEvents := len(w.events)
 
 	if numTraces == 0 && numEvents == 0 {
-		// nothing to flush, or another goroutine beat us to it
+		// nothing to flush
 		return
 	}
-
-	now := time.Now()
-	defer func() {
-		metrics.Timing("datadog.trace_agent.writer.flush.time", time.Since(now), nil, 1)
-	}()
 
 	atomic.AddInt64(&w.stats.Traces, int64(numTraces))
 	atomic.AddInt64(&w.stats.Events, int64(numEvents))

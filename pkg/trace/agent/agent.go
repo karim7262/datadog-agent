@@ -147,6 +147,7 @@ func (a *Agent) work() {
 			a.Process(t)
 		}
 	}
+
 }
 
 func (a *Agent) loop() {
