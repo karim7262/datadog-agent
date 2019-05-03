@@ -261,10 +261,8 @@ func (s *queuableSender) flushQueue() error {
 	for e := s.queuedPayloads.Front(); e != nil; e = next {
 		payload := e.Value.(*payload)
 
-		var err error
-		var stats sendStats
-
-		if stats, err = s.doSend(payload); err != nil {
+		stats, err := s.doSend(payload)
+		if err != nil {
 			if _, ok := err.(*retriableError); ok {
 				// If send failed due to a retriable error, retry flush later
 				retryNum, delay := s.backoffTimer.ScheduleRetry(err)

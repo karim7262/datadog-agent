@@ -3,7 +3,9 @@ package writer
 import (
 	"bytes"
 	"compress/gzip"
+	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -55,6 +57,7 @@ type TraceWriter struct {
 	env      string
 	conf     writerconfig.TraceWriterConfig
 	in       <-chan *TracePackage
+	out      chan *pb.TracePayload
 
 	traces        []*pb.APITrace
 	events        []*pb.Span
@@ -80,7 +83,8 @@ func NewTraceWriter(conf *config.AgentConfig, in <-chan *TracePackage) *TraceWri
 		traces: []*pb.APITrace{},
 		events: []*pb.Span{},
 
-		in: in,
+		in:  in,
+		out: make(chan *pb.TracePayload, runtime.NumCPU()),
 
 		sender: sender,
 		exit:   make(chan struct{}),
@@ -133,7 +137,24 @@ func (w *TraceWriter) Run() {
 		}
 	}()
 
-	log.Debug("Starting trace writer")
+	log.Debug("starting trace writer")
+
+	stopWorkers := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := 0; i < cap(w.out); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case p := <-w.out:
+					w.sendPayload(p)
+				case <-stopWorkers:
+					return
+				}
+			}
+		}()
+	}
 
 	for {
 		select {
@@ -147,6 +168,8 @@ func (w *TraceWriter) Run() {
 		case <-w.exit:
 			log.Info("Exiting trace writer, flushing all remaining traces")
 			w.flush()
+			close(stopWorkers)
+			wg.Wait()
 			w.updateInfo()
 			log.Info("Flushed. Exiting")
 			return
@@ -183,7 +206,6 @@ func (w *TraceWriter) handleSampledTrace(pkg *TracePackage) {
 		log.Tracef("Handling new APM events: %v", pkg.Events)
 		w.events = append(w.events, pkg.Events...)
 	}
-
 	w.bytesInBuffer += size
 	w.spansInBuffer += len(pkg.Trace) + len(pkg.Events)
 
@@ -210,14 +232,18 @@ func (w *TraceWriter) flush() {
 	atomic.AddInt64(&w.stats.Events, int64(numEvents))
 	atomic.AddInt64(&w.stats.Spans, int64(w.spansInBuffer))
 
-	tracePayload := pb.TracePayload{
+	w.out <- &pb.TracePayload{
 		HostName:     w.hostName,
 		Env:          w.env,
 		Traces:       w.traces,
 		Transactions: w.events,
 	}
 
-	serialized, err := proto.Marshal(&tracePayload)
+	w.resetBuffer()
+}
+
+func (w *TraceWriter) sendPayload(tracePayload *pb.TracePayload) {
+	serialized, err := proto.Marshal(tracePayload)
 	if err != nil {
 		log.Errorf("Failed to serialize trace payload, data got dropped, err: %s", err)
 		w.resetBuffer()
@@ -258,7 +284,6 @@ func (w *TraceWriter) flush() {
 
 	log.Debugf("Flushing traces=%v events=%v size=%d estimated=%d", len(w.traces), len(w.events), len(serialized), w.bytesInBuffer)
 	w.sender.Send(payload)
-	w.resetBuffer()
 }
 
 func (w *TraceWriter) resetBuffer() {
