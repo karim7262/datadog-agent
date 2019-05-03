@@ -142,22 +142,25 @@ func normalizeTrace(t pb.Trace) error {
 
 	spanIDs := make(map[uint64]struct{})
 	traceID := t[0].TraceID
+	makeErr := func(s *pb.Span, err error) error {
+		return fmt.Errorf("span(%d:%q:%q:%q) failed normalization: %v", s.TraceID, s.Service, s.Resource, s.Name, err)
+	}
 
 	for _, span := range t {
 		if span.TraceID == 0 {
-			return errors.New("empty `TraceID`")
+			return makeErr(span, errors.New("empty `TraceID`"))
 		}
 		if span.SpanID == 0 {
-			return errors.New("empty `SpanID`")
+			return makeErr(span, errors.New("empty `SpanID`"))
 		}
 		if _, ok := spanIDs[span.SpanID]; ok {
-			return fmt.Errorf("duplicate `SpanID` %v (span %v)", span.SpanID, span)
+			return makeErr(span, errors.New("duplicate `SpanID`"))
 		}
 		if span.TraceID != traceID {
-			return fmt.Errorf("foreign span in trace (Name:TraceID) %s:%x != %s:%x", t[0].Name, t[0].TraceID, span.Name, span.TraceID)
+			return makeErr(span, fmt.Errorf("not from trace %d", traceID))
 		}
 		if err := normalize(span); err != nil {
-			return fmt.Errorf("invalid span (SpanID:%d): %v", span.SpanID, err)
+			return makeErr(span, err)
 		}
 		spanIDs[span.SpanID] = struct{}{}
 	}
