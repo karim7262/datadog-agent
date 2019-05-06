@@ -35,7 +35,7 @@ var (
 func normalize(s *pb.Span) error {
 	// Service
 	if s.Service == "" {
-		return errors.New("empty `Service`")
+		s.Service = "default-service"
 	}
 	if len(s.Service) > MaxServiceLen {
 		return fmt.Errorf("`Service` too long (%d chars max): %s", MaxServiceLen, s.Service)
