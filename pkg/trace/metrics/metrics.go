@@ -16,6 +16,7 @@ type StatsClient interface {
 	Count(name string, value int64, tags []string, rate float64) error
 	Histogram(name string, value float64, tags []string, rate float64) error
 	Timing(name string, value time.Duration, tags []string, rate float64) error
+	Flush() error
 }
 
 func newClient() StatsClient {
@@ -75,4 +76,8 @@ func Configure(conf *config.AgentConfig, tags []string) error {
 	client.Tags = tags
 	Client = client
 	return nil
+}
+
+func Flush() error {
+	return Client.Flush()
 }

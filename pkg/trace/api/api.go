@@ -374,6 +374,11 @@ func (r *HTTPReceiver) loop() {
 	}
 }
 
+// dieFunc is used by watchdog to kill the agent; replaced in tests.
+var dieFunc = func(fmt string, args ...interface{}) {
+	osutil.Exitf(fmt, args...)
+}
+
 func (r *HTTPReceiver) watchdog(now time.Time) {
 	wi := watchdog.Info{
 		Mem: watchdog.Mem(),
@@ -409,6 +414,15 @@ func (r *HTTPReceiver) watchdog(now time.Time) {
 	metrics.Gauge("datadog.trace_agent.heap_alloc", float64(wi.Mem.Alloc), nil, 1)
 	metrics.Gauge("datadog.trace_agent.cpu_percent", wi.CPU.UserAvg*100, nil, 1)
 	metrics.Gauge("datadog.trace_agent.presampler_rate", stats.Rate, nil, 1)
+
+	// safety kill switch to protect against any sort of accidental unconstrained memory growth
+	hardSafetyLimit := r.conf.MaxMemory * 1.5
+	if float64(wi.Mem.Alloc) > hardSafetyLimit {
+		metrics.Count("datadog.trace_agent.watchdog.memory_safety_suicide", 1, nil, 1)
+		metrics.Flush()
+		log.Flush()
+		dieFunc("killing agent - exceeded hard memory limit (current=%d, max=%d)", wi.Mem.Alloc, uint64(hardSafetyLimit))
+	}
 }
 
 // Languages returns the list of the languages used in the traces the agent receives.
