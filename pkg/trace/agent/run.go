@@ -46,6 +46,8 @@ func Run(ctx context.Context) {
 		return
 	}
 
+	runtime.SetBlockProfileRate(10)
+
 	if err := setupLogger(cfg); err != nil {
 		osutil.Exitf("cannot create logger: %v", err)
 	}
