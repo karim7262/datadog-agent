@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -179,6 +180,11 @@ func (a *Agent) Process(t pb.Trace) {
 		return
 	}
 
+	now := time.Now()
+	defer func() {
+		metrics.Timing("datadog.trace_agent.receiver.process_single_trace_ms", time.Since(now), nil, 1)
+	}()
+
 	// Root span is used to carry some trace-level metadata, such as sampling rate and priority.
 	root := traceutil.GetRoot(t)
 
@@ -251,9 +257,12 @@ func (a *Agent) Process(t pb.Trace) {
 		pt.Env = tenv
 	}
 
+	now = time.Now()
+
 	go func() {
 		defer watchdog.LogOnPanic()
 		a.ServiceExtractor.Process(pt.WeightedTrace)
+		metrics.Timing("datadog.trace_agent.receiver.process.service_extractor.time", time.Since(now), nil, 1)
 	}()
 
 	go func(pt ProcessedTrace) {
@@ -264,6 +273,7 @@ func (a *Agent) Process(t pb.Trace) {
 			Sublayers: pt.Sublayers,
 			Env:       pt.Env,
 		})
+		metrics.Timing("datadog.trace_agent.receiver.process.concentrator_add.time", time.Since(now), nil, 1)
 	}(pt)
 
 	// Don't go through sampling for < 0 priority traces
@@ -294,6 +304,7 @@ func (a *Agent) Process(t pb.Trace) {
 		if !tracePkg.Empty() {
 			a.tracePkgChan <- &tracePkg
 		}
+		metrics.Timing("datadog.trace_agent.receiver.process.trace_pkg_chan.time", time.Since(now), nil, 1)
 	}(pt)
 }
 

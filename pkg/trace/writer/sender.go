@@ -3,6 +3,7 @@ package writer
 import (
 	"container/list"
 	"fmt"
+	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
 	"sync"
 	"time"
 
@@ -88,6 +89,7 @@ type queuableSender struct {
 	in        chan *payload
 	monitorCh chan monitorEvent
 	endpoint  endpoint
+	statsTags []string
 
 	exit chan struct{}
 }
@@ -102,6 +104,7 @@ func newSender(e endpoint, conf writerconfig.QueuablePayloadSenderConf) *queuabl
 		in:             make(chan *payload, conf.InChannelSize),
 		monitorCh:      make(chan monitorEvent),
 		endpoint:       e,
+		statsTags: 		[]string{fmt.Sprintf("endpoint:%s", e)},
 		exit:           make(chan struct{}),
 	}
 }
@@ -134,6 +137,11 @@ func (s *queuableSender) doSend(payload *payload) (sendStats, error) {
 	if payload == nil {
 		return sendStats{}, nil
 	}
+
+	now := time.Now()
+	defer func() {
+		metrics.Timing("datadog.trace_agent.sender.send.time", time.Since(now), s.statsTags, 1)
+	}()
 
 	startFlush := time.Now()
 	err := s.endpoint.write(payload)

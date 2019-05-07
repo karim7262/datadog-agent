@@ -18,9 +18,21 @@ type StatsClient interface {
 	Timing(name string, value time.Duration, tags []string, rate float64) error
 }
 
+func newClient() StatsClient {
+	client, err := statsd.New("127.0.0.1:8125",
+		statsd.Buffered(), // enable buffering
+		statsd.WithMaxMessagesPerPayload(16), // sets the maximum number of messages in a single datagram
+	)
+	if err != nil {
+		return (*statsd.Client)(nil)
+	}
+	return client
+}
+
 // Client is a global Statsd client. When a client is configured via Configure,
 // that becomes the new global Statsd client in the package.
-var Client StatsClient = (*statsd.Client)(nil)
+var Client StatsClient = newClient()
+
 
 // Gauge calls Gauge on the global Client, if set.
 func Gauge(name string, value float64, tags []string, rate float64) error {
