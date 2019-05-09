@@ -3,8 +3,8 @@
 		"INTEGRATIONS_CORE_VERSION": "master",
 		"TRACE_AGENT_VERSION": "master",
 		"PROCESS_AGENT_VERSION": "master",
-		"OMNIBUS_SOFTWARE_VERSION": "master",
-		"OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
+		"OMNIBUS_SOFTWARE_VERSION": "olivielpeau/omnibus-target-filename",
+		"OMNIBUS_RUBY_VERSION": "olivielpeau/log-net-fetcher",
 		"JMXFETCH_VERSION": "0.27.0",
 		"JMXFETCH_HASH": "52aabf81abb4e42adcb28164b263f01b293dda1c686f845d133ebcd128f8b2ee"
 	},
