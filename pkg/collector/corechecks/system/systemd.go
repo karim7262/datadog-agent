@@ -6,10 +6,14 @@
 package system
 
 import (
+	"fmt"
+
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
-	core "github.com/DataDog/datadog-agent/pkg/collector/corechecks"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/coreos/go-systemd/dbus"
+
+	core "github.com/DataDog/datadog-agent/pkg/collector/corechecks"
 )
 
 const systemdCheckName = "systemd"
@@ -26,14 +30,67 @@ func (c *SystemdCheck) Run() error {
 		return err
 	}
 
-	t, err := uptime()
+	conn, err := dbus.New()
 	if err != nil {
-		log.Errorf("system.SystemdCheck: could not retrieve uptime: %s", err)
-		return err
+		log.Error("New Connection: ", err)
+		return nil
 	}
-	log.Info("system.SystemdCheck: TEST")
+	defer conn.Close()
 
-	sender.Gauge("system.uptime", float64(t), "", nil)
+	units, err := conn.ListUnits()
+
+	activeUnitCounter := 0
+	allUnitCounter := 0
+	for _, unit := range units {
+		log.Debugf("[unit] %s: ActiveState=%s, SubState=%s", unit.Name, unit.ActiveState, unit.SubState)
+		if unit.ActiveState == "active" {
+			activeUnitCounter++
+		}
+		allUnitCounter++
+	}
+	sender.Gauge("test.systemd.unit.active.count", float64(activeUnitCounter), "", nil)
+	sender.Gauge("test.systemd.unit.all.count", float64(allUnitCounter), "", nil)
+
+	for _, unit := range units {
+		log.Debugf("[unit] %s: ActiveState=%s, SubState=%s", unit.Name, unit.ActiveState, unit.SubState)
+		if unit.ActiveState == "active" {
+
+			tags := []string{fmt.Sprintf("unit_name:%s", unit.Name)}
+
+			cpuProperty, err := conn.GetServiceProperty(unit.Name, "CPUUsageNSec")
+			if err != nil {
+				log.Error("New Connection: ", err)
+			} else {
+				sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
+			}
+			memoryroperty, err := conn.GetServiceProperty(unit.Name, "MemoryCurrent")
+			if err != nil {
+				log.Error("New Connection: ", err)
+			} else {
+				sender.Gauge("test.systemd.unit.memory", float64(memoryroperty.Value.Value().(uint64)), "", tags)
+			}
+			tasksProperty, err := conn.GetServiceProperty(unit.Name, "TasksCurrent")
+			if err != nil {
+				log.Error("New Connection: ", err)
+			} else {
+				sender.Gauge("test.systemd.unit.tasks", float64(tasksProperty.Value.Value().(uint64)), "", tags)
+			}
+		}
+	}
+
+	fmt.Println("==============\n")
+
+	p, err := conn.GetUnitProperties("sshd.service")
+
+	if err != nil {
+		fmt.Println("GetUnitProperties: ", err)
+		return nil
+	}
+
+	for k, v := range p {
+		fmt.Printf("%50v >>> %v\n", k, v)
+	}
+
 	sender.Commit()
 
 	return nil
