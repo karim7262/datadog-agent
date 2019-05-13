@@ -40,6 +40,6 @@ build: off
 
 test_script:
   - cd %APPVEYOR_BUILD_FOLDER%
-  - inv -e deps
+  - inv -e deps --verbose
   - inv -e test --coverage --race --profile --fail-on-fmt
   - codecov -f profile.cov -F windows
