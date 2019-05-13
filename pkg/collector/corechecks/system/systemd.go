@@ -7,6 +7,7 @@ package system
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
@@ -25,6 +26,7 @@ type SystemdCheck struct {
 
 // Run executes the check
 func (c *SystemdCheck) Run() error {
+
 	sender, err := aggregator.GetSender(c.ID())
 	if err != nil {
 		return err
@@ -91,7 +93,11 @@ func (c *SystemdCheck) Run() error {
 		fmt.Printf("%50v >>> %v\n", k, v)
 	}
 
+	// sandboxEvent()
+
 	sender.Commit()
+
+	sandboxEvent()
 
 	return nil
 }
@@ -104,4 +110,62 @@ func systemdFactory() check.Check {
 
 func init() {
 	core.RegisterCheck(systemdCheckName, systemdFactory)
+}
+
+func sandboxEvent() {
+	target := "graphical.target"
+
+	log.Info("==> Sandbox sandboxEvent")
+
+	conn, err := dbus.New()
+
+	if err != nil {
+		log.Error("New Err: ", err)
+	}
+
+	err = conn.Subscribe()
+	if err != nil {
+		log.Error("Subscribe Err: ", err)
+	}
+
+	// err = conn.Unsubscribe()
+	// if err != nil {
+	// 	log.Error("Unsubscribe Err: ", err)
+	// }
+
+	evChan, errChan := conn.SubscribeUnits(time.Second)
+
+	// reschan := make(chan string)
+	// _, err = conn.StartUnit(target, "replace", reschan)
+	// if err != nil {
+	// 	log.Error("StartUnit Err: ", err)
+	// }
+
+	// job := <-reschan
+	// if job != "done" {
+	// 	log.Error("job != done: ")
+	// }
+
+	for {
+		select {
+		case changes := <-evChan:
+			tCh, ok := changes[target]
+
+			// Just continue until we see our event.
+			if !ok {
+				continue
+			}
+
+			log.Info("==> New ActiveState:", tCh.ActiveState)
+
+			if tCh.ActiveState == "active" && tCh.Name == target {
+				log.Error("Reached timeout")
+			}
+		case err = <-errChan:
+			log.Error("change err: ", err)
+		case <-time.After(10 * time.Second):
+			log.Error("Reached timeout")
+		}
+	}
+
 }
