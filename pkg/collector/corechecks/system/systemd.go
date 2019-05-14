@@ -80,7 +80,7 @@ func (c *SystemdCheck) Run() error {
 		}
 	}
 
-	fmt.Println("==============\n")
+	fmt.Println("==============")
 
 	p, err := conn.GetUnitProperties("sshd.service")
 
