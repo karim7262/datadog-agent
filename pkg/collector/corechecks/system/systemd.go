@@ -34,12 +34,16 @@ func (c *SystemdCheck) Run() error {
 
 	conn, err := dbus.New()
 	if err != nil {
-		log.Error("New Connection: ", err)
-		return nil
+		log.Error("New Connection Err: ", err)
+		return err
 	}
 	defer conn.Close()
 
 	units, err := conn.ListUnits()
+	if err != nil {
+		fmt.Println("ListUnits Err: ", err)
+		return err
+	}
 
 	activeUnitCounter := 0
 	allUnitCounter := 0
@@ -86,7 +90,7 @@ func (c *SystemdCheck) Run() error {
 
 	if err != nil {
 		fmt.Println("GetUnitProperties: ", err)
-		return nil
+		return err
 	}
 
 	for k, v := range p {
@@ -121,11 +125,13 @@ func sandboxEvent() {
 
 	if err != nil {
 		log.Error("New Err: ", err)
+		return
 	}
 
 	err = conn.Subscribe()
 	if err != nil {
 		log.Error("Subscribe Err: ", err)
+		return
 	}
 
 	// err = conn.Unsubscribe()
