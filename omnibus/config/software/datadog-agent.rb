@@ -35,10 +35,10 @@ build do
         'PATH' => "#{gopath.to_path}/bin:#{ENV['PATH']}",
         "Python2_ROOT_DIR" => "#{install_dir}/embedded",
         "Python3_ROOT_DIR" => "#{install_dir}/embedded",
-        "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
+        "LDFLAGS" => "-Wl,-rpath,'$ORIGIN/../../embedded/lib' -L#{install_dir}/embedded/lib",
     }
   end
-  
+
   # include embedded path (mostly for `pkg-config` binary)
   env = with_embedded_path(env)
 

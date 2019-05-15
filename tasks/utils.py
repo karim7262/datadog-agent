@@ -77,7 +77,7 @@ def get_build_flags(ctx, static=False, prefix=None, embedded_path=None,
     if static:
         ldflags += "-s -w -linkmode=external '-extldflags=-static' "
     else:
-        ldflags += "-r {}/lib ".format(embedded_path)
+        ldflags += "-r '{}/lib' ".format("$ORIGIN/../../embedded")
 
     if os.environ.get("DELVE"):
         gcflags = "-N -l"
