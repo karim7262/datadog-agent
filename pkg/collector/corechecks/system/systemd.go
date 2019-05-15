@@ -46,16 +46,14 @@ func (c *SystemdCheck) Run() error {
 	}
 
 	activeUnitCounter := 0
-	allUnitCounter := 0
 	for _, unit := range units {
 		log.Debugf("[unit] %s: ActiveState=%s, SubState=%s", unit.Name, unit.ActiveState, unit.SubState)
 		if unit.ActiveState == "active" {
 			activeUnitCounter++
 		}
-		allUnitCounter++
 	}
+
 	sender.Gauge("test.systemd.unit.active.count", float64(activeUnitCounter), "", nil)
-	sender.Gauge("test.systemd.unit.all.count", float64(allUnitCounter), "", nil)
 
 	for _, unit := range units {
 		log.Debugf("[unit] %s: ActiveState=%s, SubState=%s", unit.Name, unit.ActiveState, unit.SubState)
@@ -69,39 +67,10 @@ func (c *SystemdCheck) Run() error {
 			} else {
 				sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
 			}
-			memoryroperty, err := conn.GetServiceProperty(unit.Name, "MemoryCurrent")
-			if err != nil {
-				log.Error("New Connection: ", err)
-			} else {
-				sender.Gauge("test.systemd.unit.memory", float64(memoryroperty.Value.Value().(uint64)), "", tags)
-			}
-			tasksProperty, err := conn.GetServiceProperty(unit.Name, "TasksCurrent")
-			if err != nil {
-				log.Error("New Connection: ", err)
-			} else {
-				sender.Gauge("test.systemd.unit.tasks", float64(tasksProperty.Value.Value().(uint64)), "", tags)
-			}
 		}
 	}
 
-	fmt.Println("==============")
-
-	p, err := conn.GetUnitProperties("sshd.service")
-
-	if err != nil {
-		fmt.Println("GetUnitProperties: ", err)
-		return err
-	}
-
-	for k, v := range p {
-		fmt.Printf("%50v >>> %v\n", k, v)
-	}
-
-	// sandboxEvent()
-
 	sender.Commit()
-
-	sandboxEvent()
 
 	return nil
 }
@@ -116,6 +85,9 @@ func init() {
 	core.RegisterCheck(systemdCheckName, systemdFactory)
 }
 
+// ==============================================
+// May be used for for Service Checks and Events
+// ==============================================
 func sandboxEvent() {
 	target := "graphical.target"
 
@@ -134,23 +106,7 @@ func sandboxEvent() {
 		return
 	}
 
-	// err = conn.Unsubscribe()
-	// if err != nil {
-	// 	log.Error("Unsubscribe Err: ", err)
-	// }
-
 	evChan, errChan := conn.SubscribeUnits(time.Second)
-
-	// reschan := make(chan string)
-	// _, err = conn.StartUnit(target, "replace", reschan)
-	// if err != nil {
-	// 	log.Error("StartUnit Err: ", err)
-	// }
-
-	// job := <-reschan
-	// if job != "done" {
-	// 	log.Error("job != done: ")
-	// }
 
 	for {
 		select {
