@@ -17,6 +17,8 @@ license_file "../LICENSE"
 source path: '..'
 relative_path 'src/github.com/DataDog/datadog-agent'
 
+whitelist_file "/opt/datadog-agent/bin/agent/agent"
+
 build do
   # set GOPATH on the omnibus source dir for this software
   gopath = Pathname.new(project_dir) + '../../../..'
