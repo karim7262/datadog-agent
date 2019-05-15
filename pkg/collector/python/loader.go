@@ -117,12 +117,15 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 	var checkModule *C.six_pyobject_t
 	var checkClass *C.six_pyobject_t
 	for _, name = range modules {
+		log.Debugf("calling get_class: %p %s %p %p", six, name, checkModule, checkClass)
 		if res := C.get_class(six, C.CString(name), &checkModule, &checkClass); res != 0 {
+			log.Debugf("get_class succeed: %p %s %p %p", six, name, checkModule, checkClass)
 			if strings.HasPrefix(name, fmt.Sprintf("%s.", wheelNamespace)) {
 				loadedAsWheel = true
 			}
 			break
 		}
+		log.Debugf("get_class failed: %p %s %p %p", six, name, checkModule, checkClass)
 
 		if err = getSixError(); err != nil {
 			log.Debugf("Unable to load python module - %s: %v", name, err)
@@ -131,11 +134,14 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 		}
 	}
 
+	log.Debugf("module and class: %p %p", checkModule, checkClass)
 	// all failed, return error for last failure
 	if checkModule == nil || checkClass == nil {
 		log.Debugf("PyLoader returning %s for %s", err, moduleName)
 		return nil, err
 	}
+
+	log.Debugf("pulling version!")
 
 	wheelVersion := "unversioned"
 	// getting the wheel version for the check

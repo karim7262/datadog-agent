@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 
+#include <unistd.h>
 #include <datadog_agent_six.h>
 #include <six.h>
 
@@ -225,6 +226,8 @@ void release_gil(six_t *six, six_gilstate_t state)
 
 int get_class(six_t *six, const char *name, six_pyobject_t **py_module, six_pyobject_t **py_class)
 {
+    std::cout << "get_class " << six << " " << name << " " << py_module << " " << py_class << std::endl << std::flush;
+    sleep(1);
     return AS_TYPE(Six, six)->getClass(name, *AS_PTYPE(SixPyObject, py_module), *AS_PTYPE(SixPyObject, py_class)) ? 1
                                                                                                                   : 0;
 }
@@ -237,6 +240,8 @@ int get_attr_string(six_t *six, six_pyobject_t *py_class, const char *attr_name,
 int get_check(six_t *six, six_pyobject_t *py_class, const char *init_config, const char *instance, const char *check_id,
               const char *check_name, six_pyobject_t **check)
 {
+    std::cout << "get_check " << six << " " << py_class << " " << std::endl << std::flush;
+    sleep(1);
     return AS_TYPE(Six, six)->getCheck(AS_TYPE(SixPyObject, py_class), init_config, instance, check_id, check_name,
                                        NULL, *AS_PTYPE(SixPyObject, check))
         ? 1
@@ -246,6 +251,8 @@ int get_check(six_t *six, six_pyobject_t *py_class, const char *init_config, con
 int get_check_deprecated(six_t *six, six_pyobject_t *py_class, const char *init_config, const char *instance,
                          const char *agent_config, const char *check_id, const char *check_name, six_pyobject_t **check)
 {
+    std::cout << "get_check_deprecated " << six << " " << py_class << " " << std::endl << std::flush;
+    sleep(1);
     return AS_TYPE(Six, six)->getCheck(AS_TYPE(SixPyObject, py_class), init_config, instance, check_id, check_name,
                                        agent_config, *AS_PTYPE(SixPyObject, check))
         ? 1

@@ -18,8 +18,10 @@
 #include <tagger.h>
 #include <util.h>
 
+#include <unistd.h>
 #include <algorithm>
 #include <sstream>
+#include <iostream>
 
 extern "C" DATADOG_AGENT_SIX_API Six *create(const char *pythonHome)
 {
@@ -220,14 +222,19 @@ bool Two::getClass(const char *module, SixPyObject *&pyModule, SixPyObject *&pyC
     PyObject *obj_module = NULL;
     PyObject *obj_class = NULL;
 
+    std::cout << "getClass import module " << module << std::endl << std::flush;
+    sleep(1);
     obj_module = PyImport_ImportModule(module);
+    std::cout << "getClass import module: " << obj_module << std::endl << std::flush;
     if (obj_module == NULL) {
+        std::cout << "getClass collecting error" << std::endl << std::flush;
         std::ostringstream err;
         err << "unable to import module '" << module << "': " + _fetchPythonError();
         setError(err.str());
         return false;
     }
 
+    std::cout << "getClass _findSubclassOf" << std::endl << std::flush;
     obj_class = _findSubclassOf(_baseClass, obj_module);
     if (obj_class == NULL) {
         std::ostringstream err;
@@ -260,11 +267,14 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
     char format[] = "(s)"; // use parentheses to force Tuple creation
 
     // call `AgentCheck.load_config(init_config)`
+    std::cout << "getCheck call method load_config init_config: " << klass << std::endl << std::flush;
     init_config = PyObject_CallMethod(klass, load_config, format, init_config_str);
     if (init_config == NULL) {
+        std::cout << "getCheck call method load_config init_config: error" << std::endl << std::flush;
         setError("error parsing init_config: " + _fetchPythonError());
         goto done;
     }
+    std::cout << "getCheck call method load_config: success" << std::endl << std::flush;
     // replace an empty init_config by  a empty dict
     if (init_config == Py_None) {
         Py_XDECREF(init_config);
@@ -275,8 +285,10 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
     }
 
     // call `AgentCheck.load_config(instance)`
+    std::cout << "getCheck call method load_config instance: success" << std::endl << std::flush;
     instance = PyObject_CallMethod(klass, load_config, format, instance_str);
     if (instance == NULL) {
+        std::cout << "getCheck call method load_config instance: error" << std::endl << std::flush;
         setError("error parsing instance: " + _fetchPythonError());
         goto done;
     } else if (!PyDict_Check(instance)) {
@@ -285,22 +297,28 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
     }
 
     instances = PyTuple_New(1);
+    std::cout << "getCheck SetItem" << std::endl << std::flush;
     if (PyTuple_SetItem(instances, 0, instance) != 0) {
         setError("Could not create Tuple for instances: " + _fetchPythonError());
         goto done;
     }
 
     // create `args` and `kwargs` to invoke `AgentCheck` constructor
+    std::cout << "getCheck create dict" << std::endl << std::flush;
     args = PyTuple_New(0);
     kwargs = PyDict_New();
+    std::cout << "getCheck PyString_FromString" << std::endl << std::flush;
     name = PyString_FromString(check_name);
+    std::cout << "getCheck dict set" << std::endl << std::flush;
     PyDict_SetItemString(kwargs, "name", name);
     PyDict_SetItemString(kwargs, "init_config", init_config);
     PyDict_SetItemString(kwargs, "instances", instances);
 
     if (agent_config_str != NULL) {
+        std::cout << "getCheck load_config agent_config" << std::endl << std::flush;
         agent_config = PyObject_CallMethod(klass, load_config, format, agent_config_str);
         if (agent_config == NULL) {
+            std::cout << "getCheck load_config agent_config: error" << std::endl << std::flush;
             setError("error parsing agent_config: " + _fetchPythonError());
             goto done;
         } else if (!PyDict_Check(agent_config)) {
@@ -308,19 +326,26 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
             goto done;
         }
 
+        std::cout << "getCheck set config dict agent_config" << std::endl << std::flush;
         PyDict_SetItemString(kwargs, "agentConfig", agent_config);
+    } else {
+        std::cout << "getCheck NO agent_config" << std::endl << std::flush;
     }
 
     // call `AgentCheck` constructor
+    std::cout << "getCheck Call AgentCheck constructor" << klass << " "  << args << " " << kwargs << std::endl << std::flush;
     py_check = PyObject_Call(klass, args, kwargs);
     if (py_check == NULL) {
+        std::cout << "getCheck Call AgentCheck constructor: error" << std::endl << std::flush;
         setError(_fetchPythonError());
         goto done;
     }
 
     if (check_id_str != NULL && strlen(check_id_str) != 0) {
+        std::cout << "getCheck setting check_id PyString_FromString" << std::endl << std::flush;
         check_id = PyString_FromString(check_id_str);
         if (check_id == NULL) {
+            std::cout << "getCheck setting check_id PyString_FromString: error" << std::endl << std::flush;
             std::ostringstream err;
             err << "error could not set check_id: " << check_id_str;
             setError(err.str());
@@ -329,7 +354,9 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
             goto done;
         }
 
+        std::cout << "getCheck setting check_id SetAttrString" << std::endl << std::flush;
         if (PyObject_SetAttrString(py_check, "check_id", check_id) != 0) {
+            std::cout << "getCheck setting check_id SetAttrString: error" << std::endl << std::flush;
             setError("error could not set 'check_id' attr: " + _fetchPythonError());
             Py_XDECREF(py_check);
             py_check = NULL;
@@ -347,27 +374,34 @@ done:
     Py_XDECREF(kwargs);
 
     if (py_check == NULL) {
+    std::cout << "getCheck Done error" << std::endl << std::flush;
         return false;
     }
 
+    std::cout << "getCheck Done success" << std::endl << std::flush;
     check = reinterpret_cast<SixPyObject *>(py_check);
     return true;
 }
 
 PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
 {
+    std::cout << "_findSubclassOf base" << std::endl << std::flush;
     // baseClass is not a Class type
     if (base == NULL || !PyType_Check(base)) {
         setError("base class is not of type 'Class'");
         return NULL;
     }
 
+    std::cout << "_findSubclassOf check module" << std::endl << std::flush;
+    // baseClass is not a Class type
     // module is not a Module object
     if (module == NULL || !PyModule_Check(module)) {
         setError("module is not of type 'Module'");
         return NULL;
     }
 
+    std::cout << "_findSubclassOf dir" << std::endl << std::flush;
+    // baseClass is not a Class type
     PyObject *dir = PyObject_Dir(module);
     if (dir == NULL) {
         setError("there was an error calling dir() on module object");
@@ -376,21 +410,25 @@ PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
 
     PyObject *klass = NULL;
     for (int i = 0; i < PyList_GET_SIZE(dir); i++) {
+        std::cout << "_findSubclassOf dir [" << i << "]" << std::endl << std::flush;
         // get symbol name
-        char *symbol_name;
+        char *symbol_name = NULL;
         PyObject *symbol = PyList_GetItem(dir, i);
-        if (symbol != NULL) {
-            symbol_name = PyString_AsString(symbol);
+        if (symbol == NULL) {
+            continue;
         }
 
         // get symbol instance. It's a new ref but in case of success we don't
         // DecRef since we return it and the caller
         // will be owner
+        symbol_name = PyString_AsString(symbol);
+        std::cout << "_findSubclassOf dir [" << i << "]: " << symbol_name << std::endl << std::flush;
         klass = PyObject_GetAttrString(module, symbol_name);
         if (klass == NULL) {
             continue;
         }
 
+        std::cout << "_findSubclassOf dir [" << i << "]: check klass" << std::endl << std::flush;
         // not a class, ignore
         if (!PyType_Check(klass)) {
             Py_XDECREF(klass);
@@ -398,11 +436,13 @@ PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
         }
 
         // this is an unrelated class, ignore
+        std::cout << "_findSubclassOf dir [" << i << "]: check subtype" << std::endl << std::flush;
         if (!PyType_IsSubtype((PyTypeObject *)klass, (PyTypeObject *)base)) {
             Py_XDECREF(klass);
             continue;
         }
 
+        std::cout << "_findSubclassOf dir [" << i << "]: check compare" << std::endl << std::flush;
         // `klass` is actually `base` itself, ignore
         if (PyObject_RichCompareBool(klass, base, Py_EQ)) {
             Py_XDECREF(klass);
@@ -411,6 +451,7 @@ PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
 
         // does `klass` have subclasses?
         char func_name[] = "__subclasses__";
+        std::cout << "_findSubclassOf dir [" << i << "]: call subclasses" << std::endl << std::flush;
         PyObject *children = PyObject_CallMethod(klass, func_name, NULL);
         if (children == NULL) {
             Py_XDECREF(klass);
@@ -418,10 +459,12 @@ PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
         }
 
         // how many?
+        std::cout << "_findSubclassOf dir [" << i << "]: check get size children" << std::endl << std::flush;
         int children_count = PyList_GET_SIZE(children);
         Py_XDECREF(children);
 
         // Agent integrations are supposed to have no subclasses
+        std::cout << "_findSubclassOf dir [" << i << "]: check count" << std::endl << std::flush;
         if (children_count > 0) {
             Py_XDECREF(klass);
             continue;
@@ -435,6 +478,7 @@ PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
     klass = NULL;
 
 done:
+    std::cout << "_findSubclassOf finish " << klass << std::endl << std::flush;
     Py_XDECREF(dir);
     return klass;
 }
