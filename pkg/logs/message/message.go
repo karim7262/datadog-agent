@@ -5,26 +5,33 @@
 
 package message
 
+type Message interface {
+	Content() []byte
+	Origin() *Origin
+	Status() string
+	Timestamp() string
+	RawDataLen() int
+}
+
 // Message represents a log line sent to datadog, with its metadata
-type Message struct {
-	Content    []byte
-	Origin     *Origin
+type DefaultMessage struct {
+	content    []byte
+	origin     *Origin
 	status     string
-	Timestamp  string
-	RawDataLen int
+	timestamp  string
+	rawDataLen int
 }
 
 // NewMessage returns a new message
-func NewMessage(content []byte, origin *Origin, status string) *Message {
-	return &Message{
-		Content: content,
-		Origin:  origin,
+func NewDefaultMessage(content []byte, origin *Origin, status string) *DefaultMessage {
+	return &DefaultMessage{
+		content: content,
+		origin:  origin,
 		status:  status,
 	}
 }
 
-// GetStatus returns the status of the message
-func (m *Message) GetStatus() string {
+func (m *DefaultMessage) Status() string{
 	if m.status == "" {
 		m.status = StatusInfo
 	}
@@ -32,6 +39,6 @@ func (m *Message) GetStatus() string {
 }
 
 // SetStatus sets the status of the message
-func (m *Message) SetStatus(status string) {
+func (m *DefaultMessage) SetStatus(status string) {
 	m.status = status
 }

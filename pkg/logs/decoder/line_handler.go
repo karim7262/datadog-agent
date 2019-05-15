@@ -7,12 +7,11 @@ package decoder
 
 import (
 	"bytes"
-	"regexp"
-	"time"
-
 	"github.com/DataDog/datadog-agent/pkg/logs/message"
 	"github.com/DataDog/datadog-agent/pkg/logs/parser"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"regexp"
+	"time"
 )
 
 // TRUNCATED is the warning we add at the beginning or/and at the end of a truncated message
@@ -170,7 +169,7 @@ func (h *MultiLineHandler) run() {
 			}
 			// process the new line and restart the timeout
 			if !flushTimer.Stop() {
-				// stop doesn't not prevent a tick from the Timer if it happens at the same time
+				// stop doesn't prevent a tick from the Timer if it happens at the same time
 				// we read from the timer channel to prevent an incorrect read
 				// in <-flushTimer.C in the case below
 				select {
@@ -199,6 +198,7 @@ func (h *MultiLineHandler) process(line []byte) {
 		// send content from lineBuffer
 		h.sendContent()
 	}
+	// check if the coming line is the middle of a existing msg
 	if !h.lineBuffer.IsEmpty() {
 		// unwrap all the following lines
 		line = unwrappedLine
@@ -211,11 +211,11 @@ func (h *MultiLineHandler) process(line []byte) {
 	} else {
 		// add line and truncate and flush content in lineBuffer
 		h.lineBuffer.AddIncompleteLine(line)
-		h.lineBuffer.AddTruncate(line)
+		h.lineBuffer.AddTruncate()
 		// send content from lineBuffer
 		h.sendContent()
 		// truncate next content
-		h.lineBuffer.AddTruncate(line)
+		h.lineBuffer.AddTruncate()
 	}
 }
 
