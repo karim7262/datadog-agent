@@ -57,9 +57,13 @@ void Two::initPythonHome(const char *pythonHome)
     Py_SetPythonHome(const_cast<char *>(_pythonHome));
 }
 
+void print_gil_state(std::string msg)
+{
+    std::cout << msg << ": gil state" << pthread_self() << " -> " << PyGILState_GetThisThreadState() << std::endl << std::flush;
+}
+
 bool Two::init()
 {
-
     Py_Initialize();
 
     // In recent versions of Python3 this is called from Py_Initialize already,
@@ -102,6 +106,7 @@ bool Two::isInitialized() const
 
 py_info_t *Two::getPyInfo()
 {
+    print_gil_state("getPyInfo");
     PyObject *sys = NULL;
     PyObject *path = NULL;
     PyObject *str_path = NULL;
@@ -149,6 +154,7 @@ bool Two::runSimpleString(const char *code) const
 
 bool Two::addPythonPath(const char *path)
 {
+    print_gil_state("addPythonPath");
     if (std::find(_pythonPaths.begin(), _pythonPaths.end(), path) == _pythonPaths.end()) {
         _pythonPaths.push_back(path);
         return true;
@@ -158,7 +164,9 @@ bool Two::addPythonPath(const char *path)
 
 six_gilstate_t Two::GILEnsure()
 {
+    print_gil_state("GILEnsure");
     PyGILState_STATE state = PyGILState_Ensure();
+    print_gil_state("GILEnsure done");
     if (state == PyGILState_LOCKED) {
         return DATADOG_AGENT_SIX_GIL_LOCKED;
     }
@@ -167,16 +175,19 @@ six_gilstate_t Two::GILEnsure()
 
 void Two::GILRelease(six_gilstate_t state)
 {
+    print_gil_state("GILRelease");
     if (state == DATADOG_AGENT_SIX_GIL_LOCKED) {
         PyGILState_Release(PyGILState_LOCKED);
     } else {
         PyGILState_Release(PyGILState_UNLOCKED);
     }
+    print_gil_state("GILRelease done");
 }
 
 // return new reference
 PyObject *Two::_importFrom(const char *module, const char *name)
 {
+    print_gil_state("_importFrom");
     PyObject *obj_module = NULL;
     PyObject *obj_symbol = NULL;
 
@@ -203,6 +214,7 @@ error:
 
 SixPyObject *Two::getCheckClass(const char *module)
 {
+    print_gil_state("getCheckClass");
     PyObject *obj_module = NULL;
     PyObject *klass = NULL;
 
@@ -219,6 +231,7 @@ done:
 
 bool Two::getClass(const char *module, SixPyObject *&pyModule, SixPyObject *&pyClass)
 {
+    print_gil_state("getClass");
     PyObject *obj_module = NULL;
     PyObject *obj_class = NULL;
 
@@ -252,6 +265,7 @@ bool Two::getClass(const char *module, SixPyObject *&pyModule, SixPyObject *&pyC
 bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const char *instance_str,
                    const char *check_id_str, const char *check_name, const char *agent_config_str, SixPyObject *&check)
 {
+    print_gil_state("getCheck");
     PyObject *klass = reinterpret_cast<PyObject *>(py_class);
     PyObject *agent_config = NULL;
     PyObject *init_config = NULL;
@@ -385,6 +399,7 @@ done:
 
 PyObject *Two::_findSubclassOf(PyObject *base, PyObject *module)
 {
+    print_gil_state("_findSubclassOf");
     std::cout << "_findSubclassOf base" << std::endl << std::flush;
     // baseClass is not a Class type
     if (base == NULL || !PyType_Check(base)) {
@@ -485,6 +500,7 @@ done:
 
 const char *Two::runCheck(SixPyObject *check)
 {
+    print_gil_state("runCheck");
     if (check == NULL) {
         return NULL;
     }
@@ -520,6 +536,7 @@ done:
 
 char **Two::getCheckWarnings(SixPyObject *check)
 {
+    print_gil_state("getCheckWarnings");
     if (check == NULL)
         return NULL;
     PyObject *py_check = reinterpret_cast<PyObject *>(check);
@@ -550,6 +567,7 @@ char **Two::getCheckWarnings(SixPyObject *check)
 
 std::string Two::_fetchPythonError()
 {
+    print_gil_state("_fetchPythonError");
     std::string ret_val = "";
 
     if (PyErr_Occurred() == NULL) {
@@ -618,6 +636,7 @@ std::string Two::_fetchPythonError()
 
 bool Two::getAttrString(SixPyObject *obj, const char *attributeName, char *&value) const
 {
+    print_gil_state("getAttrString");
     if (obj == NULL) {
         return false;
     }
@@ -643,16 +662,19 @@ bool Two::getAttrString(SixPyObject *obj, const char *attributeName, char *&valu
 
 void Two::decref(SixPyObject *obj)
 {
+    print_gil_state("decref");
     Py_XDECREF(reinterpret_cast<PyObject *>(obj));
 }
 
 void Two::incref(SixPyObject *obj)
 {
+    print_gil_state("incref");
     Py_XINCREF(reinterpret_cast<SixPyObject *>(obj));
 }
 
 void Two::set_module_attr_string(char *module, char *attr, char *value)
 {
+    print_gil_state("set_module_attr_string");
     PyObject *py_module = PyImport_ImportModule(module);
     if (!py_module) {
         setError("error importing python '" + std::string(module) + "' module: " + _fetchPythonError());
@@ -749,6 +771,7 @@ void Two::setIsExcludedCb(cb_is_excluded_t cb)
 // returned list must be free by calling free_integration_list.
 char *Two::getIntegrationList()
 {
+    print_gil_state("getIntegrationList");
     PyObject *pyPackages = NULL;
     PyObject *pkgLister = NULL;
     PyObject *args = NULL;
