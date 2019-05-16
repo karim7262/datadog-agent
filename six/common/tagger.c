@@ -15,20 +15,20 @@ static cb_tags_t cb_tags = NULL;
 
 int parseArgs(PyObject *args, char **id, int *cardinality)
 {
-    printf("parseArgs: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: parseArgs: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("parseArgs: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: parseArgs: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     if (!PyArg_ParseTuple(args, "si", id, cardinality)) {
         PyGILState_Release(gstate);
-        printf("parseArgs: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: parseArgs: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return 0;
     }
     PyGILState_Release(gstate);
-    printf("parseArgs: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: parseArgs: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return 1;
 
@@ -45,20 +45,20 @@ PyObject *buildTagsList(char **tags) {
         cgo_free(tags[i]);
         PyList_Append(res, pyTag);
     }
-    printf("buildTagsList: | RETURN | before cgo_free thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: buildTagsList: | RETURN | before cgo_free thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     cgo_free(tags);
-    printf("buildTagsList: | RETURN | after cgo_free thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: buildTagsList: | RETURN | after cgo_free thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return res;
 }
 
 PyObject *tag(PyObject *self, PyObject *args)
 {
-    printf("tag: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: tag: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (cb_tags == NULL) {
-        printf("tag: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: tag: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -66,7 +66,7 @@ PyObject *tag(PyObject *self, PyObject *args)
     char *id;
     int cardinality;
     if (!parseArgs(args, &id, &cardinality)) {
-        printf("tag: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: tag: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -75,11 +75,11 @@ PyObject *tag(PyObject *self, PyObject *args)
             && cardinality != DATADOG_AGENT_SIX_TAGGER_ORCHESTRATOR
             && cardinality != DATADOG_AGENT_SIX_TAGGER_HIGH) {
         PyGILState_STATE gstate = PyGILState_Ensure();
-        printf("tag: | RETURN | after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: tag: | RETURN | after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         PyErr_SetString(PyExc_TypeError, "Invalid cardinality");
         PyGILState_Release(gstate);
-        printf("tag: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: tag: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -89,10 +89,10 @@ PyObject *tag(PyObject *self, PyObject *args)
 
 PyObject *get_tags(PyObject *self, PyObject *args)
 {
-    printf("get_tags: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_tags: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (cb_tags == NULL) {
-        printf("get_tags: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_tags: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -100,7 +100,7 @@ PyObject *get_tags(PyObject *self, PyObject *args)
     char *id;
     int highCard;
     if (!parseArgs(args, &id, &highCard)) {
-        printf("get_tags: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_tags: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }

@@ -94,10 +94,10 @@ void _set_set_external_tags_cb(cb_set_external_tags_t cb)
 
 PyObject *get_version(PyObject *self, PyObject *args)
 {
-    printf("get_version: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_version: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (cb_get_version == NULL) {
-        printf("get_version: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_version: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -108,11 +108,11 @@ PyObject *get_version(PyObject *self, PyObject *args)
     if (v != NULL) {
         PyObject *retval = PyStringFromCString(v);
         cgo_free(v);
-        printf("get_version: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_version: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return retval;
     }
-    printf("get_version: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_version: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 }
@@ -128,18 +128,18 @@ PyObject *get_version(PyObject *self, PyObject *args)
  */
 PyObject *get_config(PyObject *self, PyObject *args)
 {
-    printf("get_config: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_config: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // callback must be set
     if (cb_get_config == NULL) {
-        printf("get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
 
     char *key;
     if (!PyArg_ParseTuple(args, "s", &key)) {
-        printf("get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -151,11 +151,11 @@ PyObject *get_config(PyObject *self, PyObject *args)
     PyObject *value = from_json(data);
     cgo_free(data);
     if (value == NULL) {
-        printf("get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
-    printf("get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_config: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return value;
 }
@@ -171,11 +171,11 @@ PyObject *get_config(PyObject *self, PyObject *args)
  */
 PyObject *headers(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    printf("headers: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: headers: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // callback must be set but be resilient for the Python caller
     if (cb_headers == NULL) {
-    printf("headers: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: headers: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -187,7 +187,7 @@ PyObject *headers(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *headers_dict = from_json(data);
     cgo_free(data);
     if (headers_dict == NULL || !PyDict_Check(headers_dict)) {
-    printf("headers: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: headers: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -203,7 +203,7 @@ PyObject *headers(PyObject *self, PyObject *args, PyObject *kwargs)
         }
     }
 
-    printf("headers: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: headers: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return headers_dict;
 }
@@ -218,11 +218,11 @@ PyObject *_public_headers(PyObject *self, PyObject *args, PyObject *kwargs)
 
 PyObject *get_hostname(PyObject *self, PyObject *args)
 {
-    printf("get_hostname: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_hostname: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // callback must be set
     if (cb_get_hostname == NULL) {
-    printf("get_hostname: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_hostname: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -233,22 +233,22 @@ PyObject *get_hostname(PyObject *self, PyObject *args)
     if (v != NULL) {
         PyObject *retval = PyStringFromCString(v);
         cgo_free(v);
-    printf("get_hostname: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_hostname: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         return retval;
     }
-    printf("get_hostname: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_hostname: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 }
 
 PyObject *get_clustername(PyObject *self, PyObject *args)
 {
-    printf("get_clustername: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_clustername: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // callback must be set
     if (cb_get_clustername == NULL) {
-    printf("get_clustername: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_clustername: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -259,22 +259,22 @@ PyObject *get_clustername(PyObject *self, PyObject *args)
     if (v != NULL) {
         PyObject *retval = PyStringFromCString(v);
         cgo_free(v);
-    printf("get_clustername: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_clustername: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         return retval;
     }
-    printf("get_clustername: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: get_clustername: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 }
 
 static PyObject *log_message(PyObject *self, PyObject *args)
 {
-    printf("log_message: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: log_message: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // callback must be set
     if (cb_log == NULL) {
-    printf("log_message: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: log_message: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -284,13 +284,13 @@ static PyObject *log_message(PyObject *self, PyObject *args)
 
     // datadog_agent.log(message, log_level)
     if (!PyArg_ParseTuple(args, "si", &message, &log_level)) {
-    printf("log_message: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: log_message: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
         return NULL;
     }
 
     cb_log(message, log_level);
-    printf("log_message: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: log_message: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 }
@@ -298,17 +298,17 @@ static PyObject *log_message(PyObject *self, PyObject *args)
 // set_external_tags receive the following data:
 // [('hostname', {'source_type': ['tag1', 'tag2']})]
 static PyObject *set_external_tags(PyObject *self, PyObject *args) {
-    printf("set_external_tags: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: set_external_tags: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     PyObject *input_list = NULL;
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("set_external_tags: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: set_external_tags: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     // function expects only one positional arg containing a list
     if (!PyArg_ParseTuple(args, "O", &input_list)) {
         PyGILState_Release(gstate);
-        printf("set_external_tags: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: set_external_tags: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -317,7 +317,7 @@ static PyObject *set_external_tags(PyObject *self, PyObject *args) {
     if (!PyList_Check(input_list)) {
         PyErr_SetString(PyExc_TypeError, "tags must be a list");
         PyGILState_Release(gstate);
-        printf("set_external_tags: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: set_external_tags: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -418,7 +418,7 @@ done:
     if (source_type)
         free(source_type);
     PyGILState_Release(gstate);
-    printf("set_external_tags: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: set_external_tags: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     // we need to return NULL to raise the exception set by PyErr_SetString

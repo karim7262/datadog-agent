@@ -252,7 +252,7 @@ func Initialize(paths ...string) error {
 	C.initCgoFree(six)
 	C.initDatadogAgentModule(six)
 	C.initAggregatorModule(six)
-	C.initUtilModule(six)
+	//C.initUtilModule(six)
 	C.initTaggerModule(six)
 	initContainerFilter() // special init for the container go code
 	C.initContainersModule(six)

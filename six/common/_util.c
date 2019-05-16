@@ -81,10 +81,10 @@ static void raiseEmptyOutputError()
 
 PyObject *subprocess_output(PyObject *self, PyObject *args)
 {
-    printf("subprocess_output: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (!cb_get_subprocess_output) {
-        printf("subprocess_output: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: subprocess_output: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -101,7 +101,7 @@ PyObject *subprocess_output(PyObject *self, PyObject *args)
     PyObject *py_result = NULL;
 
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("subprocess_output: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     if (!PyArg_ParseTuple(args, "O|O:get_subprocess_output", &cmd_args, &cmd_raise_on_empty)) {
@@ -152,19 +152,19 @@ PyObject *subprocess_output(PyObject *self, PyObject *args)
         raise = 1;
 
     PyGILState_Release(gstate);
-    printf("subprocess_output: after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     PyThreadState *Tstate = PyEval_SaveThread();
-    printf("subprocess_output: after PyEval_SaveThread thread id %d thread_state %d (Tstate %d)\n", pthread_self(),  PyGILState_GetThisThreadState(), Tstate);
+    printf("::: subprocess_output: after PyEval_SaveThread thread id %d thread_state %d (Tstate %d)\n", pthread_self(),  PyGILState_GetThisThreadState(), Tstate);
     fflush(stdout);
 
     cb_get_subprocess_output(subprocess_args, &c_stdout, &c_stderr, &ret_code, &exception);
 
     PyEval_RestoreThread(Tstate);
-    printf("subprocess_output: after PyEval_RestoreThread thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: after PyEval_RestoreThread thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     gstate = PyGILState_Ensure();
-    printf("subprocess_output: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     if (raise && strlen(c_stdout) == 0) {
@@ -210,7 +210,7 @@ PyObject *subprocess_output(PyObject *self, PyObject *args)
 #endif
 
     PyGILState_Release(gstate);
-    printf("subprocess_output: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return pyResult;
 
@@ -222,7 +222,7 @@ error:
     if (exception)
         cgo_free(exception);
     PyGILState_Release(gstate);
-    printf("subprocess_output: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: subprocess_output: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // we need to return NULL to raise the exception set by PyErr_SetString
     return NULL;

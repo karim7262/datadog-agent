@@ -3,9 +3,9 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019 Datadog, Inc.
 #include <stdio.h>
+#include <pthread.h>
 #include "aggregator.h"
 
-#include <pthread.h>
 #include <sixstrings.h>
 
 // these must be set by the Agent
@@ -126,16 +126,16 @@ static void free_tags(char **tags) {
 }
 
 static PyObject *submit_metric(PyObject *self, PyObject *args) {
-    printf("submit_metric: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_metric: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (cb_submit_metric == NULL) {
-        printf("submit_metric: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_metric: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
 
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("submit_metric: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_metric: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     PyObject *check = NULL; // borrowed
@@ -160,29 +160,29 @@ static PyObject *submit_metric(PyObject *self, PyObject *args) {
     free_tags(tags);
 
     PyGILState_Release(gstate);
-    printf("submit_metric: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_metric: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 
 error:
     PyGILState_Release(gstate);
-    printf("submit_metric: | RETURN error | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_metric: | RETURN error | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return NULL;
 }
 
 static PyObject *submit_service_check(PyObject *self, PyObject *args) {
-    printf("submit_service_check: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_service_check: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (cb_submit_service_check == NULL) {
-        printf("submit_service_check: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_service_check: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
 
     // acquiring GIL to be able to raise exception
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("submit_service_check: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_service_check: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     PyObject *check = NULL; // borrowed
@@ -207,28 +207,28 @@ static PyObject *submit_service_check(PyObject *self, PyObject *args) {
     free_tags(tags);
 
     PyGILState_Release(gstate);
-    printf("submit_service_check: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_service_check: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 
 error:
     PyGILState_Release(gstate);
-    printf("submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     return NULL;
 }
 
 static PyObject *submit_event(PyObject *self, PyObject *args) {
-    printf("submit_event: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_event: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     if (cb_submit_event == NULL) {
-        printf("submit_event: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_event: | RETURN NO CALLBACK | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
 
     PyGILState_STATE gstate = PyGILState_Ensure();
-    printf("submit_event: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_event: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 
     PyObject *check = NULL; // borrowed
@@ -240,7 +240,7 @@ static PyObject *submit_event(PyObject *self, PyObject *args) {
     // aggregator.submit_event(self, check_id, event)
     if (!PyArg_ParseTuple(args, "OsO", &check, &check_id, &event_dict)) {
         PyGILState_Release(gstate);
-        printf("submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         // returning NULL to raise error
         return NULL;
@@ -249,7 +249,7 @@ static PyObject *submit_event(PyObject *self, PyObject *args) {
     if (!PyDict_Check(event_dict)) {
         PyErr_SetString(PyExc_TypeError, "event must be a dict");
         PyGILState_Release(gstate);
-        printf("submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         // returning NULL to raise error
         return NULL;
@@ -258,7 +258,7 @@ static PyObject *submit_event(PyObject *self, PyObject *args) {
     if (!(ev = (event_t *)malloc(sizeof(event_t)))) {
         PyErr_SetString(PyExc_RuntimeError, "could not allocate memory for event");
         PyGILState_Release(gstate);
-        printf("submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -280,7 +280,7 @@ static PyObject *submit_event(PyObject *self, PyObject *args) {
         free(ev);
         PyGILState_Release(gstate);
         // we need to return NULL to raise the exception set by PyErr_SetString
-        printf("submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: submit_service_check: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -291,7 +291,7 @@ static PyObject *submit_event(PyObject *self, PyObject *args) {
 
     free(ev);
     PyGILState_Release(gstate);
-    printf("submit_service_check: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: submit_service_check: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_NONE;
 }

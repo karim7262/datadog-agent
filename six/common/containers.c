@@ -45,11 +45,11 @@ void _set_is_excluded_cb(cb_is_excluded_t cb)
 
 PyObject *is_excluded(PyObject *self, PyObject *args)
 {
-    printf("is_excluded: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: is_excluded: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     // callback must be set
     if (cb_is_excluded == NULL) {
-        printf("is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_NONE;
     }
@@ -57,7 +57,7 @@ PyObject *is_excluded(PyObject *self, PyObject *args)
     char *name;
     char *image;
     if (!PyArg_ParseTuple(args, "ss", &name, &image)) {
-        printf("is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         return NULL;
     }
@@ -65,11 +65,11 @@ PyObject *is_excluded(PyObject *self, PyObject *args)
     int result = cb_is_excluded(name, image);
 
     if (result > 0) {
-        printf("is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
         fflush(stdout);
         Py_RETURN_TRUE;
     }
-    printf("is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     Py_RETURN_FALSE;
 }
