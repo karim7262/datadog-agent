@@ -22,9 +22,9 @@ void cgo_free(void *ptr) {
     if (cb_cgo_free == NULL || ptr == NULL) {
         return;
     }
-    printf("::: cgo_free: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: cgo_free: thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
     cb_cgo_free(ptr);
-    printf("::: cgo_free: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    printf("::: cgo_free: RETURN thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
     fflush(stdout);
 }
