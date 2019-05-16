@@ -65,12 +65,12 @@ void LogMessage(char *, int);
 void SetExternalTags(char *, char *, char **);
 
 void initDatadogAgentModule(six_t *six) {
-	//set_get_version_cb(six, GetVersion);
-	//set_get_hostname_cb(six, GetHostname);
-	//set_get_clustername_cb(six, GetClusterName);
-	//set_headers_cb(six, Headers);
-	//set_log_cb(six, LogMessage);
-	//set_get_config_cb(six, GetConfig);
+	set_get_version_cb(six, GetVersion);
+	set_get_hostname_cb(six, GetHostname);
+	set_get_clustername_cb(six, GetClusterName);
+	set_headers_cb(six, Headers);
+	set_log_cb(six, LogMessage);
+	set_get_config_cb(six, GetConfig);
 	set_set_external_tags_cb(six, SetExternalTags);
 }
 

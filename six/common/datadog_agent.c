@@ -175,20 +175,19 @@ PyObject *headers(PyObject *self, PyObject *args, PyObject *kwargs)
     fflush(stdout);
     // callback must be set but be resilient for the Python caller
     if (cb_headers == NULL) {
-    printf("::: headers: RETURN thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
-    fflush(stdout);
+        printf("::: headers: RETURN thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         Py_RETURN_NONE;
     }
 
     char *data = NULL;
     cb_headers(&data);
-
     // new ref
     PyObject *headers_dict = from_json(data);
     cgo_free(data);
     if (headers_dict == NULL || !PyDict_Check(headers_dict)) {
-    printf("::: headers: RETURN thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
-    fflush(stdout);
+        printf("::: headers: RETURN thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         Py_RETURN_NONE;
     }
 

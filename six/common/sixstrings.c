@@ -40,9 +40,12 @@ PyObject *from_json(const char *data) {
     PyObject *json = NULL;
     PyObject *loads = NULL;
 
-    if (!data) {
-        goto done;
-    }
+    if (!data)
+        Py_RETURN_NONE;
+
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    printf("::: from_json: after PyGILState_Ensure thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
 
     char module_name[] = "json";
     json = PyImport_ImportModule(module_name);
@@ -61,6 +64,11 @@ PyObject *from_json(const char *data) {
 done:
     Py_XDECREF(json);
     Py_XDECREF(loads);
+
+    PyGILState_Release(gstate);
+    printf("::: from_json: after PyGILState_Release thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
+
     return retval;
 }
 
@@ -69,6 +77,10 @@ char *as_json(PyObject *object) {
     PyObject *json = NULL;
     PyObject *dumps = NULL;
     PyObject *dumped = NULL;
+
+    PyGILState_STATE gstate = PyGILState_Ensure();
+    printf("::: as_json: after PyGILState_Ensure thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
 
     char module_name[] = "json";
     json = PyImport_ImportModule(module_name);
@@ -89,5 +101,10 @@ done:
     Py_XDECREF(json);
     Py_XDECREF(dumps);
     Py_XDECREF(dumped);
+
+    PyGILState_Release(gstate);
+    printf("::: as_json: after PyGILState_Release thread id %ld thread_state %ld\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
+
     return retval;
 }
