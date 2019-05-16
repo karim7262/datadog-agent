@@ -43,6 +43,7 @@ variables:
   S3_OMNIBUS_CACHE_BUCKET: dd-ci-datadog-agent-omnibus-cache-build-stable
   S3_DSD6_URI: s3://dsd6-staging/linux
   RELEASE_VERSION: nightly
+  DEBUG_BUILD: Debug
 
 
 # Default before_script for all the jobs. If you create a new job and don't want this to execute

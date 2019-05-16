@@ -79,7 +79,7 @@ def get_build_flags(ctx, static=False, prefix=None, embedded_path=None,
     else:
         ldflags += "-r {}/lib ".format(embedded_path)
 
-    if os.environ.get("DELVE"):
+    if os.environ.get("DEBUG_BUILD"):
         gcflags = "-N -l"
         if sys.platform == 'win32':
             # On windows, need to build with the extra argument -ldflags="-linkmode internal"

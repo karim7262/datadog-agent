@@ -36,9 +36,10 @@ build do
         "Python2_ROOT_DIR" => "#{install_dir}/embedded",
         "Python3_ROOT_DIR" => "#{install_dir}/embedded",
         "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
+        "DEBUG_BUILD" => ENV['BUILD_MODE'],
     }
   end
-  
+
   # include embedded path (mostly for `pkg-config` binary)
   env = with_embedded_path(env)
 
