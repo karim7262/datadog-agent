@@ -3,6 +3,8 @@
 // This product includes software developed at Datadog
 // (https://www.datadoghq.com/).
 // Copyright 2019 Datadog, Inc.
+#include <stdio.h>
+#include <pthread.h>
 
 #include "cgo_free.h"
 #include "sixstrings.h"
@@ -13,13 +15,21 @@ static cb_tags_t cb_tags = NULL;
 
 int parseArgs(PyObject *args, char **id, int *cardinality)
 {
+    printf("parseArgs: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
     PyGILState_STATE gstate = PyGILState_Ensure();
+    printf("parseArgs: after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
 
     if (!PyArg_ParseTuple(args, "si", id, cardinality)) {
         PyGILState_Release(gstate);
+        printf("parseArgs: | RETURN ERROR | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         return 0;
     }
     PyGILState_Release(gstate);
+    printf("parseArgs: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
     return 1;
 
 }
@@ -35,26 +45,42 @@ PyObject *buildTagsList(char **tags) {
         cgo_free(tags[i]);
         PyList_Append(res, pyTag);
     }
+    printf("buildTagsList: | RETURN | before cgo_free thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
     cgo_free(tags);
+    printf("buildTagsList: | RETURN | after cgo_free thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
     return res;
 }
 
 PyObject *tag(PyObject *self, PyObject *args)
 {
-    if (cb_tags == NULL)
+    printf("tag: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
+    if (cb_tags == NULL) {
+        printf("tag: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         Py_RETURN_NONE;
+    }
 
     char *id;
     int cardinality;
-    if (!parseArgs(args, &id, &cardinality))
+    if (!parseArgs(args, &id, &cardinality)) {
+        printf("tag: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         return NULL;
+    }
 
     if (cardinality != DATADOG_AGENT_SIX_TAGGER_LOW
             && cardinality != DATADOG_AGENT_SIX_TAGGER_ORCHESTRATOR
             && cardinality != DATADOG_AGENT_SIX_TAGGER_HIGH) {
         PyGILState_STATE gstate = PyGILState_Ensure();
+        printf("tag: | RETURN | after PyGILState_Ensure thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         PyErr_SetString(PyExc_TypeError, "Invalid cardinality");
         PyGILState_Release(gstate);
+        printf("tag: | RETURN | after PyGILState_Release thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         return NULL;
     }
 
@@ -63,13 +89,21 @@ PyObject *tag(PyObject *self, PyObject *args)
 
 PyObject *get_tags(PyObject *self, PyObject *args)
 {
-    if (cb_tags == NULL)
+    printf("get_tags: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
+    if (cb_tags == NULL) {
+        printf("get_tags: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         Py_RETURN_NONE;
+    }
 
     char *id;
     int highCard;
-    if (!parseArgs(args, &id, &highCard))
+    if (!parseArgs(args, &id, &highCard)) {
+        printf("get_tags: | RETURN | thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         return NULL;
+    }
 
     int cardinality;
     if (highCard > 0)

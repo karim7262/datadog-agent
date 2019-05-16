@@ -59,7 +59,7 @@ void Two::initPythonHome(const char *pythonHome)
 
 void print_gil_state(std::string msg)
 {
-    std::cout << msg << ": gil state" << pthread_self() << " -> " << PyGILState_GetThisThreadState() << std::endl << std::flush;
+    std::cout << msg << ": gil state " << pthread_self() << " -> " << PyGILState_GetThisThreadState() << std::endl << std::flush;
 }
 
 bool Two::init()
