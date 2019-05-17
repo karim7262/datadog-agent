@@ -2,6 +2,8 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019 Datadog, Inc.
+#include <stdio.h>
+#include <pthread.h>
 #include "containers.h"
 
 #include <sixstrings.h>
@@ -43,18 +45,31 @@ void _set_is_excluded_cb(cb_is_excluded_t cb)
 
 PyObject *is_excluded(PyObject *self, PyObject *args)
 {
+    printf("::: is_excluded: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
     // callback must be set
-    if (cb_is_excluded == NULL)
+    if (cb_is_excluded == NULL) {
+        printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         Py_RETURN_NONE;
+    }
 
     char *name;
     char *image;
-    if (!PyArg_ParseTuple(args, "ss", &name, &image))
+    if (!PyArg_ParseTuple(args, "ss", &name, &image)) {
+        printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         return NULL;
+    }
 
     int result = cb_is_excluded(name, image);
 
-    if (result > 0)
+    if (result > 0) {
+        printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+        fflush(stdout);
         Py_RETURN_TRUE;
+    }
+    printf("::: is_excluded: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
+    fflush(stdout);
     Py_RETURN_FALSE;
 }
