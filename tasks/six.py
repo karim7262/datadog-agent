@@ -19,7 +19,7 @@ def build(ctx, install_prefix=None, cmake_options=''):
     cmake_args = cmake_options + " -DBUILD_DEMO:BOOL=OFF -DCMAKE_INSTALL_PREFIX:PATH={}".format(install_prefix or dev_path)
     debug_mode = os.environ.get("DEBUG_BUILD")
     if debug_mode:
-        cmake_args = "{} + -DCMAKE_BUILD_TYPE={}".format(cmake_args, debug_mode)
+        cmake_args = "{} -DCMAKE_BUILD_TYPE={}".format(cmake_args, debug_mode)
 
     ctx.run("cd {} && cmake {} .".format(six_path, cmake_args))
     ctx.run("make -C {}".format(six_path))
