@@ -2,8 +2,6 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019 Datadog, Inc.
-#include <stdio.h>
-#include <pthread.h>
 #include "kubeutil.h"
 
 #include "cgo_free.h"
@@ -46,14 +44,9 @@ void _set_get_connection_info_cb(cb_get_connection_info_t cb)
 
 PyObject *get_connection_info(PyObject *self, PyObject *args)
 {
-    printf("::: get_connection_info: thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
-    fflush(stdout);
     // callback must be set
-    if (cb_get_connection_info == NULL) {
-        printf("::: get_connection_info: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
-        fflush(stdout);
+    if (cb_get_connection_info == NULL)
         Py_RETURN_NONE;
-    }
 
     char *data = NULL;
     cb_get_connection_info(&data);
@@ -65,11 +58,7 @@ PyObject *get_connection_info(PyObject *self, PyObject *args)
     cgo_free(data);
 
     if (conn_info_dict == NULL || !PyDict_Check(conn_info_dict)) {
-        printf("::: get_connection_info: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
-        fflush(stdout);
         return PyDict_New();
     }
-    printf("::: get_connection_info: RETURN thread id %d thread_state %d\n", pthread_self(),  PyGILState_GetThisThreadState());
-    fflush(stdout);
     return conn_info_dict;
 }
