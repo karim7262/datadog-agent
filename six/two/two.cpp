@@ -38,6 +38,9 @@ Two::Two(const char *python_home)
     , _baseClass(NULL)
     , _pythonPaths()
 {
+    // unbuffered output
+    std::cout.setf(std::ios::unitbuf);
+
     initPythonHome(python_home);
 }
 
@@ -231,6 +234,8 @@ done:
 
 bool Two::getClass(const char *module, SixPyObject *&pyModule, SixPyObject *&pyClass)
 {
+    // unbuffered output
+    std::cout.setf(std::ios::unitbuf);
     print_gil_state("getClass");
     PyObject *obj_module = NULL;
     PyObject *obj_class = NULL;
