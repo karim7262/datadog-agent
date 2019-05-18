@@ -32,7 +32,7 @@ if ohai["platform"] != "windows"
   relative_path "Python-#{version}"
 
   env = {
-    "CFLAGS" => "-I#{install_dir}/embedded/include -O2 -g -pipe -fPIC",
+    "CFLAGS" => "-I#{install_dir}/embedded/include -O2 -g3 -pipe -fPIC",
     "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
   }
 
@@ -47,8 +47,7 @@ if ohai["platform"] != "windows"
                           "CC=clang",
                           "MACOSX_DEPLOYMENT_TARGET=10.12")
   elsif linux?
-    python_configure.push("--with-pydebug",
-                          "--enable-unicode=ucs4",
+    python_configure.push("--enable-unicode=ucs4",
                           "--enable-shared")
   end
 
