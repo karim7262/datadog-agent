@@ -47,9 +47,9 @@ if ohai["platform"] != "windows"
                           "CC=clang",
                           "MACOSX_DEPLOYMENT_TARGET=10.12")
   elsif linux?
-    python_configure.push("--with-pydebug",
-                          "--enable-unicode=ucs4",
+    python_configure.push("--enable-unicode=ucs4",
                           "--enable-shared")
+    # python_configure.push("--with-pydebug")
   end
 
   build do
