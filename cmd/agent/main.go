@@ -12,11 +12,16 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/app"
 )
 
 func main() {
+	// Trying to grab the C-stacktrace - testing
+	signal.Ignore(syscall.SIGABRT)
+
 	// Invoke the Agent
 	if err := app.AgentCmd.Execute(); err != nil {
 		os.Exit(-1)
