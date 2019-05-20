@@ -7,7 +7,6 @@ package systemd
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
@@ -20,11 +19,16 @@ import (
 
 const systemdCheckName = "systemd"
 
+// For testing purpose
+var (
+	dbusNew       = dbus.New
+	connListUnits = func(c *dbus.Conn) ([]dbus.UnitStatus, error) { return c.ListUnits() }
+	connClose     = func(c *dbus.Conn) { c.Close() }
+)
+
 // SystemdCheck doesn't need additional fields
 type SystemdCheck struct {
 	core.CheckBase
-
-	// ...
 }
 
 // Run executes the check
@@ -35,15 +39,15 @@ func (c *SystemdCheck) Run() error {
 		return err
 	}
 
-	conn, err := dbus.New()
+	conn, err := dbusNew()
 	if err != nil {
 		log.Error("New Connection Err: ", err)
 		return err
 	}
-	defer conn.Close()
+	defer connClose(conn)
 
 	// Overall Unit Metrics
-	units, err := conn.ListUnits()
+	units, err := connListUnits(conn)
 	if err != nil {
 		fmt.Println("ListUnits Err: ", err)
 		return err
@@ -57,27 +61,28 @@ func (c *SystemdCheck) Run() error {
 		}
 	}
 
-	sender.Gauge("test.systemd.unit.active.count", float64(activeUnitCounter), "", nil)
+	// sender.Gauge("test.systemd.unit.active.count", float64(activeUnitCounter), "", nil)
 
-	// Unit Metrics
-	configUnits := []string{"ssh.service", "docker.service"}
+	// // Unit Metrics
+	// configUnits := []string{"ssh.service", "docker.service"}
 
-	for _, unit := range configUnits {
-		tags := []string{fmt.Sprintf("unit_name:%s", unit)}
+	// for _, unit := range configUnits {
+	// 	tags := []string{fmt.Sprintf("unit_name:%s", unit)}
 
-		parts := strings.Split(unit, ".")
-		unitType := parts[1]
-		unitName := parts[0]
-		log.Info("unit_name:", unitName)
-		cpuProperty, err := conn.GetUnitTypeProperty(unitName, unitType, "CPUUsageNSec")
-		if err != nil {
-			log.Error("Property Err: ", err)
-		} else {
-			log.Info("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)))
-			sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
-		}
-	}
+	// 	parts := strings.Split(unit, ".")
+	// 	unitType := parts[1]
+	// 	unitName := parts[0]
+	// 	log.Info("unit_name:", unitName)
+	// 	cpuProperty, err := conn.GetUnitTypeProperty(unitName, unitType, "CPUUsageNSec")
+	// 	if err != nil {
+	// 		log.Error("Property Err: ", err)
+	// 	} else {
+	// 		log.Info("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)))
+	// 		sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
+	// 	}
+	// }
 
+	sender.Gauge("test.systemd.unit.cpu", 1, "", []string{})
 	sender.Commit()
 
 	return nil
@@ -86,6 +91,7 @@ func (c *SystemdCheck) Run() error {
 func systemdFactory() check.Check {
 	return &SystemdCheck{
 		CheckBase: core.NewCheckBase(systemdCheckName),
+		// dbus:      defaultDbusWrapper{},
 	}
 }
 
