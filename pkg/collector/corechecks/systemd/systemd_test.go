@@ -72,6 +72,9 @@ func CPUTimes(bool) ([]cpu.TimesStat, error) {
 // 	Conn
 // }
 
+type Conn struct {
+}
+
 func dbusNewFake() (*dbus.Conn, error) {
 	fmt.Println("my dbusNewFake")
 	return nil, nil
@@ -79,7 +82,11 @@ func dbusNewFake() (*dbus.Conn, error) {
 
 func connListUnitsFake(c *dbus.Conn) ([]dbus.UnitStatus, error) {
 	fmt.Println("my connListUnitsFake")
-	return []dbus.UnitStatus{}, nil
+	return []dbus.UnitStatus{
+		{Name: "unit1", ActiveState: "active"},
+		{Name: "unit2", ActiveState: "active"},
+		{Name: "unit3", ActiveState: "inactive"},
+	}, nil
 }
 
 func connCloseFake(c *dbus.Conn) {
@@ -97,13 +104,14 @@ func TestSystemdCheckLinux(t *testing.T) {
 	// setup expectations
 	mock := mocksender.NewMockSender(systemdCheck.ID())
 
-	mock.On("Gauge", "test.systemd.unit.cpu", 1.0, "", []string{}).Return().Times(1)
+	mock.On("Gauge", "systemd.unit.cpu", 1.0, "", []string(nil)).Return().Times(1)
+	mock.On("Gauge", "systemd.unit.active.count", 2.0, "", []string(nil)).Return().Times(1)
 	mock.On("Commit").Return().Times(1)
 
 	systemdCheck.Run()
 
 	mock.AssertExpectations(t)
-	mock.AssertNumberOfCalls(t, "Gauge", 1)
+	mock.AssertNumberOfCalls(t, "Gauge", 2)
 	mock.AssertNumberOfCalls(t, "Commit", 1)
 
 }

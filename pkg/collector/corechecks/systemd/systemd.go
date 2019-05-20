@@ -61,7 +61,7 @@ func (c *SystemdCheck) Run() error {
 		}
 	}
 
-	// sender.Gauge("test.systemd.unit.active.count", float64(activeUnitCounter), "", nil)
+	sender.Gauge("systemd.unit.active.count", float64(activeUnitCounter), "", nil)
 
 	// // Unit Metrics
 	// configUnits := []string{"ssh.service", "docker.service"}
@@ -77,12 +77,12 @@ func (c *SystemdCheck) Run() error {
 	// 	if err != nil {
 	// 		log.Error("Property Err: ", err)
 	// 	} else {
-	// 		log.Info("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)))
-	// 		sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
+	// 		log.Info("systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)))
+	// 		sender.Gauge("systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
 	// 	}
 	// }
 
-	sender.Gauge("test.systemd.unit.cpu", 1, "", []string{})
+	sender.Gauge("systemd.unit.cpu", 1, "", nil)
 	sender.Commit()
 
 	return nil
