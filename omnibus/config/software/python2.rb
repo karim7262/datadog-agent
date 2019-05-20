@@ -34,6 +34,7 @@ if ohai["platform"] != "windows"
   env = {
     "CFLAGS" => "-I#{install_dir}/embedded/include -O2 -g3 -pipe -fPIC",
     "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
+    "EXTRA_CFLAGS" => "-DPy_REF_DEBUG",
   }
 
   python_configure = ["./configure",
@@ -49,7 +50,6 @@ if ohai["platform"] != "windows"
   elsif linux?
     python_configure.push("--enable-unicode=ucs4",
                           "--enable-shared")
-    # python_configure.push("--with-pydebug")
   end
 
   build do
