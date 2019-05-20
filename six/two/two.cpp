@@ -44,7 +44,7 @@ void signalHandler(int sig, siginfo_t*, void*) {
 
   size_t nptrs = backtrace(buffer, STACKTRACE_SIZE);
   std::cerr << "HANDLER CAUGHT signal Error: signal " << sig << std::endl;
-  symbols = backtrace_symbols(array, nptrs);
+  symbols = backtrace_symbols(buffer, nptrs);
   if (symbols == NULL) {
       std::cerr << "Error getting backtrace symbols" << std::endl;
       exit(1);
@@ -65,8 +65,12 @@ Two::Two(const char *python_home)
     , _pythonPaths()
 {
     // register signal handlers
-    signal(SIGSEGV, signalHandler);
-    signal(SIGABRT, signalHandler);
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = signalHandler;
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGABRT, &sa, NULL);
 
     // unbuffered output
     std::cout.setf(std::ios::unitbuf);
