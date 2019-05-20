@@ -61,7 +61,6 @@ void signalHandler(int sig, siginfo_t*, void*) {
   // trying to get core dump too
   signal(sig, SIG_DFL);
   kill(getpid(), sig);
-  exit(1);
 }
 
 Two::Two(const char *python_home)
@@ -74,8 +73,8 @@ Two::Two(const char *python_home)
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = signalHandler;
 
+    // on segfault
     sigaction(SIGSEGV, &sa, NULL);
-    sigaction(SIGABRT, &sa, NULL);
 
     initPythonHome(python_home);
 }
