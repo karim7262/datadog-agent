@@ -3,10 +3,11 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-2019 Datadog, Inc.
 
-package system
+package systemd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
@@ -22,6 +23,8 @@ const systemdCheckName = "systemd"
 // SystemdCheck doesn't need additional fields
 type SystemdCheck struct {
 	core.CheckBase
+
+	// ...
 }
 
 // Run executes the check
@@ -39,6 +42,7 @@ func (c *SystemdCheck) Run() error {
 	}
 	defer conn.Close()
 
+	// Overall Unit Metrics
 	units, err := conn.ListUnits()
 	if err != nil {
 		fmt.Println("ListUnits Err: ", err)
@@ -55,18 +59,22 @@ func (c *SystemdCheck) Run() error {
 
 	sender.Gauge("test.systemd.unit.active.count", float64(activeUnitCounter), "", nil)
 
-	for _, unit := range units {
-		log.Debugf("[unit] %s: ActiveState=%s, SubState=%s", unit.Name, unit.ActiveState, unit.SubState)
-		if unit.ActiveState == "active" {
+	// Unit Metrics
+	configUnits := []string{"ssh.service", "docker.service"}
 
-			tags := []string{fmt.Sprintf("unit_name:%s", unit.Name)}
+	for _, unit := range configUnits {
+		tags := []string{fmt.Sprintf("unit_name:%s", unit)}
 
-			cpuProperty, err := conn.GetServiceProperty(unit.Name, "CPUUsageNSec")
-			if err != nil {
-				log.Error("New Connection: ", err)
-			} else {
-				sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
-			}
+		parts := strings.Split(unit, ".")
+		unitType := parts[1]
+		unitName := parts[0]
+		log.Info("unit_name:", unitName)
+		cpuProperty, err := conn.GetUnitTypeProperty(unitName, unitType, "CPUUsageNSec")
+		if err != nil {
+			log.Error("Property Err: ", err)
+		} else {
+			log.Info("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)))
+			sender.Gauge("test.systemd.unit.cpu", float64(cpuProperty.Value.Value().(uint64)), "", tags)
 		}
 	}
 
