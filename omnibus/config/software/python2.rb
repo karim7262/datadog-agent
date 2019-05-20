@@ -32,7 +32,7 @@ if ohai["platform"] != "windows"
   relative_path "Python-#{version}"
 
   env = {
-    "CFLAGS" => "-I#{install_dir}/embedded/include -O2 -g3 -pipe -fPIC",
+    "CFLAGS" => "-I#{install_dir}/embedded/include -O1 -g3 -pipe -fPIC",
     "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
     "EXTRA_CFLAGS" => "-DPy_REF_DEBUG",
   }
