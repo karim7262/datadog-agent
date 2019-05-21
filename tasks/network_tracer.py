@@ -21,12 +21,13 @@ BPF_TAG = "linux_bpf"
 
 
 @task
-def build(ctx, race=False, incremental_build=False):
+def build(ctx, race=False, incremental_build=False, skip_object_files=False):
     """
     Build the network_tracer
     """
 
-    build_object_files(ctx, install=True)
+    if not skip_object_files:
+        build_object_files(ctx, install=True)
 
     # TODO use pkg/version for this
     main = "main."
@@ -154,7 +155,7 @@ def cfmt(ctx):
         ctx.run(sedCmd.format(file=file))
 
 
-@task
+@task(build)
 def build_dev_docker_image(ctx, image_name, push=False):
     """
     Build a network-tracer-agent Docker image (development only)

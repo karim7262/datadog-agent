@@ -322,8 +322,6 @@ agent_deb-x64:
   script:
     # remove artifacts from previous pipelines that may come from the cache
     - rm -rf $OMNIBUS_PACKAGE_DIR/*
-    # Retrieve the network-tracer from S3
-    - $S3_CP_CMD $S3_ARTEFACTS_URI/network-tracer $SRC_PATH/$NETWORK_TRACER_BINARIES_DIR/network-tracer
     # Artifacts and cache must live within project directory but we run omnibus in a neutral directory.
     # Thus, we move the artifacts at the end in a gitlab-friendly dir.
     - inv -e agent.omnibus-build --release-version "$RELEASE_VERSION" --base-dir $OMNIBUS_BASE_DIR --omnibus-s3-cache

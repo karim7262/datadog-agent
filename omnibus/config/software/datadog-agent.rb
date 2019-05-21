@@ -38,7 +38,7 @@ build do
         "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
     }
   end
-  
+
   # include embedded path (mostly for `pkg-config` binary)
   env = with_embedded_path(env)
 
@@ -94,13 +94,13 @@ build do
 
   # Build the process-agent
   command "invoke -e process-agent.build", :env => env
+  command "invoke -e network-tracer.build --skip-object-files", :env => env
 
   if windows?
     copy 'bin/process-agent/process-agent.exe', "#{Omnibus::Config.source_dir()}/datadog-agent/src/github.com/DataDog/datadog-agent/bin/agent"
   else
     copy 'bin/process-agent/process-agent', "#{install_dir}/embedded/bin"
     copy 'bin/network-tracer/network-tracer', "#{install_dir}/embedded/bin"
-    block { File.chmod(0755, "#{install_dir}/embedded/bin/network-tracer") }
   end
 
   if linux?
