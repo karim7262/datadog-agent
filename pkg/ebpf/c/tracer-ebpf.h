@@ -55,6 +55,8 @@ typedef struct {
 
 typedef struct {
     __u32 retransmits;
+    __u32 sent_pkts;
+    __u32 recv_pkts;
 } tcp_stats_t;
 
 // Full data for a tcp connection

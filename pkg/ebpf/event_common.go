@@ -82,6 +82,9 @@ type ConnectionStats struct {
 	MonotonicRecvBytes uint64 `json:"monotonic_recv_bytes"`
 	LastRecvBytes      uint64 `json:"last_recv_bytes"`
 
+	SentPackets uint32 `json:"sent_packets"`
+	RecvPackets uint32 `json:"recv_packets"`
+
 	// Last time the stats for this connection were updated
 	LastUpdateEpoch uint64 `json:"last_update_epoch"`
 
@@ -111,7 +114,7 @@ func (c ConnectionStats) DestAddr() Address {
 
 func (c ConnectionStats) String() string {
 	return fmt.Sprintf(
-		"[%s] [PID: %d] [%v:%d ⇄ %v:%d] (%s) %d bytes sent (+%d), %d bytes received (+%d), %d retransmits (+%d)",
+		"[%s] [PID: %d] [%v:%d ⇄ %v:%d] (%s) %d bytes sent #%d pkts (+%d), %d bytes received #%d pkts (+%d), %d retransmits (+%d)",
 		c.Type,
 		c.Pid,
 		c.Source,
@@ -119,8 +122,8 @@ func (c ConnectionStats) String() string {
 		c.Dest,
 		c.DPort,
 		c.Direction,
-		c.MonotonicSentBytes, c.LastSentBytes,
-		c.MonotonicRecvBytes, c.LastRecvBytes,
+		c.MonotonicSentBytes, c.SentPackets, c.LastSentBytes,
+		c.MonotonicRecvBytes, c.RecvPackets, c.LastRecvBytes,
 		c.MonotonicRetransmits, c.LastRetransmits,
 	)
 }

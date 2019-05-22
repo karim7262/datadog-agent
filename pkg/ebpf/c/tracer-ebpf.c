@@ -482,8 +482,8 @@ static void update_conn_stats(
     u64 pid,
     metadata_mask_t type,
     metadata_mask_t family,
-    size_t sent_bytes,
-    size_t recv_bytes,
+    u32 sent_bytes,
+    u32 recv_bytes,
     u64 ts) {
     conn_tuple_t t = {};
     conn_stats_ts_t* val;
@@ -515,6 +515,8 @@ static void update_tcp_stats(
     tracer_status_t* status,
     metadata_mask_t family,
     u32 retransmits,
+    u32 sent_pkts,
+    u32 recv_pkts,
     u64 ts) {
     conn_tuple_t t = {};
     tcp_stats_t* val;
@@ -532,6 +534,8 @@ static void update_tcp_stats(
     val = bpf_map_lookup_elem(&tcp_stats, &t);
     if (val != NULL) {
         __sync_fetch_and_add(&val->retransmits, retransmits);
+        __sync_fetch_and_add(&val->sent_pkts, sent_pkts);
+        __sync_fetch_and_add(&val->recv_pkts, recv_pkts);
     }
 }
 
@@ -588,13 +592,19 @@ static int handle_message(struct sock* sk,
     tracer_status_t* status,
     u64 pid_tgid,
     metadata_mask_t type,
-    size_t sent_bytes,
-    size_t recv_bytes) {
+    u64 sent_bytes,
+    u64 recv_bytes,
+    u32 sent_pkts,
+    u32 recv_pkts) {
 
     u64 zero = 0;
     u64 ts = bpf_ktime_get_ns();
 
     handle_family(sk, status, update_conn_stats(sk, status, pid_tgid, type, family, sent_bytes, recv_bytes, ts));
+
+    if (type == CONN_TYPE_TCP) {
+        handle_family(sk, status, update_tcp_stats(sk, status, family, 0, sent_pkts, recv_pkts, ts));
+    }
 
     // Update latest timestamp that we've seen - for connection expiration tracking
     bpf_map_update_elem(&latest_ts, &zero, &ts, BPF_ANY);
@@ -605,7 +615,7 @@ __attribute__((always_inline))
 static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     u64 ts = bpf_ktime_get_ns();
 
-    handle_family(sk, status, update_tcp_stats(sk, status, family, 1, ts));
+    handle_family(sk, status, update_tcp_stats(sk, status, family, 1, 0, 0, ts));
 
     // Update latest timestamp that we've seen - for connection expiration tracking
     u64 zero = 0;
@@ -701,6 +711,20 @@ int kretprobe__tcp_v6_connect(struct pt_regs* ctx) {
     return 0;
 }
 
+SEC("kprobe/tcp_push")
+int kprobe__tcp_push(struct pt_regs* ctx) {
+    struct sock* sk = (struct sock*)PT_REGS_PARM1(ctx);
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+    u64 zero = 0;
+
+    tracer_status_t* status = bpf_map_lookup_elem(&tracer_status, &zero);
+    if (status == NULL || status->state == TRACER_STATE_UNINITIALIZED) {
+        return 0;
+    }
+
+    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, 0, 1, 0);
+}
+
 SEC("kprobe/tcp_sendmsg")
 int kprobe__tcp_sendmsg(struct pt_regs* ctx) {
     struct sock* sk = (struct sock*)PT_REGS_PARM1(ctx);
@@ -714,7 +738,7 @@ int kprobe__tcp_sendmsg(struct pt_regs* ctx) {
     }
     log_debug("kprobe/tcp_sendmsg: pid_tgid: %d, size: %d\n", pid_tgid, size);
 
-    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, size, 0);
+    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, size, 0, 0, 0);
 }
 
 SEC("kprobe/tcp_cleanup_rbuf")
@@ -732,9 +756,13 @@ int kprobe__tcp_cleanup_rbuf(struct pt_regs* ctx) {
         return 0;
     }
 
-    log_debug("kprobe/tcp_cleanup_rbuf: pid_tgid: %d, copied: %d\n", pid_tgid, copied);
+    if (copied <= 0) {
+        // Ignore the cleanup if it does not contain data
+        return 0;
+    }
 
-    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, copied);
+    log_debug("kprobe/tcp_cleanup_rbuf: pid_tgid: %d, copied: %d\n", pid_tgid, copied);
+    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, copied, 0, 1);
 }
 
 SEC("kprobe/tcp_close")
@@ -779,7 +807,7 @@ int kprobe__udp_sendmsg(struct pt_regs* ctx) {
     }
 
     log_debug("kprobe/udp_sendmsg: pid_tgid: %d, size: %d\n", pid_tgid, size);
-    handle_message(sk, status, pid_tgid, CONN_TYPE_UDP, size, 0);
+    handle_message(sk, status, pid_tgid, CONN_TYPE_UDP, size, 0, 0, 0);
 
     return 0;
 }
@@ -828,7 +856,7 @@ int kretprobe__udp_recvmsg(struct pt_regs* ctx) {
         return 0;
     }
 
-    handle_message(sk, status, pid_tgid, CONN_TYPE_UDP, 0, copied);
+    handle_message(sk, status, pid_tgid, CONN_TYPE_UDP, 0, copied, 0, 0);
 
     return 0;
 }

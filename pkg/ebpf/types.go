@@ -18,6 +18,8 @@ const (
 	// TCPv6ConnectReturn traces the return value for the v6 connect() system call
 	TCPv6ConnectReturn KProbeName = "kretprobe/tcp_v6_connect"
 
+	// TCPPush traces the tcp_push() system call
+	TCPPush KProbeName = "kprobe/tcp_push"
 	// TCPSendMsg traces the tcp_sendmsg() system call
 	TCPSendMsg KProbeName = "kprobe/tcp_sendmsg"
 	// TCPCleanupRBuf traces the tcp_cleanup_rbuf() system call
