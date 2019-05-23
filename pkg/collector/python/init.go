@@ -249,10 +249,13 @@ func Initialize(paths ...string) error {
 	}
 
 	// Setup crash handling specifics
-	cStackTrace := config.Datadog.GetBool("c_stacktrace_collection")
-	cCoreDump := config.Datadog.GetBool("c_core_dump")
-	if cStackTrace {
-		C.handle_crashes(six, C.Cbool(cCoreDump))
+	if config.Datadog.GetBool("c_stacktrace_collection") {
+		var cCoreDump int
+
+		if config.Datadog.GetBool("c_core_dump") {
+			cCoreDump = 1
+		}
+		C.handle_crashes(six, C.int(cCoreDump))
 	}
 
 	// Setup custom builtin before Six initialization
