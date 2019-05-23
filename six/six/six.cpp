@@ -10,6 +10,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+// logging to cerr
+#include <iostream>
+
 #include <six.h>
 
 core_trigger_t core_dump = NULL;
