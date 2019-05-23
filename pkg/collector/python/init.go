@@ -248,6 +248,13 @@ func Initialize(paths ...string) error {
 		C.add_python_path(six, C.CString(p))
 	}
 
+	// Setup crash handling specifics
+	cStackTrace := config.Datadog.GetBool("c_stacktrace_collection")
+	cCoreDump := config.Datadog.GetBool("c_core_dump")
+	if cStackTrace {
+		C.handle_crashes(six, C.Cbool(cCoreDump))
+	}
+
 	// Setup custom builtin before Six initialization
 	C.initCgoFree(six)
 	C.initDatadogAgentModule(six)
