@@ -1,12 +1,12 @@
 {
 	"nightly": {
-		"INTEGRATIONS_CORE_VERSION": "mfpierre/update-psutil",
-		"TRACE_AGENT_VERSION": "master",
-		"PROCESS_AGENT_VERSION": "master",
+		"INTEGRATIONS_CORE_VERSION": "mfpierre/fix-total-histogram-count",
+		"TRACE_AGENT_VERSION": "6.11.0",
+		"PROCESS_AGENT_VERSION": "6.11.0",
 		"OMNIBUS_SOFTWARE_VERSION": "master",
 		"OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
-		"JMXFETCH_VERSION": "0.21.0",
-		"JMXFETCH_HASH": "4feb19275604c275b2c1a3b42f788525bb8bcbb3ec14ef62fe26dca1a58c4f99"
+		"JMXFETCH_VERSION": "0.27.0",
+		"JMXFETCH_HASH": "52aabf81abb4e42adcb28164b263f01b293dda1c686f845d133ebcd128f8b2ee"
 	},
 	"6.6.0": {
 		"INTEGRATIONS_CORE_VERSION": "6.6.0",
