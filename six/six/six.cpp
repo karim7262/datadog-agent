@@ -44,7 +44,7 @@ void signalHandler(int sig, siginfo_t*, void*) {
     // dump core if so configured
     __sync_synchronize();
     if(core_dump) {
-        core_dump();
+        core_dump(sig);
     } else {
         kill(getpid(), SIGABRT);
     }
