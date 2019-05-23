@@ -4,6 +4,9 @@
 // (https://www.datadoghq.com/).
 // Copyright 2019 Datadog, Inc.
 
+#include <six.h>
+
+#ifndef WIN32
 // handler stuff
 #include <execinfo.h>
 #include <csignal>
@@ -13,7 +16,6 @@
 // logging to cerr
 #include <iostream>
 
-#include <six.h>
 
 core_trigger_t core_dump = NULL;
 
@@ -50,6 +52,24 @@ void signalHandler(int sig, siginfo_t*, void*) {
     }
 }
 
+bool Six::handleCrashes(const bool coredump) const
+{
+    // register signal handlers
+    struct sigaction sa;
+    sa.sa_flags = SA_SIGINFO;
+    sa.sa_sigaction = signalHandler;
+
+    // on segfault - what else?
+    sigaction(SIGSEGV, &sa, NULL);
+
+    if (coredump) {
+        __sync_synchronize();
+        core_dump = core;
+    }
+}
+
+#endif
+
 void Six::setError(const std::string &msg) const
 {
     _errorFlag = true;
@@ -77,22 +97,6 @@ const char *Six::getError() const
 bool Six::hasError() const
 {
     return _errorFlag;
-}
-
-bool Six::handleCrashes(const bool coredump) const
-{
-    // register signal handlers
-    struct sigaction sa;
-    sa.sa_flags = SA_SIGINFO;
-    sa.sa_sigaction = signalHandler;
-
-    // on segfault - what else?
-    sigaction(SIGSEGV, &sa, NULL);
-
-    if (coredump) {
-        __sync_synchronize();
-        core_dump = core;
-    }
 }
 
 void Six::clearError()

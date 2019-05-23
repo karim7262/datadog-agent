@@ -55,7 +55,9 @@ public:
     bool hasError() const;
     void setError(const std::string &msg) const; // let const methods set errors
     void setError(const char *msg) const;
+#ifndef WIN32
     bool handleCrashes(const bool coredump) const;
+#endif
 
     // Python Helpers
     virtual char *getIntegrationList() = 0;

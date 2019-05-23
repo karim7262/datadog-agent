@@ -248,14 +248,16 @@ func Initialize(paths ...string) error {
 		C.add_python_path(six, C.CString(p))
 	}
 
-	// Setup crash handling specifics
-	if config.Datadog.GetBool("c_stacktrace_collection") {
-		var cCoreDump int
+	// Setup crash handling specifics - *NIX-only
+	if runtime.GOOS != "windows" {
+		if config.Datadog.GetBool("c_stacktrace_collection") {
+			var cCoreDump int
 
-		if config.Datadog.GetBool("c_core_dump") {
-			cCoreDump = 1
+			if config.Datadog.GetBool("c_core_dump") {
+				cCoreDump = 1
+			}
+			C.handle_crashes(six, C.int(cCoreDump))
 		}
-		C.handle_crashes(six, C.int(cCoreDump))
 	}
 
 	// Setup custom builtin before Six initialization
