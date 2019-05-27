@@ -9,6 +9,7 @@ if(WIN32)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin )
     SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -mwin32")
 endif()
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -O1")
 
 ## Config options
 option(DISABLE_PYTHON2 "Do not build Python2 support")
