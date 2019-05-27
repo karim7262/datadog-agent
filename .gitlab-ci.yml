@@ -1,5 +1,6 @@
 stages:
   - source_test
+  - binary_build
   - package_build
   - image_build
 
@@ -25,7 +26,6 @@ variables:
   STATIC_BINARIES_DIR: bin/static
   DOGSTATSD_BINARIES_DIR: bin/dogstatsd
   AGENT_BINARIES_DIR: bin/agent
-  CLUSTER_AGENT_BINARIES_DIR: bin/datadog-cluster-agent
   SYSTEM_PROBE_BINARIES_DIR: bin/system-probe
   DEB_S3_BUCKET: apt.datad0g.com
   RPM_S3_BUCKET: yum.datad0g.com
@@ -181,6 +181,21 @@ run_security_scan_test:
     - SNYK_TOKEN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.snyk_token --with-decryption --query "Parameter.Value" --out text)
       snyk monitor --project-name=datadog-agent-gopkg.lock --file=Gopkg.lock
 
+#
+# binary_build
+#
+#
+# build system-probe bin
+system_probe-build:
+  stage: binary_build
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/ebpf:latest
+  before_script:
+    - cd $SRC_PATH
+    - inv -e deps
+  tags: [ "runner:main", "size:large" ]
+  script:
+    - inv -e system-probe.build
+    - $S3_CP_CMD $SRC_PATH/$SYSTEM_PROBE_BINARIES_DIR/system-probe $S3_ARTEFACTS_URI/system-probe
 
 #
 # package_build
