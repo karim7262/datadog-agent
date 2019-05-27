@@ -34,6 +34,7 @@ PyObject *buildTagsList(char **tags)
         PyObject *pyTag = PyStringFromCString(tags[i]);
         cgo_free(tags[i]);
         PyList_Append(res, pyTag);
+        Py_XDECREF(pyTag);
     }
     cgo_free(tags);
     return res;
