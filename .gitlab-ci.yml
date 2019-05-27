@@ -184,7 +184,7 @@ run_security_scan_test:
 #
 # binary_build
 #
-#
+
 # build system-probe bin
 system_probe-build:
   stage: binary_build
@@ -433,10 +433,3 @@ build_agent6_jmx:
     TAG_SUFFIX: -jmx
     BUILD_ARG: --target release --build-arg WITH_JMX=true
     TESTING_ARG:  --target testing --build-arg WITH_JMX=true
-
-# build the dogstatsd image
-build_dogstatsd:
-  <<: *docker_build_job_definition
-  variables:
-    IMAGE: &dogstatsd_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/dogstatsd
-    BUILD_CONTEXT: Dockerfiles/dogstatsd/alpine
