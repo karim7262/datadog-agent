@@ -613,6 +613,28 @@ static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     return 0;
 }
 
+__attribute__((always_inline))
+static int handle_tcp_close(struct pt_regs* ctx,
+    struct sock* sk,
+    tracer_status_t* status) {
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+
+    u32 net_ns_inum;
+
+    // Get network namespace id
+    possible_net_t* skc_net;
+
+    skc_net = NULL;
+    net_ns_inum = 0;
+    bpf_probe_read(&skc_net, sizeof(possible_net_t*), ((char*)sk) + status->offset_netns);
+    bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), ((char*)skc_net) + status->offset_ino);
+
+    log_debug("kprobe/tcp_close: pid_tgid: %d, ns: %d\n", pid_tgid, net_ns_inum);
+
+    handle_family(sk, status, cleanup_tcp_conn(ctx, sk, status, pid_tgid, family));
+    return 0;
+}
+
 // Used for offset guessing (see: pkg/offsetguess.go)
 SEC("kprobe/tcp_v4_connect")
 int kprobe__tcp_v4_connect(struct pt_regs* ctx) {
@@ -737,33 +759,41 @@ int kprobe__tcp_cleanup_rbuf(struct pt_regs* ctx) {
     return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, copied);
 }
 
-SEC("kprobe/tcp_close")
-int kprobe__tcp_close(struct pt_regs* ctx) {
+SEC("kprobe/tcp_set_state")
+int kprobe__tcp_set_state(struct pt_regs* ctx) {
     struct sock* sk;
     tracer_status_t* status;
+    int state;
     u64 zero = 0;
-    u64 pid_tgid = bpf_get_current_pid_tgid();
+
     sk = (struct sock*)PT_REGS_PARM1(ctx);
+    state = (int)PT_REGS_PARM2(ctx);
 
     status = bpf_map_lookup_elem(&tracer_status, &zero);
     if (status == NULL || status->state != TRACER_STATE_READY) {
         return 0;
     }
 
-    u32 net_ns_inum;
+    if (state == TCP_CLOSE) {
+        log_debug("kprobe/tcp_set_state CLOSE\n");
+        return handle_tcp_close(ctx, sk, status);
+    }
 
-    // Get network namespace id
-    possible_net_t* skc_net;
-
-    skc_net = NULL;
-    net_ns_inum = 0;
-    bpf_probe_read(&skc_net, sizeof(possible_net_t*), ((char*)sk) + status->offset_netns);
-    bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), ((char*)skc_net) + status->offset_ino);
-
-    log_debug("kprobe/tcp_close: pid_tgid: %d, ns: %d\n", pid_tgid, net_ns_inum);
-
-    handle_family(sk, status, cleanup_tcp_conn(ctx, sk, status, pid_tgid, family));
     return 0;
+}
+
+SEC("kprobe/tcp_close")
+int kprobe__tcp_close(struct pt_regs* ctx) {
+    struct sock* sk;
+    tracer_status_t* status;
+    u64 zero = 0;
+    sk = (struct sock*)PT_REGS_PARM1(ctx);
+    status = bpf_map_lookup_elem(&tracer_status, &zero);
+    if (status == NULL || status->state != TRACER_STATE_READY) {
+        return 0;
+    }
+
+    return handle_tcp_close(ctx, sk, status);
 }
 
 SEC("kprobe/udp_sendmsg")
@@ -893,6 +923,8 @@ int kprobe__tcp_v4_destroy_sock(struct pt_regs* ctx) {
     if (status == NULL || status->state != TRACER_STATE_READY) {
         return 0;
     }
+
+    handle_tcp_close(ctx, sk, status);
 
     __u16 lport = 0;
 

@@ -90,6 +90,7 @@ func (c *Config) EnabledKProbes() map[KProbeName]struct{} {
 	enabled[TCPv4ConnectReturn] = struct{}{}
 
 	if c.CollectTCPConns {
+		enabled[TCPSetState] = struct{}{}
 		enabled[TCPSendMsg] = struct{}{}
 		enabled[TCPCleanupRBuf] = struct{}{}
 		enabled[TCPClose] = struct{}{}
