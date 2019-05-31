@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -28,6 +30,11 @@ func key(pieces ...string) string {
 // SystemProbe specific configuration
 func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 	loadEnvVariables()
+
+	// Resolve any secrets
+	if err := config.ResolveSecrets(config.Datadog, filepath.Base(path)); err != nil {
+		return err
+	}
 
 	a.EnableLocalSystemProbe = config.Datadog.GetBool(key(spNS, "use_local_system_probe"))
 
@@ -114,6 +121,11 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 func (a *AgentConfig) loadProcessYamlConfig(path string) error {
 	loadEnvVariables()
 
+	// Resolve any secrets
+	if err := config.ResolveSecrets(config.Datadog, filepath.Base(path)); err != nil {
+		return err
+	}
+
 	URL, err := url.Parse(config.GetMainEndpoint("https://process.", key(ns, "process_dd_url")))
 	if err != nil {
 		return fmt.Errorf("error parsing process_dd_url: %s", err)
@@ -124,11 +136,26 @@ func (a *AgentConfig) loadProcessYamlConfig(path string) error {
 		a.APIEndpoints[0].APIKey = config.Datadog.GetString(key)
 	}
 
-	if k := key(ns, "enabled"); config.Datadog.IsSet(k) {
+	if config.Datadog.IsSet("hostname") {
+		a.HostName = config.Datadog.GetString("hostname")
+	}
+
+	// Note: The enabled environment flag operates differently than that of our YAML configuration
+	if v, ok := os.LookupEnv("DD_PROCESS_AGENT_ENABLED"); ok {
+		// DD_PROCESS_AGENT_ENABLED: true - Process + Container checks enabled
+		//                           false - No checks enabled
+		//                           (none) - Container check enabled (by default)
+		if enabled, err := isAffirmative(v); enabled {
+			a.Enabled = true
+			a.EnabledChecks = processChecks
+		} else if !enabled && err == nil {
+			a.Enabled = false
+		}
+	} else if k := key(ns, "enabled"); config.Datadog.IsSet(k) {
 		// A string indicate the enabled state of the Agent.
-		// If "false" (the default) we will only collect containers.
-		// If "true" we will collect containers and processes.
-		// If "disabled" the agent will be disabled altogether and won't start.
+		//   If "false" (the default) we will only collect containers.
+		//   If "true" we will collect containers and processes.
+		//   If "disabled" the agent will be disabled altogether and won't start.
 		enabled := config.Datadog.GetString(k)
 		if ok, err := isAffirmative(enabled); ok {
 			a.Enabled, a.EnabledChecks = true, processChecks

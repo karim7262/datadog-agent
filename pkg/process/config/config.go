@@ -224,7 +224,7 @@ func loadConfigIfExists(path string) error {
 			config.Datadog.SetConfigFile(path)
 		}
 
-		if err := config.Load(); err != nil {
+		if err := config.LoadWithoutSecret(); err != nil {
 			return err
 		}
 	} else {
@@ -240,7 +240,10 @@ func NewAgentConfig(loggerName config.LoggerName, yamlPath, netYamlPath string) 
 	cfg := NewDefaultAgentConfig()
 
 	// For Agent 6 we will have a YAML config file to use.
-	loadConfigIfExists(yamlPath)
+	if err := loadConfigIfExists(yamlPath); err != nil {
+		return nil, err
+	}
+
 	if err := cfg.loadProcessYamlConfig(yamlPath); err != nil {
 		return nil, err
 	}
@@ -266,11 +269,6 @@ func NewAgentConfig(loggerName config.LoggerName, yamlPath, netYamlPath string) 
 	// Python-style log level has WARNING vs WARN
 	if strings.ToLower(cfg.LogLevel) == "warning" {
 		cfg.LogLevel = "warn"
-	}
-
-	if v := os.Getenv("DD_HOSTNAME"); v != "" {
-		log.Info("overriding hostname from env DD_HOSTNAME value")
-		cfg.HostName = v
 	}
 
 	if cfg.HostName == "" {
@@ -330,7 +328,6 @@ func NewSystemProbeConfig(loggerName config.LoggerName, yamlPath string) (*Agent
 
 func loadEnvVariables() {
 	for envKey, cfgKey := range map[string]string{
-		"DD_PROCESS_AGENT_ENABLED":          "process_config.enabled",
 		"DD_PROCESS_AGENT_CONTAINER_SOURCE": "process_config.container_source",
 		"DD_SCRUB_ARGS":                     "process_config.scrub_args",
 		"DD_STRIP_PROCESS_ARGS":             "process_config.strip_proc_arguments",
@@ -344,8 +341,8 @@ func loadEnvVariables() {
 		"DD_DISABLE_IPV6_TRACING":   "system_probe_config.disable_ipv6",
 		"DD_COLLECT_LOCAL_DNS":      "system_probe_config.collect_local_dns",
 		"DD_USE_LOCAL_SYSTEM_PROBE": "system_probe_config.use_local_system_probe",
-		"DD_ENABLE_PROFILING":       "system_probe_config.debug_profiling_enabled",
 
+		"DD_HOSTNAME":       "hostname",
 		"DD_DOGSTATSD_PORT": "dogstatsd_port",
 		"DD_BIND_HOST":      "bind_host",
 		"HTTPS_PROXY":       "proxy.https",
@@ -363,12 +360,14 @@ func loadEnvVariables() {
 	}
 
 	// Support API_KEY and DD_API_KEY but prefer DD_API_KEY.
-	if key, ddkey := os.Getenv("API_KEY"), os.Getenv("DD_API_KEY"); ddkey != "" {
-		log.Info("overriding API key from env DD_API_KEY value")
-		config.Datadog.Set("api_key", strings.TrimSpace(strings.Split(ddkey, ",")[0]))
-	} else if key != "" {
-		log.Info("overriding API key from env API_KEY value")
-		config.Datadog.Set("api_key", strings.TrimSpace(strings.Split(key, ",")[0]))
+	apiKey, envKey := os.Getenv("DD_API_KEY"), "DD_API_KEY"
+	if apiKey == "" {
+		apiKey, envKey = os.Getenv("API_KEY"), "API_KEY"
+	}
+
+	if apiKey != "" { // We don't want to overwrite the API KEY provided as an environment variable
+		log.Infof("overriding API key from env %s value", envKey)
+		config.Datadog.Set("api_key", strings.TrimSpace(strings.Split(apiKey, ",")[0]))
 	}
 
 	if v := os.Getenv("DD_CUSTOM_SENSITIVE_WORDS"); v != "" {
