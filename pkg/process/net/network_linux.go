@@ -4,7 +4,6 @@ package net
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/ebpf"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/util/retry"
+	"github.com/json-iterator/go"
 )
 
 const (
@@ -81,13 +81,9 @@ func (r *RemoteSysProbeUtil) GetConnections(clientID string) ([]ebpf.ConnectionS
 		return nil, fmt.Errorf("conn request failed: socket %s, url: %s, status code: %d", r.socketPath, connectionsURL, resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	conn := &ebpf.Connections{}
-	if err := conn.UnmarshalJSON(body); err != nil {
+	conn := ebpf.Connections{}
+	decoder := jsoniter.NewDecoder(resp.Body)
+	if err := decoder.Decode(&conn); err != nil {
 		return nil, err
 	}
 
