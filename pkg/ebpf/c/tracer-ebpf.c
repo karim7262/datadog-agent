@@ -955,6 +955,8 @@ int kprobe__tcp_v4_destroy_sock(struct pt_regs* ctx) {
         return 0;
     }
 
+    handle_tcp_close(ctx, sk, status);
+
     __u16 lport = 0;
 
     bpf_probe_read(&lport, sizeof(lport), ((char*)sk) + status->offset_dport + sizeof(lport));
