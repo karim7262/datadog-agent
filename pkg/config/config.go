@@ -124,6 +124,9 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("health_port", int64(0))
 	config.BindEnvAndSetDefault("disable_py3_validation", false)
 	config.BindEnvAndSetDefault("python_version", "2")
+	// C-land crash feature flags
+	config.BindEnvAndSetDefault("c_stacktrace_collection", false)
+	config.BindEnvAndSetDefault("c_core_dump", false)
 
 	// if/when the default is changed to true, make the default platform
 	// dependent; default should remain false on Windows to maintain backward
@@ -414,14 +417,18 @@ func initConfig(config Config) {
 	config.SetKnown("process_config.intervals.container")
 	config.SetKnown("process_config.intervals.container_realtime")
 	config.SetKnown("process_config.dd_agent_bin")
+	config.SetKnown("process_config.custom_sensitive_words")
+	config.SetKnown("process_config.scrub_args")
 	config.SetKnown("process.strip_proc_arguments")
 	config.SetKnown("process_config.windows.args_refresh_interval")
 	config.SetKnown("process_config.windows.add_new_args")
 	config.SetKnown("process.additional_endpoints")
 	config.SetKnown("process.container_source")
 	config.SetKnown("process.intervals.connections")
-	config.SetKnown("network_tracer_config.enabled")
-	config.SetKnown("network_tracer_config.log_file")
+	config.SetKnown("system_probe_config.enabled")
+	config.SetKnown("system_probe_config.log_file")
+	config.SetKnown("system_probe_config.debug_port")
+	config.SetKnown("system_probe_config.bpf_debug")
 
 	// APM
 	config.SetKnown("apm_config.enabled")

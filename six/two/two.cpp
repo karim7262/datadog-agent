@@ -77,17 +77,32 @@ bool Two::init()
     if (_pythonPaths.size()) {
         char pathchr[] = "path";
         PyObject *path = PySys_GetObject(pathchr); // borrowed
+        if (path == NULL) {
+            // sys.path doesn't exist, which should never happen.
+            // No exception is set on the interpreter, so no need to handle any.
+            setError("could not access sys.path");
+            goto done;
+        }
         for (PyPaths::iterator pit = _pythonPaths.begin(); pit != _pythonPaths.end(); ++pit) {
             PyObject *p = PyString_FromString((*pit).c_str());
-            PyList_Append(path, p);
+            if (p == NULL) {
+                setError("could not set pythonPath: " + _fetchPythonError());
+                goto done;
+            }
+            int retval = PyList_Append(path, p);
             Py_XDECREF(p);
+            if (retval == -1) {
+                setError("could not append path to pythonPath: " + _fetchPythonError());
+                goto done;
+            }
         }
     }
 
     // import the base class
     _baseClass = _importFrom("datadog_checks.checks", "AgentCheck");
 
-    // save tread state and release the GIL
+done:
+    // save thread state and release the GIL
     _threadState = PyEval_SaveThread();
 
     return _baseClass != NULL;
@@ -214,8 +229,9 @@ bool Two::getClass(const char *module, SixPyObject *&pyModule, SixPyObject *&pyC
 
     obj_class = _findSubclassOf(_baseClass, obj_module);
     if (obj_class == NULL) {
+        // `_findSubclassOf` does not set the interpreter's error flag, but leaves an error on six
         std::ostringstream err;
-        err << "unable to find a subclass of the base check in module '" << module << "': " << _fetchPythonError();
+        err << "unable to find a subclass of the base check in module '" << module << "': " << getError();
         setError(err.str());
         Py_XDECREF(obj_module);
         return false;
@@ -253,6 +269,10 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
     if (init_config == Py_None) {
         Py_XDECREF(init_config);
         init_config = PyDict_New();
+        if (init_config == NULL) {
+            setError("error 'init_config' can't be initialized to an empty dict: " + _fetchPythonError());
+            goto done;
+        }
     } else if (!PyDict_Check(init_config)) {
         setError("error 'init_config' is not a dict");
         goto done;
@@ -285,11 +305,32 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
 
     // create `args` and `kwargs` to invoke `AgentCheck` constructor
     args = PyTuple_New(0);
+    if (args == NULL) {
+        setError("error 'args' can't be initialized to an empty tuple: " + _fetchPythonError());
+        goto done;
+    }
     kwargs = PyDict_New();
+    if (kwargs == NULL) {
+        setError("error 'kwargs' can't be initialized to an empty dict: " + _fetchPythonError());
+        goto done;
+    }
     name = PyString_FromString(check_name);
-    PyDict_SetItemString(kwargs, "name", name);
-    PyDict_SetItemString(kwargs, "init_config", init_config);
-    PyDict_SetItemString(kwargs, "instances", instances);
+    if (name == NULL) {
+        setError("error 'name' can't be initialized: " + _fetchPythonError());
+        goto done;
+    }
+    if (PyDict_SetItemString(kwargs, "name", name) == -1) {
+        setError("error 'name' key can't be set: " + _fetchPythonError());
+        goto done;
+    }
+    if (PyDict_SetItemString(kwargs, "init_config", init_config) == -1) {
+        setError("error 'init_config' key can't be set: " + _fetchPythonError());
+        goto done;
+    }
+    if (PyDict_SetItemString(kwargs, "instances", instances) == -1) {
+        setError("error 'instances' key can't be set: " + _fetchPythonError());
+        goto done;
+    }
 
     if (agent_config_str != NULL) {
         agent_config = PyObject_CallMethod(klass, load_config, format, agent_config_str);
@@ -301,7 +342,10 @@ bool Two::getCheck(SixPyObject *py_class, const char *init_config_str, const cha
             goto done;
         }
 
-        PyDict_SetItemString(kwargs, "agentConfig", agent_config);
+        if (PyDict_SetItemString(kwargs, "agentConfig", agent_config) == -1) {
+            setError("error 'agentConfig' key can't be set: " + _fetchPythonError());
+            goto done;
+        }
     }
 
     // call `AgentCheck` constructor
@@ -556,7 +600,9 @@ std::string Two::_fetchPythonError()
 
     // Fetch error and make sure exception values are normalized, as per python C
     // API docs.
+    // PyErr_Fetch returns void, no need to check its return value
     PyErr_Fetch(&ptype, &pvalue, &ptraceback);
+    // PyErr_NormalizeException returns void, no need to check its return value
     PyErr_NormalizeException(&ptype, &pvalue, &ptraceback);
 
     // There's a traceback, try to format it nicely
@@ -585,7 +631,7 @@ std::string Two::_fetchPythonError()
                     // "format_exception" returns a list of strings (one per line)
                     for (int i = 0; i < len; i++) {
                         PyObject *s = PyList_GetItem(fmt_exc, i); // borrowed ref
-                        if (s == NULL) {
+                        if (s == NULL || !PyString_Check(s)) {
                             // unlikely to happen but same as above, do not propagate this error upstream
                             // to avoid confusing the caller. PyErr_Clear() will be called before returning.
                             ret_val = "";
@@ -594,6 +640,7 @@ std::string Two::_fetchPythonError()
                             Py_XDECREF(fmt_exc);
                             goto done;
                         }
+                        // we know s is a string, so no need to check return value of PyString_AsString
                         ret_val += PyString_AsString(s);
                     }
                 }
@@ -611,12 +658,14 @@ std::string Two::_fetchPythonError()
     else if (pvalue != NULL) {
         PyObject *pvalue_obj = PyObject_Str(pvalue);
         if (pvalue_obj != NULL) {
+            // we know pvalue_obj is a string, no need to check return value of PyString_AsString
             ret_val = PyString_AsString(pvalue_obj);
             Py_XDECREF(pvalue_obj);
         }
     } else if (ptype != NULL) {
         PyObject *ptype_obj = PyObject_Str(ptype);
         if (ptype_obj != NULL) {
+            // we know ptype_obj is a string, no need to check return value of PyString_AsString
             ret_val = PyString_AsString(ptype_obj);
             Py_XDECREF(ptype_obj);
         }
@@ -681,9 +730,10 @@ void Two::set_module_attr_string(char *module, char *attr, char *value)
     }
 
     PyObject *py_value = PyStringFromCString(value);
-    if (PyObject_SetAttrString(py_module, attr, py_value) != 0)
+    if (PyObject_SetAttrString(py_module, attr, py_value) != 0) {
         setError("error setting the '" + std::string(module) + "." + std::string(attr)
                  + "' attribute: " + _fetchPythonError());
+    }
 
     Py_XDECREF(py_module);
     Py_XDECREF(py_value);
@@ -791,6 +841,11 @@ char *Two::getIntegrationList()
     }
 
     args = PyTuple_New(0);
+    if (args == NULL) {
+        setError("could not initialize args to empty tuple: " + _fetchPythonError());
+        goto done;
+    }
+
     packages = PyObject_Call(pkgLister, args, NULL);
     if (packages == NULL) {
         setError("error fetching wheels list: " + _fetchPythonError());
@@ -803,6 +858,10 @@ char *Two::getIntegrationList()
     }
 
     wheels = as_yaml(packages);
+    if (wheels == NULL) {
+        setError("'packages' could not be serialized to yaml: " + _fetchPythonError());
+        goto done;
+    }
 
 done:
     Py_XDECREF(pyPackages);

@@ -9,6 +9,8 @@
 // Some preprocessor sanity for builds (2+3 common sources)
 #ifndef DATADOG_AGENT_TWO
 #    error Build requires defining DATADOG_AGENT_TWO
+#elif defined(DATADOG_AGENT_TWO) && defined(DATADOG_AGENT_THREE)
+#    error "DATADOG_AGENT_TWO and DATADOG_AGENT_THREE are mutually exclusive - define only one of the two."
 #endif
 
 #include <map>
@@ -83,7 +85,10 @@ public:
 
 private:
     void initPythonHome(const char *pythonHome = NULL);
+    // return new reference, returns NULL on error with clean interpreter error flag
     PyObject *_importFrom(const char *module, const char *name);
+    // return new reference, returns NULL on error with clean interpreter error flag
+    // and an error set on six
     PyObject *_findSubclassOf(PyObject *base, PyObject *moduleName);
     PyObject *_getClass(const char *module, const char *base);
     std::string _fetchPythonError();
