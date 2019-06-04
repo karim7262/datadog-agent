@@ -149,18 +149,6 @@ before_script:
 
 
 
-# run tests for eBPF code
-run_tests_ebpf:
-  stage: source_test
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/ebpf:latest
-  before_script:
-    - cd $SRC_PATH
-    - inv -e deps
-  tags: [ "runner:main", "size:large" ]
-  script:
-    # For now only check bpf bytes since we don't have a way to run eBPF tests without mounting a debugfs
-    - echo "hi"
-    # - inv -e system-probe.test --only-check-bpf-bytes
 
 # scan the dependencies for security vulnerabilities with snyk
 run_security_scan_test:
@@ -230,17 +218,6 @@ system_probe-build:
 #     paths:
 #       - benchmarks
 
-# check the size of the static dogstatsd binary
-run_dogstatsd_size_test:
-  stage: integration_test
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deb_x64:latest
-  tags: [ "runner:main", "size:large" ]
-  before_script:
-    # Disable global before_script
-    - mkdir -p $STATIC_BINARIES_DIR
-    - $S3_CP_CMD $S3_ARTEFACTS_URI/static/dogstatsd $STATIC_BINARIES_DIR/dogstatsd
-  script:
-    - inv -e dogstatsd.size-test --skip-build
 
 #
 # package_build
