@@ -26,9 +26,6 @@ env = {
   "LDFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
   "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
   "LD_RUN_PATH" => "#{install_dir}/embedded/lib",
-  # tell the Makefile which is the directory containing config files by setting
-  # `conf_dir`, otherwise `make install` will write to `/etc/`
-  "conf_dir" =>  "#{install_dir}/embedded/etc"
 }
 
 build do
@@ -40,5 +37,4 @@ build do
   command python_configure.join(" "), :env => env
   command "make -j #{workers}", :env => env
   command "make install", :env => env
-
 end
