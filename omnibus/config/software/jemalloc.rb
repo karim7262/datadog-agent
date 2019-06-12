@@ -29,7 +29,7 @@ env = {
 }
 
 build do
-  ship_license "TODO"
+  ship_license "https://raw.githubusercontent.com/jemalloc/jemalloc/#{version}/COPYING"
 
   python_configure = ["./configure",
                       "--prefix=#{install_dir}/embedded"]
