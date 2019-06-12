@@ -928,7 +928,7 @@ char *Two::getInterpreterMemoryUsage()
     }
 
     memUsage = as_yaml(summary);
-    if (wheels == NULL) {
+    if (memUsage == NULL) {
         setError("'packages' could not be serialized to yaml: " + _fetchPythonError());
         goto done;
     }
