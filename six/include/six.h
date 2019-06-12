@@ -60,6 +60,9 @@ public:
 
     // Python Helpers
     virtual char *getIntegrationList() = 0;
+#define _PY_MEM_MODULE "utils.py_mem"
+#define _PY_MEM_SUMMARY_FUNC "get_mem_stats"
+    virtual char *getInterpreterMemoryUsage() = 0;
 
     // aggregator API
     virtual void setSubmitMetricCb(cb_submit_metric_t) = 0;

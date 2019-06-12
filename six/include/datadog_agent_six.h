@@ -55,6 +55,7 @@ DATADOG_AGENT_SIX_API int handle_crashes(const six_t *, const int);
 
 // PYTHON HELPERS
 DATADOG_AGENT_SIX_API char *get_integration_list(six_t *);
+DATADOG_AGENT_SIX_API char *get_interpreter_memory_usage(six_t *);
 
 // AGGREGATOR API
 DATADOG_AGENT_SIX_API void set_submit_metric_cb(six_t *, cb_submit_metric_t);
