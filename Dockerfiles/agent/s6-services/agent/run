@@ -1,4 +1,10 @@
 #!/usr/bin/execlineb -P
 
 foreground { /initlog.sh "starting agent" }
+
+# first attempt at jemalloc config
+importas -D "" MALLOC_CONF JEMALLOC_CONF
+importas -D "" LD_PRELOAD JEMALLOC_LD_PRELOAD
+export MALLOC_CONF MALLOC_CONF
+export LD_PRELOAD LD_PRELOAD
 agent run
