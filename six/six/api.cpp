@@ -375,6 +375,11 @@ char *get_integration_list(six_t *six)
     return AS_TYPE(Six, six)->getIntegrationList();
 }
 
+char *get_interpreter_memory_usage(six_t *six)
+{
+    return AS_TYPE(Six, six)->getInterpreterMemoryUsage();
+}
+
 /*
  * _util API
  */
