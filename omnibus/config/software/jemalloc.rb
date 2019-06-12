@@ -32,8 +32,10 @@ build do
   ship_license "https://raw.githubusercontent.com/jemalloc/jemalloc/#{version}/COPYING"
 
   python_configure = ["./configure",
+                      "--enable-prof-libunwind",
                       "--prefix=#{install_dir}/embedded"]
 
+  command "autoreconf --install", :env => env
   command python_configure.join(" "), :env => env
   command "make -j #{workers}", :env => env
   command "make install", :env => env
