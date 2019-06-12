@@ -10,12 +10,21 @@
 package agent
 
 import (
+	"encoding/json"
 	"net/http"
 
+	"github.com/DataDog/datadog-agent/pkg/collector/python"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 func getPythonStatus(w http.ResponseWriter, r *http.Request) {
-	log.Warnf("Python stats is not implemented yet\n")
-	w.Write([]byte("{}")) // return empty json
+	w.Header().Set("Content-Type", "application/json")
+	pyStats, err := python.GetPythonInterpreterMemoryUsage()
+	if err != nil {
+		log.Warnf("Error getting python stats: %s\n", err) // or something like this
+		http.Error(w, err.Error(), 500)
+	}
+
+	j, _ := json.Marshal(pyStats)
+	w.Write(j)
 }
