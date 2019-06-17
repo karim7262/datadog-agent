@@ -25,22 +25,18 @@ __u64 saddr_h;
 __u64 saddr_l;
 __u64 daddr_h;
 __u64 daddr_l;
-__u16 sport;
 __u16 dport;
 __u32 netns;
-__u32 pid;
 __u32 metadata;
 */
 type ConnTuple C.conn_tuple_t
 
 func (t *ConnTuple) copy() *ConnTuple {
 	return &ConnTuple{
-		pid:      t.pid,
 		saddr_h:  t.saddr_h,
 		saddr_l:  t.saddr_l,
 		daddr_h:  t.daddr_h,
 		daddr_l:  t.daddr_l,
-		sport:    t.sport,
 		dport:    t.dport,
 		netns:    t.netns,
 		metadata: t.metadata,
@@ -54,6 +50,8 @@ func (t *ConnTuple) isTCP() bool {
 /* conn_stats_ts_t
 __u64 sent_bytes;
 __u64 recv_bytes;
+__u32 pid;
+__u16 sport;
 __u64 timestamp;
 */
 type ConnStatsWithTimestamp C.conn_stats_ts_t
@@ -81,13 +79,13 @@ func connStats(t *ConnTuple, s *ConnStatsWithTimestamp, tcpStats *TCPStats) Conn
 	}
 
 	return ConnectionStats{
-		Pid:                  uint32(t.pid),
+		Pid:                  uint32(s.pid),
 		Type:                 connType(metadata),
 		Family:               family,
 		NetNS:                uint32(t.netns),
 		Source:               source,
 		Dest:                 dest,
-		SPort:                uint16(t.sport),
+		SPort:                uint16(s.sport),
 		DPort:                uint16(t.dport),
 		MonotonicSentBytes:   uint64(s.sent_bytes),
 		MonotonicRecvBytes:   uint64(s.recv_bytes),
