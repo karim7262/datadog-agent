@@ -492,8 +492,7 @@ static void update_conn_stats(
         return;
     }
 
-    t.pid = pid >> 32;
-    t.sport = ntohs(t.sport); // Making ports human-readable
+    t.sport = ntohs(t.sport);
     t.dport = ntohs(t.dport);
 
     // initialize-if-no-exist the connection stat, and load it
@@ -503,6 +502,9 @@ static void update_conn_stats(
 
     // If already in our map, increment size in-place
     if (val != NULL) {
+        if (val->pid == 0) {
+            val->pid = pid;
+        }
         __sync_fetch_and_add(&val->sent_bytes, sent_bytes);
         __sync_fetch_and_add(&val->recv_bytes, recv_bytes);
         val->timestamp = ts;
@@ -523,7 +525,6 @@ static void update_tcp_stats(
         return;
     }
 
-    t.sport = ntohs(t.sport); // Making ports human-readable
     t.dport = ntohs(t.dport);
 
     // initialize-if-no-exist the connetion state, and load it
@@ -540,15 +541,12 @@ static void cleanup_tcp_conn(
     struct pt_regs* ctx,
     struct sock* sk,
     tracer_status_t* status,
-    u64 pid,
     metadata_mask_t family) {
     u32 cpu = bpf_get_smp_processor_id();
 
     // Will hold the full connection data to send through the perf buffer
     tcp_conn_t t = {
-        .tup = (conn_tuple_t) {
-            .pid = 0,
-        },
+        .tup = (conn_tuple_t) {},
     };
     tcp_stats_t* tst;
     conn_stats_ts_t* cst;
@@ -557,14 +555,12 @@ static void cleanup_tcp_conn(
         return;
     }
 
-    t.tup.sport = ntohs(t.tup.sport); // Making ports human-readable
+    t.tup.sport = ntohs(t.tup.sport);
     t.tup.dport = ntohs(t.tup.dport);
 
     tst = bpf_map_lookup_elem(&tcp_stats, &(t.tup));
     // Delete the connection from the tcp_stats map before setting the PID
     bpf_map_delete_elem(&tcp_stats, &(t.tup));
-
-    t.tup.pid = pid >> 32;
 
     cst = bpf_map_lookup_elem(&conn_stats, &(t.tup));
     // Delete this connection from our stats map
@@ -610,6 +606,27 @@ static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     // Update latest timestamp that we've seen - for connection expiration tracking
     u64 zero = 0;
     bpf_map_update_elem(&latest_ts, &zero, &ts, BPF_ANY);
+    return 0;
+}
+
+__attribute__((always_inline))
+static int handle_tcp_close(struct pt_regs* ctx,
+    struct sock* sk,
+    tracer_status_t* status) {
+
+    u32 net_ns_inum;
+
+    // Get network namespace id
+    possible_net_t* skc_net;
+
+    skc_net = NULL;
+    net_ns_inum = 0;
+    bpf_probe_read(&skc_net, sizeof(possible_net_t*), ((char*)sk) + status->offset_netns);
+    bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), ((char*)skc_net) + status->offset_ino);
+
+    log_debug("kprobe/tcp_close: ns: %d\n", net_ns_inum);
+
+    handle_family(sk, status, cleanup_tcp_conn(ctx, sk, status, family));
     return 0;
 }
 
@@ -742,7 +759,6 @@ int kprobe__tcp_close(struct pt_regs* ctx) {
     struct sock* sk;
     tracer_status_t* status;
     u64 zero = 0;
-    u64 pid_tgid = bpf_get_current_pid_tgid();
     sk = (struct sock*)PT_REGS_PARM1(ctx);
 
     status = bpf_map_lookup_elem(&tracer_status, &zero);
@@ -750,20 +766,7 @@ int kprobe__tcp_close(struct pt_regs* ctx) {
         return 0;
     }
 
-    u32 net_ns_inum;
-
-    // Get network namespace id
-    possible_net_t* skc_net;
-
-    skc_net = NULL;
-    net_ns_inum = 0;
-    bpf_probe_read(&skc_net, sizeof(possible_net_t*), ((char*)sk) + status->offset_netns);
-    bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), ((char*)skc_net) + status->offset_ino);
-
-    log_debug("kprobe/tcp_close: pid_tgid: %d, ns: %d\n", pid_tgid, net_ns_inum);
-
-    handle_family(sk, status, cleanup_tcp_conn(ctx, sk, status, pid_tgid, family));
-    return 0;
+    return handle_tcp_close(ctx, sk, status);
 }
 
 SEC("kprobe/udp_sendmsg")

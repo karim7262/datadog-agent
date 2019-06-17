@@ -23,6 +23,7 @@ typedef struct {
     __u64 sent_bytes;
     __u64 recv_bytes;
     __u64 timestamp;
+    __u32 pid;
 } conn_stats_ts_t;
 
 // Metadata bit masks
@@ -46,7 +47,6 @@ typedef struct {
     __u16 sport;
     __u16 dport;
     __u32 netns;
-    __u32 pid;
     // Metadata description:
     // First bit indicates if the connection is TCP (1) or UDP (0)
     // Second bit indicates if the connection is V6 (1) or V4 (0)
