@@ -210,6 +210,9 @@ func (ns *networkState) StoreClosedConnection(conn ConnectionStats) {
 				// Let's keep the one with the highest stats since we can't rely on the last update epoch
 				// See: https://github.com/weaveworks/scope/issues/2650
 				client.closedConnections[string(key)] = connWithHigherStats(prev, conn)
+				// Having duplicateCloseEvents is actually fine because before receiving the first
+				// close event the bpf maps are cleared (which means that subsequent close events
+				// won't have any stats in them
 				ns.telemetry.duplicateCloseEvents++
 				continue
 			}

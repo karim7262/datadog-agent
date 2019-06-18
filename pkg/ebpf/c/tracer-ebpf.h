@@ -23,6 +23,7 @@ typedef struct {
     __u64 sent_bytes;
     __u64 recv_bytes;
     __u64 timestamp;
+    __u32 pid;
 } conn_stats_ts_t;
 
 // Metadata bit masks
@@ -46,11 +47,10 @@ typedef struct {
     __u16 sport;
     __u16 dport;
     __u32 netns;
-    __u32 pid;
     // Metadata description:
     // First bit indicates if the connection is TCP (1) or UDP (0)
     // Second bit indicates if the connection is V6 (1) or V4 (0)
-    __u32 metadata; // This is that big because it seems that we atleast need a 32-bit aligned struct
+    __u32 metadata; // This is that big because it seems that we atleast need a 64-bit aligned struct
 } conn_tuple_t;
 
 // Used as the max value for the max ID for a given cpu

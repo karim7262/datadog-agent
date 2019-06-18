@@ -524,7 +524,6 @@ static void update_conn_stats(
         return;
     }
 
-    t.pid = pid >> 32;
     t.sport = ntohs(t.sport); // Making ports human-readable
     t.dport = ntohs(t.dport);
 
@@ -538,9 +537,6 @@ static void update_conn_stats(
         // If the type is TCP and it's the first time we see this conn (sent = 0, recv = 0)
         // assign it an ID
         if (type == CONN_TYPE_TCP && val->sent_bytes == 0 && val->recv_bytes == 0) {
-            // Have to unset the PID to access the tcp_stats map
-            t.pid = 0;
-
             tcp_stats_t* tcp_val;
             // initialize-if-no-exist
             tcp_stats_t empty = {};
@@ -554,6 +550,11 @@ static void update_conn_stats(
                 __u32 id = new_tcp_id();
                 __sync_fetch_and_add(&tcp_val->id, id);
             }
+        }
+
+        // Set the PID if not set yet
+        if (val->pid == 0) {
+            val->pid = pid;
         }
 
         // Finally update the stats
@@ -594,15 +595,12 @@ static void cleanup_tcp_conn(
     struct pt_regs* ctx,
     struct sock* sk,
     tracer_status_t* status,
-    u64 pid,
     metadata_mask_t family) {
     u32 cpu = bpf_get_smp_processor_id();
 
     // Will hold the full connection data to send through the perf buffer
     tcp_conn_t t = {
-        .tup = (conn_tuple_t) {
-            .pid = 0,
-        },
+        .tup = (conn_tuple_t) {},
     };
     tcp_stats_t* tst;
     conn_stats_ts_t* cst;
@@ -615,10 +613,8 @@ static void cleanup_tcp_conn(
     t.tup.dport = ntohs(t.tup.dport);
 
     tst = bpf_map_lookup_elem(&tcp_stats, &(t.tup));
-    // Delete the connection from the tcp_stats map before setting the PID
+    // Delete the connection from the tcp_stats map
     bpf_map_delete_elem(&tcp_stats, &(t.tup));
-
-    t.tup.pid = pid >> 32;
 
     cst = bpf_map_lookup_elem(&conn_stats, &(t.tup));
     // Delete this connection from our stats map
@@ -671,8 +667,6 @@ __attribute__((always_inline))
 static int handle_tcp_close(struct pt_regs* ctx,
     struct sock* sk,
     tracer_status_t* status) {
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-
     u32 net_ns_inum;
 
     // Get network namespace id
@@ -683,9 +677,9 @@ static int handle_tcp_close(struct pt_regs* ctx,
     bpf_probe_read(&skc_net, sizeof(possible_net_t*), ((char*)sk) + status->offset_netns);
     bpf_probe_read(&net_ns_inum, sizeof(net_ns_inum), ((char*)skc_net) + status->offset_ino);
 
-    log_debug("kprobe/tcp_close: pid_tgid: %d, ns: %d\n", pid_tgid, net_ns_inum);
+    log_debug("kprobe/tcp_close: ns: %d\n", net_ns_inum);
 
-    handle_family(sk, status, cleanup_tcp_conn(ctx, sk, status, pid_tgid, family));
+    handle_family(sk, status, cleanup_tcp_conn(ctx, sk, status, family));
     return 0;
 }
 
@@ -813,18 +807,45 @@ int kprobe__tcp_cleanup_rbuf(struct pt_regs* ctx) {
     return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, copied);
 }
 
-SEC("kprobe/tcp_close")
-int kprobe__tcp_close(struct pt_regs* ctx) {
+SEC("kprobe/tcp_time_wait")
+int kprobe__tcp_time_wait(struct pt_regs* ctx) {
     struct sock* sk;
     tracer_status_t* status;
     u64 zero = 0;
     sk = (struct sock*)PT_REGS_PARM1(ctx);
+
     status = bpf_map_lookup_elem(&tracer_status, &zero);
     if (status == NULL || status->state != TRACER_STATE_READY) {
         return 0;
     }
 
     return handle_tcp_close(ctx, sk, status);
+}
+
+SEC("kprobe/tcp_set_state")
+int kprobe__tcp_set_state(struct pt_regs* ctx) {
+    struct sock* sk;
+    u32 state;
+    tracer_status_t* status;
+    u64 zero = 0;
+    sk = (struct sock*)PT_REGS_PARM1(ctx);
+    state = (u32)PT_REGS_PARM2(ctx);
+
+    status = bpf_map_lookup_elem(&tracer_status, &zero);
+    if (status == NULL || status->state != TRACER_STATE_READY) {
+        return 0;
+    }
+
+    switch (state) {
+    case TCP_CLOSE:
+    case TCP_CLOSE_WAIT:
+    case TCP_FIN_WAIT1:
+        return handle_tcp_close(ctx, sk, status);
+    default:
+        break;
+    }
+
+    return 0;
 }
 
 SEC("kprobe/udp_sendmsg")
@@ -954,8 +975,6 @@ int kprobe__tcp_v4_destroy_sock(struct pt_regs* ctx) {
     if (status == NULL || status->state != TRACER_STATE_READY) {
         return 0;
     }
-
-    handle_tcp_close(ctx, sk, status);
 
     __u16 lport = 0;
 

@@ -382,9 +382,7 @@ func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
 			keys = append(keys, string(bk))
 		}
 
-		// We have to remove the PID to remove the element from the TCP Map since we don't use the pid there
 		if entries[i].isTCP() {
-			entries[i].pid = 0
 			if err = t.m.DeleteElement(tcpMp, unsafe.Pointer(entries[i])); err != nil {
 				_ = log.Warnf("failed to remove entry from the tcp map: %s", err)
 			}
@@ -398,10 +396,6 @@ func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
 
 // getTCPStats reads tcp related stats for the given ConnTuple
 func (t *Tracer) getTCPStats(mp *bpflib.Map, tuple *ConnTuple) *TCPStats {
-	// The PID isn't used as a key in the stats map, we will temporarily set it to 0 here and reset it when we're done
-	pid := tuple.pid
-	tuple.pid = 0
-
 	stats := &TCPStats{retransmits: 0}
 
 	// Don't bother looking in the map if the connection is UDP, there will never be data for that and we will avoid
@@ -409,8 +403,6 @@ func (t *Tracer) getTCPStats(mp *bpflib.Map, tuple *ConnTuple) *TCPStats {
 	if tuple.isTCP() {
 		_ = t.m.LookupElement(mp, unsafe.Pointer(tuple), unsafe.Pointer(stats))
 	}
-
-	tuple.pid = pid
 
 	return stats
 }

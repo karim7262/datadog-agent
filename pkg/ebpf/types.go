@@ -18,12 +18,14 @@ const (
 	// TCPv6ConnectReturn traces the return value for the v6 connect() system call
 	TCPv6ConnectReturn KProbeName = "kretprobe/tcp_v6_connect"
 
+	// TCPSetState traces the tcp_set_state() system call
+	TCPSetState KProbeName = "kprobe/tcp_set_state"
+	// TCPTimeWait traces the tcp_time_wait() system call
+	TCPTimeWait KProbeName = "kprobe/tcp_time_wait"
 	// TCPSendMsg traces the tcp_sendmsg() system call
 	TCPSendMsg KProbeName = "kprobe/tcp_sendmsg"
 	// TCPCleanupRBuf traces the tcp_cleanup_rbuf() system call
 	TCPCleanupRBuf KProbeName = "kprobe/tcp_cleanup_rbuf"
-	// TCPClose traces the tcp_close() system call
-	TCPClose KProbeName = "kprobe/tcp_close"
 
 	// UDPSendMsg traces the udp_sendmsg() system call
 	UDPSendMsg KProbeName = "kprobe/udp_sendmsg"
