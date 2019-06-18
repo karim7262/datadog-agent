@@ -380,6 +380,10 @@ func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
 			keys = append(keys, string(bk))
 		}
 
+		if entries[i].isTCP() {
+			log.Infof("Expired connection: %s", BeautifyKey(string(bk)))
+		}
+
 		// We can ignore the error for this map since it will not always contain the entry
 		_ = t.m.DeleteElement(tcpMp, unsafe.Pointer(entries[i]))
 	}

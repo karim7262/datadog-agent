@@ -50,6 +50,17 @@
         }                                                                           \
     })
 
+/* Macro to check the tracer status
+ * Usage: ensure_status(!= TRACER_STATE_UNINITIALIZED)
+ */
+#define ensure_status(cmp)                                   \
+    ({                                                       \
+        status = bpf_map_lookup_elem(&tracer_status, &zero); \
+        if (status == NULL || status->state cmp) {           \
+            return 0;                                        \
+        }                                                    \
+    })
+
 /* This is a key/value store with the keys being a conn_tuple_t for send & recv calls
  * and the values being conn_stats_ts_t *.
  */
@@ -140,8 +151,7 @@ struct bpf_map_def SEC("maps/port_bindings") port_bindings = {
 };
 
 /* http://stackoverflow.com/questions/1001307/detecting-endianness-programmatically-in-a-c-program */
-__attribute__((always_inline))
-static bool is_big_endian(void) {
+__attribute__((always_inline)) static bool is_big_endian(void) {
     union {
         uint32_t i;
         char c[4];
@@ -156,8 +166,7 @@ static bool is_big_endian(void) {
  * in the most significant 32 bits of part saddr_l and daddr_l.
  * Meanwhile the end of the mask is stored in the least significant 32 bits.
  */
-__attribute__((always_inline))
-static bool is_ipv4_mapped_ipv6(u64 saddr_h, u64 saddr_l, u64 daddr_h, u64 daddr_l) {
+__attribute__((always_inline)) static bool is_ipv4_mapped_ipv6(u64 saddr_h, u64 saddr_l, u64 daddr_h, u64 daddr_l) {
     if (is_big_endian()) {
         return ((saddr_h == 0 && ((u32)(saddr_l >> 32) == 0x0000FFFF)) || (daddr_h == 0 && ((u32)(daddr_l >> 32) == 0x0000FFFF)));
     } else {
@@ -184,8 +193,7 @@ struct bpf_map_def SEC("maps/latest_ts") latest_ts = {
     .namespace = "",
 };
 
-__attribute__((always_inline))
-static bool proc_t_comm_equals(proc_t a, proc_t b) {
+__attribute__((always_inline)) static bool proc_t_comm_equals(proc_t a, proc_t b) {
     int i;
     for (i = 0; i < TASK_COMM_LEN; i++) {
         if (a.comm[i] != b.comm[i]) {
@@ -195,8 +203,7 @@ static bool proc_t_comm_equals(proc_t a, proc_t b) {
     return true;
 }
 
-__attribute__((always_inline))
-static int are_offsets_ready_v4(tracer_status_t* status, struct sock* skp) {
+__attribute__((always_inline)) static int are_offsets_ready_v4(tracer_status_t* status, struct sock* skp) {
     u64 zero = 0;
 
     switch (status->state) {
@@ -307,8 +314,7 @@ static int are_offsets_ready_v4(tracer_status_t* status, struct sock* skp) {
     return 0;
 }
 
-__attribute__((always_inline))
-static int are_offsets_ready_v6(tracer_status_t* status, struct sock* skp) {
+__attribute__((always_inline)) static int are_offsets_ready_v6(tracer_status_t* status, struct sock* skp) {
     u64 zero = 0;
 
     switch (status->state) {
@@ -380,20 +386,17 @@ static int are_offsets_ready_v6(tracer_status_t* status, struct sock* skp) {
     return 0;
 }
 
-__attribute__((always_inline))
-static bool check_family(struct sock* sk, tracer_status_t* status, u16 expected_family) {
+__attribute__((always_inline)) static bool check_family(struct sock* sk, tracer_status_t* status, u16 expected_family) {
     u16 family = 0;
     bpf_probe_read(&family, sizeof(u16), ((char*)sk) + status->offset_family);
     return family == expected_family;
 }
 
-__attribute__((always_inline))
-static bool is_ipv6_enabled(tracer_status_t* status) {
+__attribute__((always_inline)) static bool is_ipv6_enabled(tracer_status_t* status) {
     return status->ipv6_enabled == TRACER_IPV6_ENABLED;
 }
 
-__attribute__((always_inline))
-static int read_conn_tuple(conn_tuple_t* tuple, tracer_status_t* status, struct sock* skp, metadata_mask_t type, metadata_mask_t family) {
+__attribute__((always_inline)) static int read_conn_tuple(conn_tuple_t* tuple, tracer_status_t* status, struct sock* skp, metadata_mask_t type, metadata_mask_t family) {
     u32 net_ns_inum;
     u16 sport, dport;
     u64 saddr_h, saddr_l, daddr_h, daddr_l;
@@ -475,8 +478,7 @@ static int read_conn_tuple(conn_tuple_t* tuple, tracer_status_t* status, struct 
     return 1;
 }
 
-__attribute__((always_inline))
-static void update_conn_stats(
+__attribute__((always_inline)) static void update_conn_stats(
     struct sock* sk,
     tracer_status_t* status,
     u64 pid,
@@ -511,8 +513,7 @@ static void update_conn_stats(
     }
 }
 
-__attribute__((always_inline))
-static void update_tcp_stats(
+__attribute__((always_inline)) static void update_tcp_stats(
     struct sock* sk,
     tracer_status_t* status,
     metadata_mask_t family,
@@ -525,6 +526,7 @@ static void update_tcp_stats(
         return;
     }
 
+    t.sport = ntohs(t.sport);
     t.dport = ntohs(t.dport);
 
     // initialize-if-no-exist the connetion state, and load it
@@ -536,8 +538,7 @@ static void update_tcp_stats(
     }
 }
 
-__attribute__((always_inline))
-static void cleanup_tcp_conn(
+__attribute__((always_inline)) static void cleanup_tcp_conn(
     struct pt_regs* ctx,
     struct sock* sk,
     tracer_status_t* status,
@@ -579,8 +580,7 @@ static void cleanup_tcp_conn(
     bpf_perf_event_output(ctx, &tcp_close_event, cpu, &t, sizeof(t));
 }
 
-__attribute__((always_inline))
-static int handle_message(struct sock* sk,
+__attribute__((always_inline)) static int handle_message(struct sock* sk,
     tracer_status_t* status,
     u64 pid_tgid,
     metadata_mask_t type,
@@ -597,8 +597,7 @@ static int handle_message(struct sock* sk,
     return 0;
 }
 
-__attribute__((always_inline))
-static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
+__attribute__((always_inline)) static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     u64 ts = bpf_ktime_get_ns();
 
     handle_family(sk, status, update_tcp_stats(sk, status, family, 1, ts));
@@ -609,8 +608,7 @@ static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     return 0;
 }
 
-__attribute__((always_inline))
-static int handle_tcp_close(struct pt_regs* ctx,
+__attribute__((always_inline)) static int handle_tcp_close(struct pt_regs* ctx,
     struct sock* sk,
     tracer_status_t* status) {
 
@@ -752,6 +750,47 @@ int kprobe__tcp_cleanup_rbuf(struct pt_regs* ctx) {
     log_debug("kprobe/tcp_cleanup_rbuf: pid_tgid: %d, copied: %d\n", pid_tgid, copied);
 
     return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, copied);
+}
+
+SEC("kprobe/tcp_time_wait")
+int kprobe__tcp_time_wait(struct pt_regs* ctx) {
+    struct sock* sk;
+    tracer_status_t* status;
+    u64 zero = 0;
+    sk = (struct sock*)PT_REGS_PARM1(ctx);
+
+    status = bpf_map_lookup_elem(&tracer_status, &zero);
+    if (status == NULL || status->state != TRACER_STATE_READY) {
+        return 0;
+    }
+
+    return handle_tcp_close(ctx, sk, status);
+}
+
+SEC("kprobe/tcp_set_state")
+int kprobe__tcp_set_state(struct pt_regs* ctx) {
+    struct sock* sk;
+    u32 state;
+    tracer_status_t* status;
+    u64 zero = 0;
+    sk = (struct sock*)PT_REGS_PARM1(ctx);
+    state = (u32)PT_REGS_PARM2(ctx);
+
+    status = bpf_map_lookup_elem(&tracer_status, &zero);
+    if (status == NULL || status->state != TRACER_STATE_READY) {
+        return 0;
+    }
+
+    switch (state) {
+    case TCP_CLOSE:
+    case TCP_CLOSE_WAIT:
+    case TCP_FIN_WAIT1:
+        return handle_tcp_close(ctx, sk, status);
+    default:
+        break;
+    }
+
+    return 0;
 }
 
 SEC("kprobe/tcp_close")
