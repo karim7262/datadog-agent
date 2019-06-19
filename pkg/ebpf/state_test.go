@@ -430,7 +430,6 @@ func TestSameKeyEdgeCases(t *testing.T) {
 
 	client := "c"
 	conn := ConnectionStats{
-		id:                 testID(),
 		Pid:                123,
 		Type:               TCP,
 		Family:             AFINET,
@@ -1145,17 +1144,11 @@ func generateRandConnections(n int) []ConnectionStats {
 }
 
 var latestTime uint64
-var tcpID uint32
 
 func cloneTestConn(c ConnectionStats) ConnectionStats {
 	c2 := c
-	c2.id = testID()
 	c2.LastUpdateEpoch = latestEpochTime()
 	return c2
-}
-
-func testID() uint32 {
-	return atomic.AddUint32(&tcpID, 1)
 }
 
 func latestEpochTime() uint64 {

@@ -62,18 +62,6 @@ struct bpf_map_def SEC("maps/conn_stats") conn_stats = {
     .namespace = "",
 };
 
-/* This is a key/value store with the keys being a conn_tuple_t (but without the PID being used)
- * and the values being a tcp_stats_t *.
- */
-struct bpf_map_def SEC("maps/tcp_stats") tcp_stats = {
-    .type = BPF_MAP_TYPE_HASH,
-    .key_size = sizeof(conn_tuple_t),
-    .value_size = sizeof(tcp_stats_t),
-    .max_entries = 0, // This will get overridden at runtime using max_tracked_connections
-    .pinning = 0,
-    .namespace = "",
-};
-
 /* Will hold the tcp close events
  * The keys are the cpu number and the values a perf file descriptor for a perf event
  */
@@ -135,18 +123,6 @@ struct bpf_map_def SEC("maps/port_bindings") port_bindings = {
     .key_size = sizeof(__u16),
     .value_size = sizeof(__u8),
     .max_entries = 0, // This will get overridden at runtime using max_tracked_connections
-    .pinning = 0,
-    .namespace = "",
-};
-
-/* Will hold a monotonic count per CPU to identify TCP connections
- * The keys are the cpu number and the values are the counts
- */
-struct bpf_map_def SEC("maps/tcp_mono_count") tcp_mono_count = {
-    .type = BPF_MAP_TYPE_ARRAY,
-    .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
-    .max_entries = 0, // This will get overridden at runtime
     .pinning = 0,
     .namespace = "",
 };
@@ -404,26 +380,6 @@ static bool is_ipv6_enabled(tracer_status_t* status) {
     return status->ipv6_enabled == TRACER_IPV6_ENABLED;
 }
 
-// new_tcp_id generates a new unique CPU ID per CPU and increments the monotonic counter we keep for this CPU
-__attribute__((always_inline))
-static __u32 new_tcp_id() {
-    // Get the current CPU
-    u32 cpu = bpf_get_smp_processor_id();
-    __u32* val;
-    __u32 zero = 0;
-
-    // XXX this is safe to do since the count will only be accessed by one CPU
-    bpf_map_update_elem(&tcp_mono_count, &cpu, &zero, BPF_NOEXIST);
-    val = bpf_map_lookup_elem(&tcp_mono_count, &cpu);
-    if (val) {
-        *val = (*val + 1) % MAX_PER_CPU_TCP_ID;
-        return (cpu * MAX_PER_CPU_TCP_ID) + *val;
-    }
-
-    log_debug("ERR(new_tcp_id): could not find CPU monotonic count for cpu:%d \n", cpu);
-    return 0;
-}
-
 __attribute__((always_inline))
 static int read_conn_tuple(conn_tuple_t* tuple, tracer_status_t* status, struct sock* skp, metadata_mask_t type, metadata_mask_t family) {
     u32 net_ns_inum;
@@ -514,8 +470,9 @@ static void update_conn_stats(
     u64 pid,
     metadata_mask_t type,
     metadata_mask_t family,
-    size_t sent_bytes,
-    size_t recv_bytes,
+    u64 sent_bytes,
+    u64 recv_bytes,
+    u64 retransmits,
     u64 ts) {
     conn_tuple_t t = {};
     conn_stats_ts_t* val;
@@ -534,59 +491,18 @@ static void update_conn_stats(
 
     // If already in our map, increment size in-place
     if (val != NULL) {
-        // If the type is TCP and it's the first time we see this conn (sent = 0, recv = 0)
-        // assign it an ID
-        if (type == CONN_TYPE_TCP && val->sent_bytes == 0 && val->recv_bytes == 0) {
-            tcp_stats_t* tcp_val;
-            // initialize-if-no-exist
-            tcp_stats_t empty = {};
-            bpf_map_update_elem(&tcp_stats, &t, &empty, BPF_NOEXIST);
-            tcp_val = bpf_map_lookup_elem(&tcp_stats, &t);
-            if (tcp_val != NULL && tcp_val->id == 0) {
-                // TODO: make sure that this is thread safe (only executed by the same CPU)
-                // It seems we can't use __sync_val_compare_and_swap/__sync_bool_compare_and_swap
-                // in bpf
-                // Only add the ID (same as swapping) if the previous one is zero
-                __u32 id = new_tcp_id();
-                __sync_fetch_and_add(&tcp_val->id, id);
-            }
-        }
-
-        // Set the PID if not set yet
-        if (val->pid == 0) {
+        // XXX: Since we can't use __sync_bool_compare_and_swap helpers yet
+        // We just check if the current pid is not 0 and if it's not we override
+        // the pid stored in the connection
+        if (pid != 0) {
             val->pid = pid;
         }
 
         // Finally update the stats
         __sync_fetch_and_add(&val->sent_bytes, sent_bytes);
         __sync_fetch_and_add(&val->recv_bytes, recv_bytes);
-        val->timestamp = ts;
-    }
-}
-
-__attribute__((always_inline))
-static void update_tcp_stats(
-    struct sock* sk,
-    tracer_status_t* status,
-    metadata_mask_t family,
-    u32 retransmits,
-    u64 ts) {
-    conn_tuple_t t = {};
-    tcp_stats_t* val;
-
-    if (!read_conn_tuple(&t, status, sk, CONN_TYPE_TCP, family)) {
-        return;
-    }
-
-    t.sport = ntohs(t.sport); // Making ports human-readable
-    t.dport = ntohs(t.dport);
-
-    // initialize-if-no-exist the connetion state, and load it
-    tcp_stats_t empty = {};
-    bpf_map_update_elem(&tcp_stats, &t, &empty, BPF_NOEXIST);
-    val = bpf_map_lookup_elem(&tcp_stats, &t);
-    if (val != NULL) {
         __sync_fetch_and_add(&val->retransmits, retransmits);
+        val->timestamp = ts;
     }
 }
 
@@ -602,7 +518,6 @@ static void cleanup_tcp_conn(
     tcp_conn_t t = {
         .tup = (conn_tuple_t) {},
     };
-    tcp_stats_t* tst;
     conn_stats_ts_t* cst;
 
     if (!read_conn_tuple(&(t.tup), status, sk, CONN_TYPE_TCP, family)) {
@@ -612,22 +527,23 @@ static void cleanup_tcp_conn(
     t.tup.sport = ntohs(t.tup.sport); // Making ports human-readable
     t.tup.dport = ntohs(t.tup.dport);
 
-    tst = bpf_map_lookup_elem(&tcp_stats, &(t.tup));
-    // Delete the connection from the tcp_stats map
-    bpf_map_delete_elem(&tcp_stats, &(t.tup));
-
     cst = bpf_map_lookup_elem(&conn_stats, &(t.tup));
+
+    // No conn recorded so no need to close it
+    if (cst == NULL) {
+        return;
+    }
+
+    // Connection was already closed don't send it
+    if (cst->closes != 0) {
+        return;
+    }
+    // Otherwise increment the closes field to mark the connection as closed
+    __sync_fetch_and_add(&cst->closes, 1);
+    cst->timestamp = bpf_ktime_get_ns();
+
     // Delete this connection from our stats map
     bpf_map_delete_elem(&conn_stats, &(t.tup));
-
-    if (tst != NULL) {
-        t.tcp_stats = *tst;
-    }
-
-    if (cst != NULL) {
-        cst->timestamp = bpf_ktime_get_ns();
-        t.conn_stats = *cst;
-    }
 
     // Send the connection data to the perf buffer
     bpf_perf_event_output(ctx, &tcp_close_event, cpu, &t, sizeof(t));
@@ -638,13 +554,13 @@ static int handle_message(struct sock* sk,
     tracer_status_t* status,
     u64 pid_tgid,
     metadata_mask_t type,
-    size_t sent_bytes,
-    size_t recv_bytes) {
+    u64 sent_bytes,
+    u64 recv_bytes) {
 
     u64 zero = 0;
     u64 ts = bpf_ktime_get_ns();
 
-    handle_family(sk, status, update_conn_stats(sk, status, pid_tgid, type, family, sent_bytes, recv_bytes, ts));
+    handle_family(sk, status, update_conn_stats(sk, status, pid_tgid, type, family, sent_bytes, recv_bytes, 0, ts));
 
     // Update latest timestamp that we've seen - for connection expiration tracking
     bpf_map_update_elem(&latest_ts, &zero, &ts, BPF_ANY);
@@ -654,8 +570,9 @@ static int handle_message(struct sock* sk,
 __attribute__((always_inline))
 static int handle_retransmit(struct sock* sk, tracer_status_t* status) {
     u64 ts = bpf_ktime_get_ns();
+    u64 pid_tgid = bpf_get_current_pid_tgid();
 
-    handle_family(sk, status, update_tcp_stats(sk, status, family, 1, ts));
+    handle_family(sk, status, update_conn_stats(sk, status, pid_tgid, CONN_TYPE_TCP, family, 0, 0, 1, ts));
 
     // Update latest timestamp that we've seen - for connection expiration tracking
     u64 zero = 0;
@@ -805,6 +722,21 @@ int kprobe__tcp_cleanup_rbuf(struct pt_regs* ctx) {
     log_debug("kprobe/tcp_cleanup_rbuf: pid_tgid: %d, copied: %d\n", pid_tgid, copied);
 
     return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, 0, copied);
+}
+
+SEC("kprobe/tcp_close")
+int kprobe__tcp_close(struct pt_regs* ctx) {
+    struct sock* sk;
+    tracer_status_t* status;
+    u64 zero = 0;
+    sk = (struct sock*)PT_REGS_PARM1(ctx);
+
+    status = bpf_map_lookup_elem(&tracer_status, &zero);
+    if (status == NULL || status->state != TRACER_STATE_READY) {
+        return 0;
+    }
+
+    return handle_tcp_close(ctx, sk, status);
 }
 
 SEC("kprobe/tcp_time_wait")

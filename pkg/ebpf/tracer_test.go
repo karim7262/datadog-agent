@@ -17,7 +17,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"unsafe"
 
 	"os"
 
@@ -227,20 +226,6 @@ func TestTCPRemoveEntries(t *testing.T) {
 	// Make sure the connection got cleaned up
 	_, ok := findConnection(c.LocalAddr(), c.RemoteAddr(), getConnections(t, tr))
 	assert.False(t, ok)
-
-	// Assert the TCP map does not contain the previous connection
-	key, nextKey, stats := &ConnTuple{}, &ConnTuple{}, &ConnStatsWithTimestamp{}
-	tcpMp, err := tr.getMap(tcpStatsMap)
-	assert.Nil(t, err)
-	hasNext := true
-	for {
-		if !hasNext {
-			break
-		}
-		hasNext, _ = tr.m.LookupNextElement(tcpMp, unsafe.Pointer(key), unsafe.Pointer(nextKey), unsafe.Pointer(stats))
-		assert.NotEqual(t, int(server.port), int(nextKey.dport))
-		key = nextKey
-	}
 
 	doneChan <- struct{}{}
 }

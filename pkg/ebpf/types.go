@@ -26,6 +26,8 @@ const (
 	TCPSendMsg KProbeName = "kprobe/tcp_sendmsg"
 	// TCPCleanupRBuf traces the tcp_cleanup_rbuf() system call
 	TCPCleanupRBuf KProbeName = "kprobe/tcp_cleanup_rbuf"
+	// TCPClose traces the tcp_close() system call
+	TCPClose KProbeName = "kprobe/tcp_close"
 
 	// UDPSendMsg traces the udp_sendmsg() system call
 	UDPSendMsg KProbeName = "kprobe/udp_sendmsg"
@@ -46,12 +48,10 @@ type bpfMapName string
 
 const (
 	connMap            bpfMapName = "conn_stats"
-	tcpStatsMap        bpfMapName = "tcp_stats"
 	tcpCloseEventMap   bpfMapName = "tcp_close_events"
 	latestTimestampMap bpfMapName = "latest_ts"
 	tracerStatusMap    bpfMapName = "tracer_status"
 	portBindingsMap    bpfMapName = "port_bindings"
-	tcpMonoCountMap    bpfMapName = "tcp_mono_count"
 )
 
 // sectionName returns the sectionName for the given BPF map

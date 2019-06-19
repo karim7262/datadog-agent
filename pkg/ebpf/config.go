@@ -94,6 +94,7 @@ func (c *Config) EnabledKProbes() map[KProbeName]struct{} {
 		enabled[TCPCleanupRBuf] = struct{}{}
 		enabled[TCPTimeWait] = struct{}{}
 		enabled[TCPSetState] = struct{}{}
+		enabled[TCPClose] = struct{}{}
 		enabled[TCPRetransmit] = struct{}{}
 		enabled[InetCskAcceptReturn] = struct{}{}
 		enabled[TCPv4DestroySock] = struct{}{}

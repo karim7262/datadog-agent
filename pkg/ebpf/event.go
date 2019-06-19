@@ -16,7 +16,6 @@ import "C"
 /* tcp_conn_t
 conn_tuple_t tup;
 conn_stats_ts_t conn_stats;
-tcp_stats_t tcp_stats;
 */
 type TCPConn C.tcp_conn_t
 
@@ -53,21 +52,17 @@ func (t *ConnTuple) isTCP() bool {
 __u64 sent_bytes;
 __u64 recv_bytes;
 __u64 timestamp;
+__u32 retransmits;
 __u32 pid;
+__u8 closes;
 */
 type ConnStatsWithTimestamp C.conn_stats_ts_t
-
-/* tcp_stats_t
-__u32 retransmits;
-__u32 id;
-*/
-type TCPStats C.tcp_stats_t
 
 func (cs *ConnStatsWithTimestamp) isExpired(latestTime uint64, timeout uint64) bool {
 	return latestTime > timeout+uint64(cs.timestamp)
 }
 
-func connStats(t *ConnTuple, s *ConnStatsWithTimestamp, tcpStats *TCPStats) ConnectionStats {
+func connStats(t *ConnTuple, s *ConnStatsWithTimestamp) ConnectionStats {
 	metadata := uint(t.metadata)
 	family := connFamily(metadata)
 
@@ -81,7 +76,6 @@ func connStats(t *ConnTuple, s *ConnStatsWithTimestamp, tcpStats *TCPStats) Conn
 	}
 
 	return ConnectionStats{
-		id:                   uint32(tcpStats.id),
 		Pid:                  uint32(s.pid),
 		Type:                 connType(metadata),
 		Family:               family,
@@ -92,7 +86,7 @@ func connStats(t *ConnTuple, s *ConnStatsWithTimestamp, tcpStats *TCPStats) Conn
 		DPort:                uint16(t.dport),
 		MonotonicSentBytes:   uint64(s.sent_bytes),
 		MonotonicRecvBytes:   uint64(s.recv_bytes),
-		MonotonicRetransmits: uint32(tcpStats.retransmits),
+		MonotonicRetransmits: uint32(s.retransmits),
 		LastUpdateEpoch:      uint64(s.timestamp),
 	}
 }
@@ -118,9 +112,8 @@ func decodeRawTCPConn(data []byte) ConnectionStats {
 	ct := TCPConn(*(*C.tcp_conn_t)(unsafe.Pointer(&data[0])))
 	tup := ConnTuple(ct.tup)
 	cst := ConnStatsWithTimestamp(ct.conn_stats)
-	tst := TCPStats(ct.tcp_stats)
 
-	return connStats(&tup, &cst, &tst)
+	return connStats(&tup, &cst)
 }
 
 func isPortClosed(state uint8) bool {

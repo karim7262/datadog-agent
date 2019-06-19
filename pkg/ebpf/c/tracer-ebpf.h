@@ -23,10 +23,15 @@ typedef struct {
     __u64 sent_bytes;
     __u64 recv_bytes;
     __u64 timestamp;
+    __u32 retransmits;
     __u32 pid;
+    // We have to use __u32 (uint) otherwise we can't use the
+    // __sync_fetch_and_add helper (clang will fail with a LLVM ERROR: Cannot Select
+    // See: https://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Atomic-Builtins.html
+    __u32 closes;
 } conn_stats_ts_t;
 
-// Metadata bit masks
+// Tuple Metadata bit masks
 // 0 << x is only for readability
 typedef enum {
     // Connection type
@@ -57,16 +62,10 @@ typedef struct {
 // Real ID will be ((cpu * Max) + count)
 static const __u32 MAX_PER_CPU_TCP_ID = 1 << 16;
 
-typedef struct {
-    __u32 retransmits;
-    __u32 id;
-} tcp_stats_t;
-
 // Full data for a tcp connection
 typedef struct {
     conn_tuple_t tup;
     conn_stats_ts_t conn_stats;
-    tcp_stats_t tcp_stats;
 } tcp_conn_t;
 
 static const __u8 TRACER_STATE_UNINITIALIZED = 0;

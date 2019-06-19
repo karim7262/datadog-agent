@@ -286,11 +286,6 @@ func (t *Tracer) getConnections(active []ConnectionStats) ([]ConnectionStats, ui
 		return nil, 0, fmt.Errorf("error retrieving the bpf %s map: %s", connMap, err)
 	}
 
-	tcpMp, err := t.getMap(tcpStatsMap)
-	if err != nil {
-		return nil, 0, fmt.Errorf("error retrieving the bpf %s map: %s", tcpStatsMap, err)
-	}
-
 	portMp, err := t.getMap(portBindingsMap)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error retrieving the bpf %s map: %s", portBindingsMap, err)
@@ -323,7 +318,7 @@ func (t *Tracer) getConnections(active []ConnectionStats) ([]ConnectionStats, ui
 				atomic.AddInt64(&t.expiredTCPConns, 1)
 			}
 		} else {
-			conn := connStats(nextKey, stats, t.getTCPStats(tcpMp, nextKey))
+			conn := connStats(nextKey, stats)
 			conn.Direction = t.determineConnectionDirection(&conn)
 
 			if t.shouldSkipConnection(&conn) {
@@ -338,7 +333,7 @@ func (t *Tracer) getConnections(active []ConnectionStats) ([]ConnectionStats, ui
 	}
 
 	// Remove expired entries
-	t.removeEntries(mp, tcpMp, expired)
+	t.removeEntries(mp, expired)
 
 	// check for expired clients in the state
 	t.state.RemoveExpiredClients(time.Now())
@@ -359,12 +354,12 @@ func (t *Tracer) getConnections(active []ConnectionStats) ([]ConnectionStats, ui
 	return active, latestTime, nil
 }
 
-func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
+func (t *Tracer) removeEntries(mp *bpflib.Map, entries []*ConnTuple) {
 	now := time.Now()
 	// Byte keys of the connections to remove
 	keys := make([]string, 0, len(entries))
 	// Used to create the keys
-	statsWithTs, tcpStats := &ConnStatsWithTimestamp{}, &TCPStats{}
+	statsWithTs := &ConnStatsWithTimestamp{}
 
 	// Remove the entries from the eBPF Map
 	for i := range entries {
@@ -375,36 +370,17 @@ func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
 		}
 
 		// Append the connection key to the keys to remove from the userspace state
-		bk, err := connStats(entries[i], statsWithTs, tcpStats).ByteKey(t.buf)
+		bk, err := connStats(entries[i], statsWithTs).ByteKey(t.buf)
 		if err != nil {
 			log.Warnf("failed to create connection byte_key: %s", err)
 		} else {
 			keys = append(keys, string(bk))
-		}
-
-		if entries[i].isTCP() {
-			if err = t.m.DeleteElement(tcpMp, unsafe.Pointer(entries[i])); err != nil {
-				_ = log.Warnf("failed to remove entry from the tcp map: %s", err)
-			}
 		}
 	}
 
 	t.state.RemoveConnections(keys)
 
 	log.Debugf("Removed %d entries in %s", len(keys), time.Now().Sub(now))
-}
-
-// getTCPStats reads tcp related stats for the given ConnTuple
-func (t *Tracer) getTCPStats(mp *bpflib.Map, tuple *ConnTuple) *TCPStats {
-	stats := &TCPStats{retransmits: 0}
-
-	// Don't bother looking in the map if the connection is UDP, there will never be data for that and we will avoid
-	// the overhead of the syscall and creating the resultant error
-	if tuple.isTCP() {
-		_ = t.m.LookupElement(mp, unsafe.Pointer(tuple), unsafe.Pointer(stats))
-	}
-
-	return stats
 }
 
 // getLatestTimestamp reads the most recent timestamp captured by the eBPF
@@ -581,16 +557,10 @@ func SectionsFromConfig(c *Config) map[string]bpflib.SectionParams {
 		connMap.sectionName(): {
 			MapMaxEntries: int(c.MaxTrackedConnections),
 		},
-		tcpStatsMap.sectionName(): {
-			MapMaxEntries: int(c.MaxTrackedConnections),
-		},
 		portBindingsMap.sectionName(): {
 			MapMaxEntries: int(c.MaxTrackedConnections),
 		},
 		tcpCloseEventMap.sectionName(): {
-			MapMaxEntries: 1024,
-		},
-		tcpMonoCountMap.sectionName(): {
 			MapMaxEntries: 1024,
 		},
 	}
