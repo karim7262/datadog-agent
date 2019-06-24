@@ -467,7 +467,7 @@ build_windows_msi_x64:
   script:
     # remove artifacts from previous pipelines that may come from the cache
     - cd %GOPATH%\src\github.com\DataDog\datadog-agent
-    - inv agent.omnibus-build --release-version %RELEASE_VERSION% --omnibus-s3-cache --base-dir %OMNIBUS_BASE_DIR_WIN_OMNIBUS%
+    - inv agent.omnibus-build --release-version %RELEASE_VERSION% --omnibus-s3-cache --base-dir %OMNIBUS_BASE_DIR_WIN_OMNIBUS% --log-level debug
     # copy the results from the build dir to here, because artifacts must be relative to the project directory
     - copy %OMNIBUS_BASE_DIR_WIN%\pkg\* %WIN_CI_PROJECT_DIR%\.omnibus\pkg
   artifacts:
