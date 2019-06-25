@@ -77,12 +77,7 @@ int init_stringutils(void) {
     char c_loader_name[] = "CSafeLoader";
     loader = PyObject_GetAttrString(yaml, c_loader_name);
     if (loader == NULL) {
-        PyErr_Clear();
-        char loader_name[] = "SafeLoader";
-        loader = PyObject_GetAttrString(yaml, loader_name);
-        if (loader == NULL) {
-            goto done;
-        }
+        goto done;
     }
 
     // get pyyaml dump()
@@ -95,12 +90,7 @@ int init_stringutils(void) {
     char c_dumper_name[] = "CSafeDumper";
     dumper = PyObject_GetAttrString(yaml, c_dumper_name);
     if (dumper == NULL) {
-        PyErr_Clear();
-        char dumper_name[] = "SafeDumper";
-        dumper = PyObject_GetAttrString(yaml, dumper_name);
-        if (dumper == NULL) {
-            goto done;
-        }
+        goto done;
     }
 
     ret = EXIT_SUCCESS;
