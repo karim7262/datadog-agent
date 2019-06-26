@@ -112,6 +112,19 @@ struct bpf_map_def SEC("maps/connectsock_ipv6") connectsock_ipv6 = {
     .namespace = "",
 };
 
+/* This map is used to match the kprobe & kretprobe of tcp_sendmsg */
+/* This is a key/value store with the keys being a pid
+ * and the values being a struct sock *.
+ */
+struct bpf_map_def SEC("maps/tcp_send_sock") tcp_send_sock = {
+    .type = BPF_MAP_TYPE_HASH,
+    .key_size = sizeof(__u64),
+    .value_size = sizeof(void*),
+    .max_entries = 1024,
+    .pinning = 0,
+    .namespace = "",
+};
+
 /* This map is used to match the kprobe & kretprobe of udp_recvmsg */
 /* This is a key/value store with the keys being a pid
  * and the values being a struct sock *.
@@ -704,17 +717,40 @@ int kretprobe__tcp_v6_connect(struct pt_regs* ctx) {
 SEC("kprobe/tcp_sendmsg")
 int kprobe__tcp_sendmsg(struct pt_regs* ctx) {
     struct sock* sk = (struct sock*)PT_REGS_PARM1(ctx);
-    size_t size = (size_t)PT_REGS_PARM3(ctx);
+    u64 pid_tgid = bpf_get_current_pid_tgid();
+
+    // Store pointer to the socket using the pid/tgid
+    bpf_map_update_elem(&tcp_send_sock, &pid_tgid, &sk, BPF_ANY);
+    log_debug("kprobe/tcp_sendmsg: pid_tgid: %d\n", pid_tgid);
+    return 0;
+}
+
+SEC("kretprobe/tcp_sendmsg")
+int kretprobe__tcp_sendmsg(struct pt_regs* ctx) {
     u64 pid_tgid = bpf_get_current_pid_tgid();
     u64 zero = 0;
+
+    // Retrieve socket pointer from kprobe via pid/tgid
+    struct sock** skpp = bpf_map_lookup_elem(&tcp_send_sock, &pid_tgid);
+    if (skpp == 0) { // Missed entry
+        return 0;
+    }
+    struct sock* sk = *skpp;
+
+    // Make sure we clean up that pointer reference
+    bpf_map_delete_elem(&tcp_send_sock, &pid_tgid);
+
+    int copied = (int)PT_REGS_RC(ctx);
+    if (copied < 0) { // Non-zero values are errors (e.g -EINVAL)
+        return 0;
+    }
 
     tracer_status_t* status = bpf_map_lookup_elem(&tracer_status, &zero);
     if (status == NULL || status->state == TRACER_STATE_UNINITIALIZED) {
         return 0;
     }
-    log_debug("kprobe/tcp_sendmsg: pid_tgid: %d, size: %d\n", pid_tgid, size);
 
-    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, size, 0);
+    return handle_message(sk, status, pid_tgid, CONN_TYPE_TCP, copied, 0);
 }
 
 SEC("kprobe/tcp_cleanup_rbuf")
