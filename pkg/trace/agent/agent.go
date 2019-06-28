@@ -2,15 +2,16 @@ package agent
 
 import (
 	"context"
-	"runtime"
 	"sync/atomic"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/trace/agent/work"
 	"github.com/DataDog/datadog-agent/pkg/trace/api"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/event"
 	"github.com/DataDog/datadog-agent/pkg/trace/filters"
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
+	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics/timing"
 	"github.com/DataDog/datadog-agent/pkg/trace/obfuscate"
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
@@ -39,6 +40,10 @@ type Agent struct {
 	StatsWriter        *writer.StatsWriter
 	ServiceExtractor   *TraceServiceExtractor
 	ServiceMapper      *ServiceMapper
+
+	concentratorPool *work.Pool
+	samplerPool      *work.Pool
+	processPool      *work.Pool
 
 	// obfuscator is used to obfuscate sensitive data from various span
 	// tags based on their type.
@@ -104,6 +109,10 @@ func NewAgent(ctx context.Context, conf *config.AgentConfig) *Agent {
 		conf:               conf,
 		dynConf:            dynConf,
 		ctx:                ctx,
+
+		concentratorPool: work.NewPool(5000),
+		samplerPool:      work.NewPool(5000),
+		processPool:      work.NewPool(5000),
 	}
 }
 
@@ -126,33 +135,32 @@ func (a *Agent) Run() {
 		starter.Start()
 	}
 
-	n := 1
-	if config.HasFeature("parallel_process") {
-		n = runtime.NumCPU()
-	}
-	for i := 0; i < n; i++ {
-		go a.work()
-	}
-
-	a.loop()
-}
-
-func (a *Agent) work() {
-	for {
-		select {
-		case t, ok := <-a.Receiver.Out:
-			if !ok {
+	go func() {
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-t.C:
+				cpool := a.concentratorPool.Size()
+				spool := a.samplerPool.Size()
+				ppool := a.processPool.Size()
+				metrics.Histogram("datadog.trace_agent.receiver.pool.concentrator", float64(cpool), nil, 1)
+				metrics.Histogram("datadog.trace_agent.receiver.pool.sampler", float64(spool), nil, 1)
+				metrics.Histogram("datadog.trace_agent.receiver.pool.processor", float64(ppool), nil, 1)
+			case <-a.ctx.Done():
 				return
 			}
-			a.Process(t)
 		}
-	}
+	}()
 
+	a.loop()
 }
 
 func (a *Agent) loop() {
 	for {
 		select {
+		case t := <-a.Receiver.Out:
+			a.processPool.Run(func() { a.Process(t) })
 		case <-a.ctx.Done():
 			log.Info("Exiting...")
 			if err := a.Receiver.Stop(); err != nil {
@@ -259,8 +267,7 @@ func (a *Agent) Process(t pb.Trace) {
 		a.ServiceExtractor.Process(pt.WeightedTrace)
 	}()
 
-	go func(pt ProcessedTrace) {
-		defer watchdog.LogOnPanic()
+	a.concentratorPool.Run(func() {
 		defer timing.Since("datadog.trace_agent.internal.concentrator_ms", time.Now())
 		// Everything is sent to concentrator for stats, regardless of sampling.
 		a.Concentrator.Add(&stats.Input{
@@ -268,15 +275,14 @@ func (a *Agent) Process(t pb.Trace) {
 			Sublayers: pt.Sublayers,
 			Env:       pt.Env,
 		})
-	}(pt)
+	})
 
 	// Don't go through sampling for < 0 priority traces
 	if priority < 0 {
 		return
 	}
 	// Run both full trace sampling and transaction extraction in another goroutine.
-	go func(pt ProcessedTrace) {
-		defer watchdog.LogOnPanic()
+	a.samplerPool.Run(func() {
 		defer timing.Since("datadog.trace_agent.internal.sample_ms", time.Now())
 
 		tracePkg := writer.TracePackage{}
@@ -299,7 +305,7 @@ func (a *Agent) Process(t pb.Trace) {
 		if !tracePkg.Empty() {
 			a.tracePkgChan <- &tracePkg
 		}
-	}(pt)
+	})
 }
 
 func (a *Agent) sample(pt ProcessedTrace) (sampled bool, rate float64) {
