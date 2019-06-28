@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/trace/agent/work"
 	"github.com/DataDog/datadog-agent/pkg/trace/config"
 	"github.com/DataDog/datadog-agent/pkg/trace/info"
 	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
@@ -145,6 +146,7 @@ func (w *TraceWriter) Run() {
 			w.flush()
 		case <-updateInfoTicker.C:
 			go w.updateInfo()
+			metrics.Histogram("datadog.trace_agent.trace_writer.pool", float64(zipPool.Size()), nil, 1)
 		case <-w.exit:
 			log.Info("Exiting trace writer, flushing all remaining traces")
 			w.flush()
@@ -198,6 +200,8 @@ func (w *TraceWriter) handleSampledTrace(pkg *TracePackage) {
 	}
 }
 
+var zipPool = work.NewPool(1000)
+
 func (w *TraceWriter) flush() {
 	numTraces := len(w.traces)
 	numEvents := len(w.events)
@@ -226,42 +230,44 @@ func (w *TraceWriter) flush() {
 		w.resetBuffer()
 		return
 	}
-
-	atomic.AddInt64(&w.stats.BytesUncompressed, int64(len(serialized)))
-
-	encoding := "identity"
-
-	// Try to compress payload before sending
-	compressionBuffer := bytes.Buffer{}
-	gz, err := gzip.NewWriterLevel(&compressionBuffer, gzip.BestSpeed)
-	if err != nil {
-		log.Errorf("Failed to get compressor, sending uncompressed: %s", err)
-	} else {
-		_, err := gz.Write(serialized)
-		gz.Close()
-
-		if err != nil {
-			log.Errorf("Failed to compress payload, sending uncompressed: %s", err)
-		} else {
-			serialized = compressionBuffer.Bytes()
-			encoding = "gzip"
-		}
-	}
-
-	atomic.AddInt64(&w.stats.Bytes, int64(len(serialized)))
-	atomic.AddInt64(&w.stats.BytesEstimated, int64(w.bytesInBuffer))
-
-	headers := map[string]string{
-		languageHeaderKey:  strings.Join(info.Languages(), "|"),
-		"Content-Type":     "application/x-protobuf",
-		"Content-Encoding": encoding,
-	}
-
-	payload := newPayload(serialized, headers)
-
-	log.Debugf("Flushing traces=%v events=%v size=%d estimated=%d", len(w.traces), len(w.events), len(serialized), w.bytesInBuffer)
-	w.sender.Send(payload)
 	w.resetBuffer()
+
+	zipPool.Run(func() {
+		atomic.AddInt64(&w.stats.BytesUncompressed, int64(len(serialized)))
+
+		encoding := "identity"
+
+		// Try to compress payload before sending
+		compressionBuffer := bytes.Buffer{}
+		gz, err := gzip.NewWriterLevel(&compressionBuffer, gzip.BestSpeed)
+		if err != nil {
+			log.Errorf("Failed to get compressor, sending uncompressed: %s", err)
+		} else {
+			_, err := gz.Write(serialized)
+			gz.Close()
+
+			if err != nil {
+				log.Errorf("Failed to compress payload, sending uncompressed: %s", err)
+			} else {
+				serialized = compressionBuffer.Bytes()
+				encoding = "gzip"
+			}
+		}
+
+		atomic.AddInt64(&w.stats.Bytes, int64(len(serialized)))
+		atomic.AddInt64(&w.stats.BytesEstimated, int64(w.bytesInBuffer))
+
+		headers := map[string]string{
+			languageHeaderKey:  strings.Join(info.Languages(), "|"),
+			"Content-Type":     "application/x-protobuf",
+			"Content-Encoding": encoding,
+		}
+
+		payload := newPayload(serialized, headers)
+
+		log.Debugf("Flushing traces=%v events=%v size=%d estimated=%d", len(w.traces), len(w.events), len(serialized), w.bytesInBuffer)
+		w.sender.Send(payload)
+	})
 }
 
 func (w *TraceWriter) resetBuffer() {
