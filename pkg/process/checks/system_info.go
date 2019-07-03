@@ -4,7 +4,8 @@ import (
 	"github.com/DataDog/gopsutil/cpu"
 	"github.com/DataDog/gopsutil/host"
 	"github.com/DataDog/gopsutil/mem"
-
+	
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/model"
 )
@@ -26,6 +27,7 @@ func CollectSystemInfo(cfg *config.AgentConfig) (*model.SystemInfo, error) {
 		return nil, err
 	}
 	cpus := make([]*model.CPUInfo, 0, len(cpuInfo))
+	log.Debugf("CollectSystemInfo - CPU count: %s", len(cpuInfo))
 	for _, c := range cpuInfo {
 		cpus = append(cpus, &model.CPUInfo{
 			Number:     c.CPU,
@@ -38,6 +40,7 @@ func CollectSystemInfo(cfg *config.AgentConfig) (*model.SystemInfo, error) {
 			Mhz:        int64(c.Mhz),
 			CacheSize:  c.CacheSize,
 		})
+		log.Debugf("CollectSystemInfo - CPU cores: %s", c.Cores)
 	}
 
 	return &model.SystemInfo{

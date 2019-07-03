@@ -11,6 +11,7 @@ import (
 	"github.com/DataDog/gopsutil/process"
 
 	"github.com/DataDog/datadog-agent/pkg/process/model"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 func formatUser(fp *process.FilledProcess) *model.ProcessUser {
@@ -36,6 +37,7 @@ func formatUser(fp *process.FilledProcess) *model.ProcessUser {
 
 func formatCPU(fp *process.FilledProcess, t2, t1, syst2, syst1 cpu.TimesStat) *model.CPUStat {
 	numCPU := float64(runtime.NumCPU())
+	log.Debugf("formatCPU - numCPU: %g", numCPU)
 	deltaSys := syst2.Total() - syst1.Total()
 	return &model.CPUStat{
 		LastCpu:    t2.CPU,
@@ -58,6 +60,7 @@ func calculatePct(deltaProc, deltaTime, numCPU float64) float32 {
 	// Calculates utilization split across all CPUs. A busy-loop process
 	// on a 2-CPU-core system would be reported as 50% instead of 100%.
 	overalPct := (deltaProc / deltaTime) * 100
+	log.Debugf("calculatePct - numoveralPctCPU: %g", overalPct)
 
 	// Sometimes we get values that don't make sense, so we clamp to 100%
 	if overalPct > 100 {
