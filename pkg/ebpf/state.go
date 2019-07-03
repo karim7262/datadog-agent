@@ -36,6 +36,9 @@ type NetworkState interface {
 	// RemoveConnections removes the given keys from the state
 	RemoveConnections(keys []string)
 
+	// GetTelemetry returns telemetry about the state
+	GetTelemetry() map[string]int64
+
 	// GetStats returns a map of statistics about the current network state
 	GetStats() map[string]interface{}
 
@@ -391,10 +394,23 @@ func (ns *networkState) RemoveConnections(keys []string) {
 	ns.telemetry = telemetry{}
 }
 
+// GetTelemetry returns telemetry about the state
+func (ns *networkState) GetTelemetry() map[string]int64 {
+	ns.Lock()
+	defer ns.Unlock()
+
+	return map[string]int64{
+		"stats_resets":         ns.telemetry.statsResets,
+		"unordered_conns":      ns.telemetry.unorderedConns,
+		"closed_conn_dropped":  ns.telemetry.closedConnDropped,
+		"conn_dropped":         ns.telemetry.connDropped,
+		"time_sync_collisions": ns.telemetry.timeSyncCollisions,
+	}
+}
+
 // GetStats returns a map of statistics about the current network state
 func (ns *networkState) GetStats() map[string]interface{} {
 	ns.Lock()
-	defer ns.Unlock()
 
 	clientInfo := map[string]interface{}{}
 	for id, c := range ns.clients {
@@ -405,18 +421,16 @@ func (ns *networkState) GetStats() map[string]interface{} {
 		}
 	}
 
-	return map[string]interface{}{
-		"clients": clientInfo,
-		"telemetry": map[string]int64{
-			"stats_resets":         ns.telemetry.statsResets,
-			"unordered_conns":      ns.telemetry.unorderedConns,
-			"closed_conn_dropped":  ns.telemetry.closedConnDropped,
-			"conn_dropped":         ns.telemetry.connDropped,
-			"time_sync_collisions": ns.telemetry.timeSyncCollisions,
-		},
+	res := map[string]interface{}{
+		"clients":            clientInfo,
 		"current_time":       time.Now().Unix(),
 		"latest_bpf_time_ns": ns.latestTimeEpoch,
 	}
+	ns.Unlock()
+
+	res["telemetry"] = ns.GetTelemetry()
+
+	return res
 }
 
 // DumpState returns the entirety of the network state in memory at the moment for a particular clientID, for debugging
