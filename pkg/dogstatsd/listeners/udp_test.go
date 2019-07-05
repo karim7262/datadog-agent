@@ -126,6 +126,8 @@ func TestUDPReceive(t *testing.T) {
 	assert.Nil(t, err)
 
 	go s.Listen()
+	time.Sleep(1 * time.Second)
+
 	defer s.Stop()
 	conn, err := net.Dial("udp", fmt.Sprintf("127.0.0.1:%d", port))
 	require.NotNil(t, conn)
@@ -140,7 +142,7 @@ func TestUDPReceive(t *testing.T) {
 		assert.Equal(t, 1, len(packets))
 		assert.Equal(t, contents, packet.Contents)
 		assert.Equal(t, "", packet.Origin)
-	case <-time.After(2 * time.Second):
+	case <-time.After(100 * time.Second):
 		assert.FailNow(t, "Timeout on receive channel")
 	}
 }

@@ -9,7 +9,6 @@ import (
 	"expvar"
 	"fmt"
 	"net"
-	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/tidwall/evio"
@@ -49,7 +48,7 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 		address = net.JoinHostPort("127.0.0.1", config.Datadog.GetString("dogstatsd_port"))
 	}
 
-	url := fmt.Sprintf("udp://%s", address)
+	url := fmt.Sprintf("udp://%s?reuseport=true", address)
 
 	listener := &UDPListener{
 		packetPool: packetPool,
@@ -66,31 +65,24 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 	events.Opened = func(c evio.Conn) (out []byte, opts evio.Options, action evio.Action) {
 		return nil, evioOptions, evio.None
 	}
-	events.Tick = func() (delay time.Duration, action evio.Action) {
-		if listener.stopped {
-			return time.Second, evio.Shutdown
-		}
-		return time.Millisecond * 10, evio.None
-	}
 
 	listener.events = events
 	return listener, nil
 }
 
-func (l *UDPListener) onDatagram(c evio.Conn, in []byte) ([]byte, evio.Action) {
-	if l.stopped {
-		return nil, evio.Shutdown
-	}
+func (l *UDPListener) onDatagram(c evio.Conn, in []byte) (out []byte, action evio.Action) {
 	packet := l.packetPool.Get()
-	copy(packet.buffer, in)
-	packet.Contents = packet.buffer[:len(in)]
+	n := copy(packet.buffer, in)
+	packet.Contents = packet.buffer[:n]
 	// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
 	l.packetBuffer.append(packet)
-	return nil, evio.None
+	return
 }
 
 func (l *UDPListener) Listen() {
-	evio.Serve(l.events, l.url)
+	for i := 0; i < 4; i++ {
+		go evio.Serve(l.events, l.url)
+	}
 }
 
 // Stop closes the UDP connection and stops listening
