@@ -73,6 +73,7 @@ func TestUDPNonLocal(t *testing.T) {
 	go s.Listen()
 	defer s.Stop()
 
+	time.Sleep(1 * time.Second)
 	// Local port should be unavailable
 	address, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", port))
 	_, err = net.ListenUDP("udp", address)
@@ -97,6 +98,7 @@ func TestUDPLocalOnly(t *testing.T) {
 	go s.Listen()
 	defer s.Stop()
 
+	time.Sleep(1 * time.Second)
 	// Local port should be unavailable
 	address, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", port))
 	_, err = net.ListenUDP("udp", address)
