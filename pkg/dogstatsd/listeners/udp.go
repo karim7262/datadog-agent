@@ -9,11 +9,10 @@ import (
 	"expvar"
 	"fmt"
 	"net"
-	"strings"
-
-	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/tidwall/evio"
 )
 
 var (
@@ -32,73 +31,70 @@ func init() {
 // processed.
 // Origin detection is not implemented for UDP.
 type UDPListener struct {
-	conn         net.PacketConn
 	packetPool   *PacketPool
 	packetBuffer *packetBuffer
+	events       evio.Events
+	url          string
+	stopped      bool
 }
 
 // NewUDPListener returns an idle UDP Statsd listener
 func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListener, error) {
-	var conn net.PacketConn
-	var err error
-	var url string
+	var address string
 
 	if config.Datadog.GetBool("dogstatsd_non_local_traffic") == true {
 		// Listen to all network interfaces
-		url = fmt.Sprintf(":%d", config.Datadog.GetInt("dogstatsd_port"))
+		address = fmt.Sprintf(":%d", config.Datadog.GetInt("dogstatsd_port"))
 	} else {
-		url = net.JoinHostPort(config.Datadog.GetString("bind_host"), config.Datadog.GetString("dogstatsd_port"))
+		address = net.JoinHostPort("127.0.0.1", config.Datadog.GetString("dogstatsd_port"))
 	}
 
-	conn, err = net.ListenPacket("udp", url)
-
-	if rcvbuf := config.Datadog.GetInt("dogstatsd_so_rcvbuf"); rcvbuf != 0 {
-		if err := conn.(*net.UDPConn).SetReadBuffer(rcvbuf); err != nil {
-			return nil, fmt.Errorf("could not set socket rcvbuf: %s", err)
-		}
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("can't listen: %s", err)
-	}
+	url := fmt.Sprintf("udp://%s", address)
 
 	listener := &UDPListener{
 		packetPool: packetPool,
-		conn:       conn,
 		packetBuffer: newPacketBuffer(uint(config.Datadog.GetInt("dogstatsd_packet_buffer_size")),
 			config.Datadog.GetDuration("dogstatsd_packet_buffer_flush_timeout"), packetOut),
+		url: url,
 	}
-	log.Debugf("dogstatsd-udp: %s successfully initialized", conn.LocalAddr())
+
+	evioOptions := evio.Options{
+		ReuseInputBuffer: true,
+	}
+	var events evio.Events
+	events.Data = listener.onDatagram
+	events.Opened = func(c evio.Conn) (out []byte, opts evio.Options, action evio.Action) {
+		return nil, evioOptions, evio.None
+	}
+	events.Tick = func() (delay time.Duration, action evio.Action) {
+		if listener.stopped {
+			return time.Second, evio.Shutdown
+		}
+		return time.Millisecond * 10, evio.None
+	}
+
+	listener.events = events
 	return listener, nil
 }
 
-// Listen runs the intake loop. Should be called in its own goroutine
-func (l *UDPListener) Listen() {
-	log.Infof("dogstatsd-udp: starting to listen on %s", l.conn.LocalAddr())
-	for {
-		packet := l.packetPool.Get()
-		udpPackets.Add(1)
-		n, _, err := l.conn.ReadFrom(packet.buffer)
-		if err != nil {
-			// connection has been closed
-			if strings.HasSuffix(err.Error(), " use of closed network connection") {
-				return
-			}
-
-			log.Errorf("dogstatsd-udp: error reading packet: %v", err)
-			udpPacketReadingErrors.Add(1)
-			continue
-		}
-
-		packet.Contents = packet.buffer[:n]
-
-		// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
-		l.packetBuffer.append(packet)
+func (l *UDPListener) onDatagram(c evio.Conn, in []byte) ([]byte, evio.Action) {
+	if l.stopped {
+		return nil, evio.Shutdown
 	}
+	packet := l.packetPool.Get()
+	copy(packet.buffer, in)
+	packet.Contents = packet.buffer[:len(in)]
+	// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
+	l.packetBuffer.append(packet)
+	return nil, evio.None
+}
+
+func (l *UDPListener) Listen() {
+	evio.Serve(l.events, l.url)
 }
 
 // Stop closes the UDP connection and stops listening
 func (l *UDPListener) Stop() {
+	l.stopped = true
 	l.packetBuffer.close()
-	l.conn.Close()
 }

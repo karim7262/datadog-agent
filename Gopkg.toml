@@ -40,6 +40,10 @@
   version = "~v0.2.0"
 
 [[constraint]]
+  name = "github.com/tidwall/evio"
+  version = "~v1.0.2"
+
+[[constraint]]
   name = "github.com/docker/docker"
   version = "~v1.13.1"
 

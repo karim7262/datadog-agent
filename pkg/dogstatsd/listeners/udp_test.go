@@ -40,6 +40,7 @@ func TestStartStopUDPListener(t *testing.T) {
 	assert.Nil(t, err)
 
 	go s.Listen()
+	time.Sleep(1 * time.Second)
 	// Local port should be unavailable
 	address, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.1:%d", port))
 	_, err = net.ListenUDP("udp", address)
@@ -55,7 +56,7 @@ func TestStartStopUDPListener(t *testing.T) {
 			conn.Close()
 			break
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	require.NoError(t, err, "port is not available, it should be")
 }
