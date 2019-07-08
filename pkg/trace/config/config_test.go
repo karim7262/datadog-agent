@@ -5,11 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/trace/writer/backoff"
-	writerconfig "github.com/DataDog/datadog-agent/pkg/trace/writer/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -142,108 +139,6 @@ func TestDDAgentMultiAPIKeys(t *testing.T) {
 	assert.Equal("foo", c.Endpoints[0].APIKey)
 }
 
-func TestFullIniConfig(t *testing.T) {
-	defer cleanConfig()()
-	assert := assert.New(t)
-
-	c, err := prepareConfig("./testdata/full.ini")
-	assert.NoError(err)
-	assert.NoError(c.applyDatadogConfig())
-
-	assert.Equal("api_key_test", c.Endpoints[0].APIKey)
-	assert.Equal("mymachine", c.Hostname)
-	assert.Equal("https://user:password@proxy_for_https:1234", c.ProxyURL.String())
-	assert.Equal("https://datadog.unittests", c.Endpoints[0].Host)
-	assert.Equal(false, c.Enabled)
-	assert.Equal("test", c.DefaultEnv)
-	assert.Equal(18126, c.ReceiverPort)
-	assert.Equal(18125, c.StatsdPort)
-	assert.Equal(0.5, c.ExtraSampleRate)
-	assert.Equal(5.0, c.MaxTPS)
-	assert.Equal(50.0, c.MaxEPS)
-	assert.Equal("0.0.0.0", c.ReceiverHost)
-	assert.Equal("host.ip", c.StatsdHost)
-	assert.Equal("/path/to/file", c.LogFilePath)
-	assert.Equal("debug", c.LogLevel)
-	assert.False(c.LogThrottling) // turns off when log_level is "debug"
-	assert.True(c.SkipSSLValidation)
-
-	assert.Equal(map[string]float64{
-		"service1": 1.1,
-		"service2": 1.2,
-	}, c.AnalyzedRateByServiceLegacy)
-
-	assert.Equal(map[string]map[string]float64{
-		"service3": {
-			"op3": 1.3,
-		},
-		"service4": {
-			"op4": 1.4,
-			"op5": 1.5,
-		},
-	}, c.AnalyzedSpansByService)
-
-	assert.Equal(5*time.Second, c.BucketInterval)
-	assert.Equal([]string{"http.status_code", "a", "b", "c"}, c.ExtraAggregators)
-	assert.Equal(2000, c.ConnectionLimit)
-	assert.Equal(4, c.ReceiverTimeout)
-	assert.Equal(1234.5, c.MaxMemory)
-	assert.Equal(.85, c.MaxCPU)
-	assert.Equal(5*time.Second, c.WatchdogInterval)
-	assert.EqualValues([]string{"/health", "/500"}, c.Ignore["resource"])
-
-	assert.Equal(writerconfig.ServiceWriterConfig{
-		FlushPeriod:      time.Second,
-		UpdateInfoPeriod: time.Second,
-		SenderConfig: writerconfig.QueuablePayloadSenderConf{
-			MaxAge:            time.Second,
-			MaxQueuedBytes:    456,
-			MaxQueuedPayloads: 4,
-			MaxConnections:    1,
-			InChannelSize:     10,
-			ExponentialBackoff: backoff.ExponentialConfig{
-				MaxDuration: 4 * time.Second,
-				GrowthBase:  2,
-				Base:        1000000,
-			},
-		},
-	}, c.ServiceWriterConfig)
-
-	assert.Equal(writerconfig.StatsWriterConfig{
-		MaxEntriesPerPayload: 10,
-		UpdateInfoPeriod:     2 * time.Second,
-		SenderConfig: writerconfig.QueuablePayloadSenderConf{
-			MaxAge:            time.Second,
-			MaxQueuedBytes:    456,
-			MaxQueuedPayloads: 4,
-			MaxConnections:    20,
-			InChannelSize:     10,
-			ExponentialBackoff: backoff.ExponentialConfig{
-				MaxDuration: 4 * time.Second,
-				GrowthBase:  2,
-				Base:        1000000,
-			},
-		},
-	}, c.StatsWriterConfig)
-
-	assert.Equal(writerconfig.TraceWriterConfig{
-		FlushPeriod:      3 * time.Second,
-		UpdateInfoPeriod: 2 * time.Second,
-		SenderConfig: writerconfig.QueuablePayloadSenderConf{
-			InChannelSize:     10,
-			MaxAge:            time.Second,
-			MaxQueuedBytes:    456,
-			MaxQueuedPayloads: 4,
-			MaxConnections:    200,
-			ExponentialBackoff: backoff.ExponentialConfig{
-				MaxDuration: 4 * time.Second,
-				GrowthBase:  2,
-				Base:        1000000,
-			},
-		},
-	}, c.TraceWriterConfig)
-}
-
 func TestFullYamlConfig(t *testing.T) {
 	defer cleanConfig()()
 	origcfg := config.Datadog
@@ -352,22 +247,10 @@ func TestUndocumentedYamlConfig(t *testing.T) {
 	assert.Equal(30e6, c.MaxMemory)
 
 	// Assert Trace Writer
-	assert.Equal(22*time.Second, c.TraceWriterConfig.FlushPeriod)
-	assert.Equal(33*time.Second, c.TraceWriterConfig.UpdateInfoPeriod)
-	assert.Equal(15*time.Second, c.TraceWriterConfig.SenderConfig.MaxAge)
-	assert.Equal(int64(2048), c.TraceWriterConfig.SenderConfig.MaxQueuedBytes)
-	assert.Equal(100, c.TraceWriterConfig.SenderConfig.MaxQueuedPayloads)
-	// Assert Service Writer
-	assert.Equal(55*time.Second, c.ServiceWriterConfig.FlushPeriod)
-	assert.Equal(44*time.Second, c.ServiceWriterConfig.UpdateInfoPeriod)
-	assert.Equal(15*time.Second, c.ServiceWriterConfig.SenderConfig.MaxAge)
-	assert.Equal(int64(2048), c.ServiceWriterConfig.SenderConfig.MaxQueuedBytes)
-	assert.Equal(100, c.ServiceWriterConfig.SenderConfig.MaxQueuedPayloads)
-	// Assert Stats Writer
-	assert.Equal(66*time.Second, c.StatsWriterConfig.UpdateInfoPeriod)
-	assert.Equal(15*time.Second, c.StatsWriterConfig.SenderConfig.MaxAge)
-	assert.Equal(int64(2048), c.StatsWriterConfig.SenderConfig.MaxQueuedBytes)
-	assert.Equal(100, c.StatsWriterConfig.SenderConfig.MaxQueuedPayloads)
+	assert.Equal(1, c.TraceWriter.ConnectionLimit)
+	assert.Equal(2, c.TraceWriter.QueueSize)
+	assert.Equal(5, c.StatsWriter.ConnectionLimit)
+	assert.Equal(6, c.StatsWriter.QueueSize)
 	// analysis legacy
 	assert.Equal(1.0, c.AnalyzedRateByServiceLegacy["db"])
 	assert.Equal(0.9, c.AnalyzedRateByServiceLegacy["web"])
