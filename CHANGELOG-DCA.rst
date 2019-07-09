@@ -2,11 +2,24 @@
 Release Notes
 =============
 
+<<<<<<< HEAD
+=======
+1.3.2
+=====
+2019-07-09
+
+- Fix Cluster-agent failure with `cluster-agent flare` command.
+
+>>>>>>> a936231a9... release note DCA 1.3.2 (#3845)
 1.3.1
 =====
 2019-06-19
 
+<<<<<<< HEAD
 - Fix "Kube Services" service: `kube service` tags attached to pod are not consistent. 
+=======
+- Fix "Kube Services" service: `kube service` tags attached to pod are not consistent.
+>>>>>>> a936231a9... release note DCA 1.3.2 (#3845)
 
 .. _Release Notes_1.3.0:
 
