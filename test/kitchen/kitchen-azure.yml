@@ -26,7 +26,7 @@ provisioner:
   # Use custom chef install script to be able to troubleshoot dpkg errors
   # on debian
   # TODO: Remove this line once we resolve the problem
-  chef_omnibus_url: https://s3.amazonaws.com/dd-agent-omnibus/chef_install.sh
+  chef_omnibus_url: this_is_a_test
 
 <% if ENV['KITCHEN_DRIVER'] && ENV['KITCHEN_DRIVER'] == "hyperv" %>
 driver:
