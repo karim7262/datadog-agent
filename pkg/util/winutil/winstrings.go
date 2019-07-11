@@ -9,6 +9,7 @@ package winutil
 
 import (
 	"bytes"
+	"unsafe"
 )
 
 // ConvertWindowsStringList Converts a windows-style C list of strings
@@ -45,6 +46,25 @@ func ConvertWindowsString(winput []uint8) string {
 			break
 		}
 		retstring += string(rune(dbyte))
+	}
+	return retstring
+}
+
+// ConvertWindowsStringPtr converts a windows c-string
+// into a go string.  Even though the input is array
+// of uint8, the underlying data is expected to be
+// uint16 (unicode)
+func ConvertWindowsStringPtr(winput uintptr) string {
+	var retstring string
+	for i := 0; ; i += 2 {
+		lobyte := *(*byte)(unsafe.Pointer(winput))
+		hibyte := *(*byte)(unsafe.Pointer(winput + 1))
+		dbyte := ((uint16(hibyte) << 8) + uint16(lobyte))
+		if dbyte == 0 {
+			break
+		}
+		retstring += string(rune(dbyte))
+		winput += 2
 	}
 	return retstring
 }

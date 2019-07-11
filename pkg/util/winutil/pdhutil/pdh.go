@@ -150,6 +150,24 @@ type PDH_FMT_COUNTERVALUE_LONG struct {
 	padding   [4]byte
 }
 
+
+// Union specialization for double values, used by PdhGetFormattedCounterArrayDouble()
+type PDH_FMT_COUNTERVALUE_ITEM_DOUBLE struct {
+	InstanceName string
+	FmtValue PDH_FMT_COUNTERVALUE_DOUBLE
+}
+
+// Union specialization for 'large' values, used by PdhGetFormattedCounterArrayLarge()
+type PDH_FMT_COUNTERVALUE_ITEM_LARGE struct {
+	InstanceName string;
+	FmtValue PDH_FMT_COUNTERVALUE_LARGE
+}
+
+// Union specialization for long values, used by PdhGetFormattedCounterArrayLong()
+type PDH_FMT_COUNTERVALUE_ITEM_LONG struct {
+	InstanceName string;
+	FmtValue PDH_FMT_COUNTERVALUE_LONG
+}
 // PdhOpenQuery Creates a new query that is used to manage the collection of performance data.
 /*
 Parameters

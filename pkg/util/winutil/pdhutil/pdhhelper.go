@@ -23,6 +23,7 @@ var (
 	procPdhEnumObjectItems          = modPdhDll.NewProc("PdhEnumObjectItemsW")
 	procPdhMakeCounterPath          = modPdhDll.NewProc("PdhMakeCounterPathW")
 	procPdhGetFormattedCounterValue = modPdhDll.NewProc("PdhGetFormattedCounterValue")
+	procPdhGetFormattedCounterArray = modPdhDll.NewProc("PdhGetFormattedCounterArrayW")
 	procPdhAddCounterW              = modPdhDll.NewProc("PdhAddCounterW")
 	procPdhCollectQueryData         = modPdhDll.NewProc("PdhCollectQueryData")
 	procPdhCloseQuery               = modPdhDll.NewProc("PdhCloseQuery")
@@ -215,6 +216,55 @@ func pdhGetFormattedCounterValueFloat(hCounter PDH_HCOUNTER) (val float64, err e
 	}
 
 	return pValue.DoubleValue, nil
+}
+
+type PDH_FMT_COUNTERVALUE_RAW struct {
+	szName  uintptr
+	cStatus uint32
+	value   uintptr
+}
+
+// PdhGetFormattedCounterArrayDouble returns an array of all of the
+// instances of the requested counter
+func PdhGetFormattedCounterArrayDouble(hCounter PDH_HCOUNTER) (vals []PDH_FMT_COUNTERVALUE_ITEM_DOUBLE, itemcount uint32, err error) {
+	var count uint32
+	var bufsz uint32
+	vtype := PDH_FMT_DOUBLE | PDH_FMT_NOCAP100
+	ret, _, _ := procPdhGetFormattedCounterArray.Call(
+		uintptr(hCounter),
+		uintptr(vtype),
+		uintptr(unsafe.Pointer(&bufsz)),
+		uintptr(unsafe.Pointer(&count)),
+		uintptr(0))
+
+	if ret != PDH_MORE_DATA {
+		log.Errorf("Unable to compute buffer size for data array %d %x", ret, ret)
+		return nil, 0, fmt.Errorf("Unable to compute buffer size for data %d %x", ret, ret)
+	}
+	data := make([]byte, bufsz)
+	ret, _, _ = procPdhGetFormattedCounterArray.Call(
+		uintptr(hCounter),
+		uintptr(vtype),
+		uintptr(unsafe.Pointer(&bufsz)),
+		uintptr(unsafe.Pointer(&count)),
+		uintptr(unsafe.Pointer(&data[0])))
+
+	if ret != ERROR_SUCCESS {
+		return nil, 0, fmt.Errorf("Error retrieving data %d 0x%x", ret, ret)
+	}
+
+	rawArray := (*[1 << 28]PDH_FMT_COUNTERVALUE_RAW)(unsafe.Pointer(&data[0]))[:count:count]
+	for _, ra := range rawArray {
+		v := PDH_FMT_COUNTERVALUE_ITEM_DOUBLE{
+			InstanceName: winutil.ConvertWindowsStringPtr(ra.szName),
+			FmtValue: PDH_FMT_COUNTERVALUE_DOUBLE{
+				CStatus:     ra.cStatus,
+				DoubleValue: *(*float64)(unsafe.Pointer(&ra.value)),
+			}}
+
+		vals = append(vals, v)
+	}
+	return vals, count, nil
 }
 
 func makeCounterSetIndexes() error {

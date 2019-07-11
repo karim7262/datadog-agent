@@ -8,6 +8,8 @@ package pdhutil
 
 import (
 	"fmt"
+	"strconv"
+	"unsafe"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
@@ -54,6 +56,14 @@ type PdhMultiInstanceCounterSet struct {
 	verifyfn             CounterInstanceVerify
 }
 
+// PdhMultiInstanceCounterSet uses a wildcard for the instance name, and retrieves
+// all valid instances of the counter
+type PdhAllInstancesCounterSet struct {
+	PdhCounterSet
+	singleCounter PDH_HCOUNTER
+	verifyfn      CounterInstanceVerify
+}
+
 // Initialize initializes a counter set object
 func (p *PdhCounterSet) Initialize(className string) error {
 
@@ -83,6 +93,8 @@ func (p *PdhCounterSet) Initialize(className string) error {
 		err = fmt.Errorf("Failed to open PDH query handle %d", winerror)
 		return err
 	}
+	addr := (uint64)(uintptr(unsafe.Pointer(&p.className)))
+	log.Infof("Created PdhCounterSet() (%s) (0x%x %d", p.className, addr, addr)
 	return nil
 }
 
@@ -213,6 +225,31 @@ func (p *PdhMultiInstanceCounterSet) RemoveInvalidInstance(badInstance string) {
 	}
 }
 
+func GetMultiAllInstancesCounter(className, counterName string, verifyfn CounterInstanceVerify) (*PdhAllInstancesCounterSet, error) {
+	var p PdhAllInstancesCounterSet
+	if err := p.Initialize(className); err != nil {
+		return nil, err
+	}
+	p.verifyfn = verifyfn
+	p.counterName = counterName
+
+	// check to make sure this is really a single instance counter
+	allcounters, instances, _ := pfnPdhEnumObjectItems(p.className)
+	if len(instances) <= 1 {
+		return nil, fmt.Errorf("Requested counter is single-instance: %s", p.className)
+	}
+
+	path, _ := p.MakeCounterPath("", counterName, "*", allcounters)
+	winerror := pfnPdhAddCounter(p.query, path, uintptr(0), &p.singleCounter)
+	if ERROR_SUCCESS != winerror {
+		return nil, fmt.Errorf("Failed to add single counter %d", winerror)
+	}
+
+	// do the initial collect now
+	pfnPdhCollectQueryData(p.query)
+	return &p, nil
+}
+
 // MakeCounterPath creates a counter path from the counter instance and
 // counter name.  Tries all available translated counter indexes from
 // the english name
@@ -325,4 +362,30 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+// GetAllValues returns the data associated with each instance in a query.
+func (p *PdhAllInstancesCounterSet) GetAllValues() (values map[string]float64, err error) {
+	values = make(map[string]float64)
+	dup_instances := make(map[string]int)
+	err = nil
+	pfnPdhCollectQueryData(p.query)
+
+	vals, _, err := PdhGetFormattedCounterArrayDouble(p.singleCounter)
+	if err != nil {
+		return nil, err
+	}
+	for _, val := range vals {
+		iname := val.InstanceName
+		if ndx, ok := dup_instances[iname]; ok {
+			ndx++
+			dup_instances[iname] = ndx
+			asstring := strconv.Itoa(ndx)
+			iname += "#" + asstring
+		} else {
+			dup_instances[iname] = 0
+		}
+		values[iname] = val.FmtValue.DoubleValue
+	}
+	return
 }
