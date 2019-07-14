@@ -22,6 +22,7 @@ func formatCPU(fp *process.FilledProcess, t2, t1, syst2, syst1 cpu.TimesStat) *m
 	numCPU := float64(runtime.NumCPU())
 	log.Debugf("formatCPU - numCPU: %g", numCPU)
 	deltaSys := float64(t2.Timestamp - t1.Timestamp)
+	log.Debugf("formatCPU - deltaSys: %g", deltaSys)
 	// under windows, utime & stime are number of 100-ns increments.  The elapsed time
 	// is in nanoseconds.
 	return &model.CPUStat{

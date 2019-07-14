@@ -4,10 +4,10 @@ import (
 	"github.com/DataDog/gopsutil/cpu"
 	"github.com/DataDog/gopsutil/host"
 	"github.com/DataDog/gopsutil/mem"
-	
-	"github.com/DataDog/datadog-agent/pkg/util/log"
+
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/model"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // CollectSystemInfo collects a set of system-level information that will not
@@ -42,6 +42,8 @@ func CollectSystemInfo(cfg *config.AgentConfig) (*model.SystemInfo, error) {
 		})
 		log.Debugf("CollectSystemInfo - CPU cores: %s", c.Cores)
 	}
+
+	log.Debugf("CollectSystemInfo - cpus count: %s", len(cpus))
 
 	return &model.SystemInfo{
 		Uuid: hi.HostID,

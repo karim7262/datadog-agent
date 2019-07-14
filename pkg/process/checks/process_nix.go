@@ -39,6 +39,7 @@ func formatCPU(fp *process.FilledProcess, t2, t1, syst2, syst1 cpu.TimesStat) *m
 	numCPU := float64(runtime.NumCPU())
 	log.Debugf("formatCPU - numCPU: %g", numCPU)
 	deltaSys := syst2.Total() - syst1.Total()
+	log.Debugf("formatCPU - deltaSys: %g", deltaSys)
 	return &model.CPUStat{
 		LastCpu:    t2.CPU,
 		TotalPct:   calculatePct((t2.User-t1.User)+(t2.System-t1.System), deltaSys, numCPU),
