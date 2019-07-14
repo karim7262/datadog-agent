@@ -44,29 +44,27 @@ Three::~Three()
     // For more information on why Py_Finalize() isn't called here please
     // refer to the header file or the doxygen documentation.
     PyEval_RestoreThread(_threadState);
-    if (_pythonHome) {
-        PyMem_RawFree((void *)_pythonHome);
-    }
     Py_XDECREF(_baseClass);
 }
 
 void Three::initPythonHome(const char *pythonHome)
 {
+    wchar_t *oldPythonHome = _pythonHome;
     if (pythonHome == NULL || strlen(pythonHome) == 0) {
         _pythonHome = Py_DecodeLocale(_defaultPythonHome, NULL);
     } else {
-        if (_pythonHome) {
-            PyMem_RawFree((void *)_pythonHome);
-        }
         _pythonHome = Py_DecodeLocale(pythonHome, NULL);
     }
 
+    // Py_SetPythonHome stores a pointer to the string we pass to it, so we must keep it in memory
     Py_SetPythonHome(_pythonHome);
+    PyMem_RawFree((void *)oldPythonHome);
 }
 
 bool Three::init()
 {
     // add custom builtins init funcs to Python inittab, one by one
+    // Unlinke its py2 counterpart, these need to be called before Py_Initialize
     PyImport_AppendInittab(AGGREGATOR_MODULE_NAME, PyInit_aggregator);
     PyImport_AppendInittab(DATADOG_AGENT_MODULE_NAME, PyInit_datadog_agent);
     PyImport_AppendInittab(UTIL_MODULE_NAME, PyInit_util);
@@ -619,7 +617,7 @@ std::string Three::_fetchPythonError() const
                     // "format_exception" returns a list of strings (one per line)
                     for (int i = 0; i < len; i++) {
                         PyObject *s = PyList_GetItem(fmt_exc, i); // borrowed ref
-                        if (s == NULL || !PyString_Check(s)) {
+                        if (s == NULL || !PyUnicode_Check(s)) {
                             // unlikely to happen but same as above, do not propagate this error upstream
                             // to avoid confusing the caller. PyErr_Clear() will be called before returning.
                             ret_val = "";
@@ -643,7 +641,7 @@ std::string Three::_fetchPythonError() const
     else if (pvalue != NULL) {
         PyObject *pvalue_obj = PyObject_Str(pvalue);
         if (pvalue_obj != NULL) {
-            // we know pvalue_obj is a string (we just casted it), no need to PyString_Check()
+            // we know pvalue_obj is a string (we just casted it), no need to PyUnicode_Check()
             char *ret = as_string(pvalue_obj);
             ret_val += ret;
             ::free(ret);
@@ -652,7 +650,7 @@ std::string Three::_fetchPythonError() const
     } else if (ptype != NULL) {
         PyObject *ptype_obj = PyObject_Str(ptype);
         if (ptype_obj != NULL) {
-            // we know ptype_obj is a string (we just casted it), no need to PyString_Check()
+            // we know ptype_obj is a string (we just casted it), no need to PyUnicode_Check()
             char *ret = as_string(ptype_obj);
             ret_val += ret;
             ::free(ret);
