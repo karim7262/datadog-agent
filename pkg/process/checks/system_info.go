@@ -27,7 +27,7 @@ func CollectSystemInfo(cfg *config.AgentConfig) (*model.SystemInfo, error) {
 		return nil, err
 	}
 	cpus := make([]*model.CPUInfo, 0, len(cpuInfo))
-	log.Debugf("CollectSystemInfo - CPU count: %d", len(cpuInfo))
+	log.Infof("CollectSystemInfo - CPU count: %d", len(cpuInfo))
 	for _, c := range cpuInfo {
 		cpus = append(cpus, &model.CPUInfo{
 			Number:     c.CPU,
@@ -40,10 +40,10 @@ func CollectSystemInfo(cfg *config.AgentConfig) (*model.SystemInfo, error) {
 			Mhz:        int64(c.Mhz),
 			CacheSize:  c.CacheSize,
 		})
-		log.Debugf("CollectSystemInfo - CPU cores: %d", c.Cores)
+		log.Infof("CollectSystemInfo - CPU cores: %d", c.Cores)
 	}
 
-	log.Debugf("CollectSystemInfo - cpus count: %d", len(cpus))
+	log.Infof("CollectSystemInfo - cpus count: %d", len(cpus))
 
 	return &model.SystemInfo{
 		Uuid: hi.HostID,
