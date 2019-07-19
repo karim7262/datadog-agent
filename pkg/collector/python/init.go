@@ -44,7 +44,7 @@ char *getStringAddr(char **array, unsigned int idx) {
 //
 // init memory tracking facilities method
 //
-void MemoryTracker(void *, size_t, rtloader_mem_ops_t);
+void MemoryTracker(void *, size_t, rtloader_mem_ops_t, char **, int);
 void initMemoryTracker(void) {
 	set_memory_tracker_cb(MemoryTracker);
 }

@@ -153,7 +153,6 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 	// getting the wheel version for the check
 	var version *C.char
 
-	// TrackedCStrings untracked by memory tracker currently
 	versionAttr := TrackedCString("__version__")
 	defer C._free(unsafe.Pointer(versionAttr))
 	// get_attr_string allocation tracked by memory tracker

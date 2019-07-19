@@ -49,10 +49,18 @@ func init() {
 
 // MemoryTracker is the method exposed to the RTLoader for memory tracking
 //export MemoryTracker
-func MemoryTracker(ptr unsafe.Pointer, sz C.size_t, op C.rtloader_mem_ops_t) {
+func MemoryTracker(ptr unsafe.Pointer, sz C.size_t, op C.rtloader_mem_ops_t, backtrace **C.char, frames C.int) {
 	// run async for performance reasons
 	go func() {
 		log.Debugf("Memory Tracker - ptr: %v, sz: %v, op: %v", ptr, sz, op)
+		if backtrace != nil {
+			log.Debugf("backtrace sample available:")
+			frame := backtrace
+			for i := 0; i < int(frames); i++ {
+				log.Debugf("frame %v: %v", i, C.GoString(*frame))
+				frame = (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(frame)) + unsafe.Sizeof(*frame)))
+			}
+		}
 		switch op {
 		case C.DATADOG_AGENT_RTLOADER_ALLOCATION:
 			pointerCache.Store(ptr, sz)
