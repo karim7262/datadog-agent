@@ -23,7 +23,7 @@ void _set_memory_tracker_cb(cb_memory_tracker_t cb) {
 
 static int my_traceback(char **traceback) {
 #define MEM_TRACEBACK_SZ 128
-#define SAMPLE_RATION 10
+#define SAMPLE_RATIO 10
     int frames = 0;
     void *callstack[MEM_TRACEBACK_SZ];
 
