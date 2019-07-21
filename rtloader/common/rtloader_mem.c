@@ -21,31 +21,32 @@ void _set_memory_tracker_cb(cb_memory_tracker_t cb) {
     srand(time(0));
 }
 
-static int my_traceback(char **traceback) {
-#define MEM_TRACEBACK_SZ 128
-#define SAMPLE_RATIO 10
+static int my_backtrace(char ***stacktrace) {
+#define MEM_BACKTRACE_SZ 128
+#define SAMPLE_RATIO 5
     int frames = 0;
-    void *callstack[MEM_TRACEBACK_SZ];
+    void *callstack[MEM_BACKTRACE_SZ];
 
-    frames = backtrace(callstack, MEM_TRACEBACK_SZ);
-    traceback = backtrace_symbols(callstack, frames);
+    frames = backtrace(callstack, MEM_BACKTRACE_SZ);
+    *stacktrace = backtrace_symbols(callstack, frames);
 
     return frames;
 }
+
 void *_malloc(size_t sz) {
     int frames = 0;
-    char **traceback = NULL;
+    char **stacktrace = NULL;
     void *ptr = NULL;
 
     ptr = rt_malloc(sz);
     if (ptr && cb_memory_tracker) {
         if (!(rand() % SAMPLE_RATIO)) {
-            frames = my_traceback(traceback);
+            frames = my_backtrace(&stacktrace);
         }
-        cb_memory_tracker(ptr, sz, DATADOG_AGENT_RTLOADER_ALLOCATION, traceback, frames);
+        cb_memory_tracker(ptr, sz, DATADOG_AGENT_RTLOADER_ALLOCATION, stacktrace, frames);
 
-        if (traceback != NULL) {
-            rt_free(traceback);
+        if (stacktrace != NULL) {
+            rt_free(stacktrace);
         }
     }
 
@@ -54,17 +55,17 @@ void *_malloc(size_t sz) {
 
 void _free(void *ptr) {
     int frames = 0;
-    char **traceback = NULL;
+    char **stacktrace = NULL;
 
     rt_free(ptr);
     if (ptr && cb_memory_tracker) {
         if (!(rand() % SAMPLE_RATIO)) {
-            frames = my_traceback(traceback);
+            frames = my_backtrace(&stacktrace);
         }
-        cb_memory_tracker(ptr, 0, DATADOG_AGENT_RTLOADER_FREE, traceback, frames);
+        cb_memory_tracker(ptr, 0, DATADOG_AGENT_RTLOADER_FREE, stacktrace, frames);
 
-        if (traceback != NULL) {
-            rt_free(traceback);
+        if (stacktrace != NULL) {
+            rt_free(stacktrace);
         }
     }
 }
