@@ -138,6 +138,9 @@ build_windows_msi_x64:
     WINDOWS_BUILDER: 'true'
     CREDENTIALS_FILE_PATH: 'c:\users\gitlab\.aws\config'
   tags: ["runner:windows-docker"]
+  before_script:
+    # don't want the default linux before script.  For now do nothing
+    - echo "Hi from the before script"
   script:
     # remove artifacts from previous pipelines that may come from the cache
     # - cd %GOPATH%\src\github.com\DataDog\datadog-agent
@@ -145,8 +148,8 @@ build_windows_msi_x64:
     #- inv agent.omnibus-build --release-version %RELEASE_VERSION% --omnibus-s3-cache --base-dir %OMNIBUS_BASE_DIR_WIN_OMNIBUS% --skip-deps
     # copy the results from the build dir to here, because artifacts must be relative to the project directory
     #- copy %OMNIBUS_BASE_DIR_WIN%\pkg\* %WIN_CI_PROJECT_DIR%\.omnibus\pkg
-    - docker run -rm -v %CD%:c:\mnt -t windows/a6:test1 \build-agent6.bat
+    - docker run --rm -v %CD%:c:\mnt -t windows/a6:test1 \build-agent6.bat
   artifacts:
     expire_in: 2 weeks
     paths:
-      - build.out
+      - build-out/*.msi
