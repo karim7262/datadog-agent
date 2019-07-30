@@ -369,6 +369,19 @@ FROM [Blogs] AS [b
 ORDER BY [b].[Name]`,
 			`Non-parsable SQL query`,
 		},
+	}
+
+	for i, c := range cases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			s := SQLSpan(c.query)
+			NewObfuscator(nil).Obfuscate(s)
+			assert.Equal(t, c.expected, s.Resource)
+		})
+	}
+}
+
+func TestN1QLQuantizer(t *testing.T) {
+	cases := []sqlTestCase{
 		{
 			`UPSERT INTO ` + "`datadog-test`" + ` ( KEY, VALUE )
                             VALUES (
@@ -391,15 +404,31 @@ ORDER BY [b].[Name]`,
 		},
 		{
 			`SELECT fname || " " || lname AS full_name`,
-			`SELECT fname || " " || lname AS full_name`,
+			`SELECT fname || "" || lname`,
+		},
+		{
+			`SELECT fname || ' ' || lname AS full_name`,
+			`SELECT fname || ? || lname`,
 		},
 		{
 			`SELECT fname || " a " || lname AS full_name`,
-			`SELECT fname || " a " || lname AS full_name`,
+			`SELECT fname || a || lname`,
 		},
 		{
-			`SELECT fname, email FROM tutorial USE KEYS ["dave", "ian"]`,
-			`SELECT fname, email FROM tutorial USE KEYS [ ? ]`,
+			`SELECT fname, email FROM bucket USE KEYS ["foo", "bar"]`,
+			`SELECT fname, email FROM bucket USE KEYS [ foo, bar ]`,
+		},
+		{
+			`SELECT fname, email FROM bucket USE KEYS ['foo', 'bar']`,
+			`SELECT fname, email FROM bucket USE KEYS [ ? ]`,
+		},
+		{
+			`SELECT { UPPER("foo") : 1, "foo" || "bar" : 2 };`,
+			`SELECT ?`,
+		},
+		{
+			`SELECT { UPPER("foo") : 1, "foo" || "bar" : 2 };`,
+			`SELECT ?`,
 		},
 	}
 
