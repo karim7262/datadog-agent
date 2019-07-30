@@ -427,8 +427,12 @@ func TestN1QLQuantizer(t *testing.T) {
 			`SELECT ?`,
 		},
 		{
-			`SELECT { UPPER("foo") : 1, "foo" || "bar" : 2 };`,
-			`SELECT ?`,
+			`SELECT { 'foo': 2 }.foo`,
+			`SELECT ? . foo`,
+		},
+		{
+			`SELECT { 'foo': 2 }['foo'][0]`,
+			`SELECT ? [ ? ] [ ? ]`,
 		},
 	}
 
