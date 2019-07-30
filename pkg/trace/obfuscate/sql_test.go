@@ -394,6 +394,10 @@ ORDER BY [b].[Name]`,
 			`SELECT fname || " " || lname AS full_name`,
 		},
 		{
+			`SELECT fname || " a " || lname AS full_name`,
+			`SELECT fname || " a " || lname AS full_name`,
+		},
+		{
 			`SELECT fname, email FROM tutorial USE KEYS ["dave", "ian"]`,
 			`SELECT fname, email FROM tutorial USE KEYS [ ? ]`,
 		},
