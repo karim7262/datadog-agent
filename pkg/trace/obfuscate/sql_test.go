@@ -369,6 +369,34 @@ FROM [Blogs] AS [b
 ORDER BY [b].[Name]`,
 			`Non-parsable SQL query`,
 		},
+		{
+			`UPSERT INTO ` + "`datadog-test`" + ` ( KEY, VALUE )
+                            VALUES (
+                              "landmark_2",
+                              {
+                                "id": "1",
+                                "type": "landmark",
+                                "name": "La Louvre"
+                              }
+														)`,
+			`UPSERT INTO datadog-test ( KEY, VALUE ) VALUES ( landmark_2, ? )`,
+		},
+		{
+			`SELECT [1, 2, 3, 4][1]`,
+			`SELECT [ ? ] [ ? ]`,
+		},
+		{
+			`SELECT [1, 2, 3, 4][1:3]`,
+			`SELECT [ ? ] [ ? ]`,
+		},
+		{
+			`SELECT fname || " " || lname AS full_name`,
+			`SELECT fname || " " || lname AS full_name`,
+		},
+		{
+			`SELECT fname, email FROM tutorial USE KEYS ["dave", "ian"]`,
+			`SELECT fname, email FROM tutorial USE KEYS [ ? ]`,
+		},
 	}
 
 	for i, c := range cases {

@@ -801,7 +801,7 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:1aa0d09d686e3261044994ddeeecc873f8e0e9597785ba6273a7aaf31f5159d4"
+  digest = "1:5ca19ae59ae03be8e9a97f39bb705938cf8174b4c8cb4b037accdbb99decfe8a"
   name = "github.com/iovisor/gobpf"
   packages = [
     "elf",
