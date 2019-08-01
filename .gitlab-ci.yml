@@ -165,8 +165,8 @@ delete_docker_tag:
   when: manual
   variables:
     <<: *docker_hub_variables
-    IMAGE: "agent"  # image name, for example "agent"
-    TAG: "6.13.0-beta-py3-1-jmx"  # tag name, for example "6.9.0"
+    IMAGE: "dogstatsd"  # image name, for example "agent"
+    TAG: "6.13.0-beta-py3-1"  # tag name, for example "6.9.0"
     ORGANIZATION: "datadog"
   script:
     - if [[ -z "$IMAGE" ]]; then echo "Need an image"; exit 1; fi
