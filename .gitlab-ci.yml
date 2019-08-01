@@ -45,6 +45,8 @@ variables:
   S3_OMNIBUS_CACHE_BUCKET: dd-ci-datadog-agent-omnibus-cache-build-stable
   S3_DSD6_URI: s3://dsd6-staging/linux
   RELEASE_VERSION: nightly
+  IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+  DSD_IMAGE: &dogstatsd_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/dogstatsd
 
 
 # Default before_script for all the jobs. If you create a new job and don't want this to execute
@@ -80,6 +82,21 @@ before_script:
       - $RELEASE_VERSION == "nightly"
       - $RELEASE_VERSION == "" # no  RELEASE_VERSION means a nightly build for omnibus
 
+.docker_tag_job_definition: &docker_tag_job_definition
+  stage: image_deploy
+  tags: [ "runner:docker", "size:large" ]
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
+  before_script:
+    - export SRC_TAG=v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}
+    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_LOGIN_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin "$DOCKER_REGISTRY_URL"
+    - pip install -r requirements.txt
+    - if [[ -z "$DELEGATION_PASS_SSM_KEY" ]]; then echo "No signing key set"; exit 0; fi
+    - echo "Importing delegation signing key"
+    - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_PASS_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
+    - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_KEY_SSM_KEY --with-decryption --query "Parameter.Value" --out text > /tmp/docker.key
+    - notary -d ~/.docker/trust key import /tmp/docker.key; rm /tmp/docker.key
+  dependencies: [] # Don't download Gitlab artefacts
 
 .docker_hub_variables: &docker_hub_variables
   DOCKER_REGISTRY_LOGIN_SSM_KEY: docker_hub_login
@@ -89,7 +106,6 @@ before_script:
   DOCKER_REGISTRY_URL: docker.io
   SRC_AGENT: *agent_ecr
   SRC_DSD: *dogstatsd_ecr
-  SRC_DCA: *cluster-agent_ecr
 
 .quay_variables: &quay_variables
   <<: *docker_hub_variables
@@ -108,6 +124,7 @@ before_script:
 #
 
 tag_release_6:
+  <<: *docker_tag_job_definition
   stage: deploy
   when: manual
   variables:
@@ -118,6 +135,7 @@ tag_release_6:
     - inv -e docker.publish --signed-push ${SRC_DSD}:v1562987-f947d72 datadog/dogstatsd:6.13.0-beta-py3-1
 
 tag_release_7:
+  <<: *docker_tag_job_definition
   stage: deploy
   when: manual
   variables:
