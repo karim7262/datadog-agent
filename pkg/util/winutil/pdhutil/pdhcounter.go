@@ -64,6 +64,12 @@ type PdhAllInstancesCounterSet struct {
 	verifyfn      CounterInstanceVerify
 }
 
+type PdhAllCountersAllInstancesCounterSet struct {
+	PdhCounterSet
+	counters	map[string]PDH_HCOUNTER
+	verifyfn	CounterInstanceVerify
+}
+
 // Initialize initializes a counter set object
 func (p *PdhCounterSet) Initialize(className string) error {
 
@@ -225,7 +231,9 @@ func (p *PdhMultiInstanceCounterSet) RemoveInvalidInstance(badInstance string) {
 	}
 }
 
-func GetMultiAllInstancesCounter(className, counterName string, verifyfn CounterInstanceVerify) (*PdhAllInstancesCounterSet, error) {
+// GetAllInstances counter returns a handle which retrieves all the counter
+// instances (the wildcard "*")
+func GetAllInstancesCounter(className, counterName string, verifyfn CounterInstanceVerify) (*PdhAllInstancesCounterSet, error) {
 	var p PdhAllInstancesCounterSet
 	if err := p.Initialize(className); err != nil {
 		return nil, err
@@ -233,7 +241,7 @@ func GetMultiAllInstancesCounter(className, counterName string, verifyfn Counter
 	p.verifyfn = verifyfn
 	p.counterName = counterName
 
-	// check to make sure this is really a single instance counter
+	// check to make sure this is not really a single instance counter
 	allcounters, instances, _ := pfnPdhEnumObjectItems(p.className)
 	if len(instances) <= 1 {
 		return nil, fmt.Errorf("Requested counter is single-instance: %s", p.className)
@@ -250,6 +258,36 @@ func GetMultiAllInstancesCounter(className, counterName string, verifyfn Counter
 	return &p, nil
 }
 
+// GetAllCountersAllInstances returns an object which retrieves all of the counters
+// for all of the instances for a given query
+func GetAllCountersAllInstances(className string, verifyfn CounterInstanceVerify) (*PdhAllCountersAllInstancesCounterSet, error) {
+	var p PdhAllCountersAllInstancesCounterSet
+	if err := p.Initialize(className); err != nil {
+		return nil, err
+	}
+	p.verifyfn = verifyfn
+	p.counters = make(map[string]PDH_HCOUNTER)
+	// check to make sure this is not really a single instance counter
+	allcounters, instances, _ := pfnPdhEnumObjectItems(p.className)
+	if len(instances) <= 1 {
+		return nil, fmt.Errorf("Requested counter is single-instance: %s", p.className)
+	}
+	for _, counterName := range allcounters {
+
+		var counter PDH_HCOUNTER
+		path, _ := p.MakeCounterPath("", counterName, "*", allcounters)
+		winerror := pfnPdhAddCounter(p.query, path, uintptr(0), &counter)
+		if ERROR_SUCCESS != winerror {
+			return nil, fmt.Errorf("Failed to add single counter %d", winerror)
+		}
+		p.counters[counterName] = counter
+	}
+
+	// do the initial collect now
+	pfnPdhCollectQueryData(p.query)
+	return &p, nil
+
+}
 // MakeCounterPath creates a counter path from the counter instance and
 // counter name.  Tries all available translated counter indexes from
 // the english name
@@ -388,4 +426,36 @@ func (p *PdhAllInstancesCounterSet) GetAllValues() (values map[string]float64, e
 		values[iname] = val.FmtValue.DoubleValue
 	}
 	return
+}
+
+// GetAllValues returns all of the counter values for all of the instances in the set
+// map is map of instance name -> map of counter -> value
+func (p *PdhAllCountersAllInstancesCounterSet) GetAllValues() (values map[string]map[string]float64, err error) {
+	values = make(map[string]map[string]float64)
+	pfnPdhCollectQueryData(p.query)
+	
+
+	for counter, handle := range p.counters {
+		dupInstances := make(map[string]int)
+		vals, _, err := PdhGetFormattedCounterArrayDouble(handle)
+		if err != nil {
+			return nil, err
+		}
+		for _, val := range vals {
+			iname := val.InstanceName
+			if ndx, ok := dupInstances[iname]; ok {
+				ndx++
+				dupInstances[iname] = ndx
+				asstring := strconv.Itoa(ndx)
+				iname += "#" + asstring
+			} else {
+				dupInstances[iname] = 0
+			}
+			if _, ok := values[iname]; !ok {
+				values[iname] = make(map[string]float64)
+			}
+			values[iname][counter] = val.FmtValue.DoubleValue
+		}
+	}
+	return values, nil
 }

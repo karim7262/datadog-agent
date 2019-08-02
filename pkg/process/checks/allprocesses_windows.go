@@ -11,10 +11,10 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"github.com/DataDog/datadog-agent/pkg/util/winutil/pdhutil"
 	cpu "github.com/DataDog/gopsutil/cpu"
 	process "github.com/DataDog/gopsutil/process"
 	"github.com/StackExchange/wmi"
-	"github.com/shirou/w32"
 
 	"golang.org/x/sys/windows"
 )
@@ -31,6 +31,10 @@ var (
 	checkCount       = 0
 	haveWarnedNoArgs = false
 )
+var (
+	allCounters *pdhutil.PdhAllCountersAllInstancesCounterSet
+)
+
 
 type SystemProcessInformation struct {
 	NextEntryOffset   uint64
@@ -119,15 +123,16 @@ func getWin32Proc(pid uint32) (Win32_Process, error) {
 }
 
 func getAllProcesses(cfg *config.AgentConfig) (map[int32]*process.FilledProcess, error) {
-	allProcsSnap := w32.CreateToolhelp32Snapshot(w32.TH32CS_SNAPPROCESS, 0)
-	if allProcsSnap == 0 {
-		return nil, windows.GetLastError()
+	var err error
+	if allCounters == nil {
+		allCounters, err = pdhutil.GetAllCountersAllInstances("Process", nil)
+		if err != nil {
+			log.Warnf("Failed to initialize counters %v", err)
+			return nil, err;
+		}
 	}
+	
 	procs := make(map[int32]*process.FilledProcess)
-
-	defer w32.CloseHandle(allProcsSnap)
-	var pe32 w32.PROCESSENTRY32
-	pe32.DwSize = uint32(unsafe.Sizeof(pe32))
 
 	addNewArgs := cfg.Windows.AddNewArgs
 	interval := cfg.Windows.ArgsRefreshInterval
@@ -158,9 +163,13 @@ func getAllProcesses(cfg *config.AgentConfig) (map[int32]*process.FilledProcess,
 	checkCount++
 	knownPids := makePidSet()
 
-	for success := w32.Process32First(allProcsSnap, &pe32); success; success = w32.Process32Next(allProcsSnap, &pe32) {
-		pid := pe32.Th32ProcessID
-		ppid := pe32.Th32ParentProcessID
+	allvals, err := allCounters.GetAllValues()
+	if err != nil {
+		return nil, err
+	}
+	for instance, values := range allvals {
+		pid := uint32(values["ID Process"])
+		ppid := uint32(values["Creating Process ID"])
 
 		if pid == 0 {
 			// this is the "system idle process".  We'll never be able to open it,
@@ -191,43 +200,21 @@ func getAllProcesses(cfg *config.AgentConfig) (map[int32]*process.FilledProcess,
 						haveWarnedNoArgs = true
 					}
 				}
-				if err := cp.fillFromProcEntry(&pe32); err != nil {
+				if err := cp.fillFromPID(pid, instance); err != nil {
 					log.Debugf("could not fill Win32 process information for pid %v %v", pid, err)
 					continue
 				}
 			}
 			cachedProcesses[pid] = cp
 		}
-		procHandle := cp.procHandle
+		//procHandle := cp.procHandle
 
-		var CPU windows.Rusage
-		if err := windows.GetProcessTimes(procHandle, &CPU.CreationTime, &CPU.ExitTime, &CPU.KernelTime, &CPU.UserTime); err != nil {
-			log.Debugf("Could not get process times for %v %v", pid, err)
-			continue
-		}
-
-		var handleCount uint32
-		if err := getProcessHandleCount(procHandle, &handleCount); err != nil {
-			log.Debugf("could not get handle count for %v %v", pid, err)
-			continue
-		}
-
-		var pmemcounter process.PROCESS_MEMORY_COUNTERS
-		if err := getProcessMemoryInfo(procHandle, &pmemcounter); err != nil {
-			log.Debugf("could not get memory info for %v %v", pid, err)
-			continue
-		}
-
-		// shell out to getprocessiocounters for io stats
-		var ioCounters IO_COUNTERS
-		if err := getProcessIoCounters(procHandle, &ioCounters); err != nil {
-			log.Debugf("could not get IO Counters for %v %v", pid, err)
-			continue
-		}
-		ctime := CPU.CreationTime.Nanoseconds() / 1000000
-
-		utime := float64((int64(CPU.UserTime.HighDateTime) << 32) | int64(CPU.UserTime.LowDateTime))
-		stime := float64((int64(CPU.KernelTime.HighDateTime) << 32) | int64(CPU.KernelTime.LowDateTime))
+		elapsed := values["Elapsed Time"] // this is how long the process has been up. Subtract
+										  // from "now" to get the creation time.
+		ctime := time.Now().Add(time.Duration(-elapsed) * time.Second).Unix() * 1000
+		
+		utime := float64(values["% User Time"])
+		stime := float64(values["% Privileged Time"])
 
 		delete(knownPids, pid)
 		procs[int32(pid)] = &process.FilledProcess{
@@ -241,20 +228,20 @@ func getAllProcesses(cfg *config.AgentConfig) (map[int32]*process.FilledProcess,
 			},
 
 			CreateTime:  ctime,
-			OpenFdCount: int32(handleCount),
-			NumThreads:  int32(pe32.CntThreads),
+			OpenFdCount: int32(values["Handle Count"]),
+			NumThreads:  int32(values["Thread Count"]),
 			CtxSwitches: &process.NumCtxSwitchesStat{},
 			MemInfo: &process.MemoryInfoStat{
-				RSS:  pmemcounter.WorkingSetSize,
-				VMS:  pmemcounter.QuotaPagedPoolUsage,
+				RSS:  uint64(values["Working Set"]),
+				VMS:  uint64(values["Pool Paged Bytes"]),
 				Swap: 0,
 			},
 			Exe: cp.executablePath,
 			IOStat: &process.IOCountersStat{
-				ReadCount:  ioCounters.ReadOperationCount,
-				WriteCount: ioCounters.WriteOperationCount,
-				ReadBytes:  ioCounters.ReadTransferCount,
-				WriteBytes: ioCounters.WriteTransferCount,
+				ReadCount:  uint64(values["IO Read Operations/sec"] * 1000),
+				WriteCount: uint64(values["IO Write Operations/sec"] * 1000),
+				ReadBytes:  uint64(values["IO Read Bytes/sec"] * 1000),
+				WriteBytes: uint64(values["IO Write Bytes/sec"] * 1000),
 			},
 			Username: cp.userName,
 		}
@@ -409,20 +396,21 @@ func (cp *cachedProcess) fill(proc *Win32_Process) (err error) {
 	return
 }
 
-func (cp *cachedProcess) fillFromProcEntry(pe32 *w32.PROCESSENTRY32) (err error) {
+
+func (cp *cachedProcess) fillFromPID(pid uint32, instanceName string) (err error) {
 	// 0x1000 is PROCESS_QUERY_LIMITED_INFORMATION, but that constant isn't
 	// defined in x/sys/windows
-	cp.procHandle, err = windows.OpenProcess(0x1000, false, uint32(pe32.Th32ProcessID))
+	cp.procHandle, err = windows.OpenProcess(0x1000, false, uint32(pid))
 	if err != nil {
-		log.Infof("Couldn't open process %v %v", pe32.Th32ProcessID, err)
+		log.Infof("Couldn't open process %v %v", pid, err)
 		return err
 	}
 	cp.userName, err = getUsernameForProcess(cp.procHandle)
 	if err != nil {
-		log.Infof("Couldn't get process username %v %v", pe32.Th32ProcessID, err)
+		log.Infof("Couldn't get process username %v %v", pid, err)
 		return err
 	}
-	cp.commandLine = convertWindowsString(pe32.SzExeFile[:])
+	cp.commandLine = strings.Split(instanceName, "#")[0]
 	cp.executablePath = cp.commandLine
 	var parsedargs []string
 	if len(cp.commandLine) == 0 {

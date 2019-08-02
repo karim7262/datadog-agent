@@ -33,6 +33,44 @@ func formatUser(fp *process.FilledProcess) *model.ProcessUser {
 		Gid:  gid,
 	}
 }
+func formatIO(fp *process.FilledProcess, lastIO *process.IOCountersStat, before time.Time) *model.IOStat {
+	// This will be nill for Mac
+	if fp.IOStat == nil {
+		return &model.IOStat{}
+	}
+
+	diff := time.Now().Unix() - before.Unix()
+	if before.IsZero() || diff <= 0 {
+		return &model.IOStat{}
+	}
+	// Reading 0 as a counter means the file could not be opened due to permissions. We distinguish this from a real 0 in rates.
+	var readRate float32
+	readRate = -1
+	if fp.IOStat.ReadCount != 0 {
+		readRate = calculateRate(fp.IOStat.ReadCount, lastIO.ReadCount, before)
+	}
+	var writeRate float32
+	writeRate = -1
+	if fp.IOStat.WriteCount != 0 {
+		writeRate = calculateRate(fp.IOStat.WriteCount, lastIO.WriteCount, before)
+	}
+	var readBytesRate float32
+	readBytesRate = -1
+	if fp.IOStat.ReadBytes != 0 {
+		readBytesRate = calculateRate(fp.IOStat.ReadBytes, lastIO.ReadBytes, before)
+	}
+	var writeBytesRate float32
+	writeBytesRate = -1
+	if fp.IOStat.WriteBytes != 0 {
+		writeBytesRate = calculateRate(fp.IOStat.WriteBytes, lastIO.WriteBytes, before)
+	}
+	return &model.IOStat{
+		ReadRate:       readRate,
+		WriteRate:      writeRate,
+		ReadBytesRate:  readBytesRate,
+		WriteBytesRate: writeBytesRate,
+	}
+}
 
 func formatCPU(fp *process.FilledProcess, t2, t1, syst2, syst1 cpu.TimesStat) *model.CPUStat {
 	numCPU := float64(runtime.NumCPU())

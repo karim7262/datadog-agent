@@ -3,7 +3,8 @@
 package checks
 
 import (
-	"runtime"
+	//"runtime"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/process/model"
 	"github.com/DataDog/gopsutil/cpu"
@@ -17,20 +18,20 @@ func formatUser(fp *process.FilledProcess) *model.ProcessUser {
 }
 
 func formatCPU(fp *process.FilledProcess, t2, t1, syst2, syst1 cpu.TimesStat) *model.CPUStat {
-	numCPU := float64(runtime.NumCPU())
-	deltaSys := float64(t2.Timestamp - t1.Timestamp)
+	//numCPU := float64(runtime.NumCPU())
+	//deltaSys := float64(t2.Timestamp - t1.Timestamp)
 	// under windows, utime & stime are number of 100-ns increments.  The elapsed time
 	// is in nanoseconds.
 	return &model.CPUStat{
 		LastCpu:    t2.CPU,
-		TotalPct:   calculatePct(((t2.User-t1.User)+(t2.System-t1.System))*100, deltaSys, numCPU),
-		UserPct:    calculatePct((t2.User-t1.User)*100, deltaSys, numCPU),
-		SystemPct:  calculatePct((t2.System-t1.System)*100, deltaSys, numCPU),
+		TotalPct:   float32(fp.CpuTime.User + fp.CpuTime.System),
+		UserPct:    float32(fp.CpuTime.User),
+		SystemPct:  float32(fp.CpuTime.System),
 		NumThreads: fp.NumThreads,
 		Cpus:       []*model.SingleCPUStat{},
 		Nice:       fp.Nice,
-		UserTime:   int64(t2.User),
-		SystemTime: int64(t2.System),
+		UserTime:   int64(0),
+		SystemTime: int64(0),
 	}
 }
 
@@ -48,4 +49,43 @@ func calculatePct(deltaProc, deltaTime, numCPU float64) float32 {
 		overalPct = numCPU * 100
 	}
 	return float32(overalPct)
+}
+
+func formatIO(fp *process.FilledProcess, lastIO *process.IOCountersStat, before time.Time) *model.IOStat {
+	// This will be nill for Mac
+	if fp.IOStat == nil {
+		return &model.IOStat{}
+	}
+
+	diff := time.Now().Unix() - before.Unix()
+	if before.IsZero() || diff <= 0 {
+		return &model.IOStat{}
+	}
+	// Reading 0 as a counter means the file could not be opened due to permissions. We distinguish this from a real 0 in rates.
+	var readRate float32
+	readRate = -1
+	if fp.IOStat.ReadCount != 0 {
+		readRate = float32(fp.IOStat.ReadCount)/1000
+	}
+	var writeRate float32
+	writeRate = -1
+	if fp.IOStat.WriteCount != 0 {
+		writeRate = float32(fp.IOStat.WriteCount)/1000
+	}
+	var readBytesRate float32
+	readBytesRate = -1
+	if fp.IOStat.ReadBytes != 0 {
+		readBytesRate = float32(fp.IOStat.ReadBytes)/1000
+	}
+	var writeBytesRate float32
+	writeBytesRate = -1
+	if fp.IOStat.WriteBytes != 0 {
+		writeBytesRate = float32(fp.IOStat.WriteBytes)/1000
+	}
+	return &model.IOStat{
+		ReadRate:       readRate,
+		WriteRate:      writeRate,
+		ReadBytesRate:  readBytesRate,
+		WriteBytesRate: writeBytesRate,
+	}
 }
