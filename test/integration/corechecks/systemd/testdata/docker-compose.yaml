@@ -1,0 +1,8 @@
+version: '2.1'
+
+services:
+  systemd:
+    privileged: true
+    build: .
+    volumes:
+      - /tmp/var/run:/var/run:rw # Note: mounting sub folder `/var/run/dbus` or `/var/run/dbus/system_bus_socket` does not work
