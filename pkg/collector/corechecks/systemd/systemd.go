@@ -438,7 +438,7 @@ func (c *SystemdCheck) Configure(rawInstance integration.Data, rawInitConfig int
 	return nil
 }
 
-func systemdFactory() check.Check {
+func SystemdFactory() check.Check {
 	return &SystemdCheck{
 		stats:     &defaultSystemdStats{},
 		CheckBase: core.NewCheckBase(systemdCheckName),
@@ -446,5 +446,5 @@ func systemdFactory() check.Check {
 }
 
 func init() {
-	core.RegisterCheck(systemdCheckName, systemdFactory)
+	core.RegisterCheck(systemdCheckName, SystemdFactory)
 }

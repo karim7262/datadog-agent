@@ -16,7 +16,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/aggregator/mocksender"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
-	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/containers"
+	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/systemd"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/test/integration/utils"
@@ -117,10 +117,15 @@ func setup() error {
 // Reset the state and trigger a new run
 func doRun(m *testing.M) int {
 	// Setup docker check
-	var dockerCfg = []byte(dockerCfgString)
-	var dockerInitCfg = []byte("")
-	dockerCheck = containers.DockerFactory()
-	dockerCheck.Configure(dockerCfg, dockerInitCfg)
+	rawInstanceConfig := []byte(`
+unit_names:
+ - dbus.service
+ - dbus.socket
+tags:
+ - test:e2e
+`)
+	dockerCheck = systemd.SystemdFactory()
+	dockerCheck.Configure(rawInstanceConfig, []byte(``))
 
 	// Setup mock sender
 	sender = mocksender.NewMockSender(dockerCheck.ID())
