@@ -6,6 +6,7 @@
 package docker
 
 import (
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -15,61 +16,34 @@ func init() {
 
 func TestContainerMetricsTagging(t *testing.T) {
 
-	//expectedTags := []string{
-	//	"test:e2e",
-	//}
+	expectedMetrics := map[string][]string{
+		"Gauge": {
+			"systemd.unit.count",
+			"systemd.unit.loaded.count",
 
-	//sender.AssertCalled(t, "Gauge", "systemd.unit.loaded.count", 267, "", [])
-	sender.AssertCalled(t, "Gauge", "systemd.unit.loaded.count", float64(267), "", []string(nil))
+			"systemd.unit.uptime",
+			"systemd.unit.loaded",
+			"systemd.unit.active",
 
-	//expectedMetrics := map[string][]string{
-	//	"Gauge": {
-	//		"docker.cpu.shares",
-	//		"docker.kmem.usage",
-	//		"docker.mem.cache",
-	//		"docker.mem.rss",
-	//		"docker.mem.in_use",
-	//		"docker.mem.limit",
-	//		"docker.mem.failed_count",
-	//		"docker.mem.soft_limit",
-	//		"docker.container.size_rwx",
-	//		"docker.container.size_rootfs",
-	//		"docker.thread.count",
-	//	},
-	//	"Rate": {
-	//		"docker.cpu.system",
-	//		"docker.cpu.user",
-	//		"docker.cpu.usage",
-	//		"docker.cpu.throttled",
-	//		"docker.io.read_bytes",
-	//		"docker.io.write_bytes",
-	//		"docker.net.bytes_sent",
-	//		"docker.net.bytes_rcvd",
-	//	},
-	//}
+			"systemd.socket.n_connections",
+			"systemd.socket.n_accepted",
 
-	//tags := []string{
-	//	"test:e2e",
-	//}
-	//
-	//ok := sender.AssertMetricTaggedWith(t, "Gauge", "docker.containers.running", tags)
-	//if !ok {
-	//	log.Warnf("Missing Gauge docker.containers.running with tags %s", tags)
-	//}
-	//
-	//
-	//for method, metricList := range expectedMetrics {
-	//	for _, metric := range metricList {
-	//		ok := sender.AssertMetricTaggedWith(t, method, metric, expectedTags)
-	//		if !ok {
-	//			log.Warnf("Missing %s %s with tags %s", method, metric, expectedTags)
-	//		}
-	//
-	//		// Excluded pause container
-	//		ok = sender.AssertMetricNotTaggedWith(t, method, metric, pauseTags)
-	//		if !ok {
-	//			log.Warnf("Shouldn't call %s %s with tags %s", method, metric, pauseTags)
-	//		}
-	//	}
-	//}
+			//"systemd.service.memory_current",
+			//"systemd.service.tasks_current",
+
+			// centos/systemd:latest contains systemd v219, it does not contain CPUUsageNSec and NRestarts yet
+			// "systemd.service.cpu_usage_n_sec",
+			// "systemd.service.n_restarts",
+
+			"systemd.unit.count",
+			"systemd.unit.loaded.count",
+		},
+	}
+
+	for method, metricList := range expectedMetrics {
+		for _, metric := range metricList {
+			sender.AssertCalled(t, method, metric, mock.Anything, "", mock.Anything)
+		}
+	}
+
 }
