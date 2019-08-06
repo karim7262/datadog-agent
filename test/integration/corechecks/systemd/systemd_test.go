@@ -54,8 +54,9 @@ func (suite *SystemdSuite) SetupTest() {
 unit_names:
  - dbus.service
  - dbus.socket
+system_bus_socket: /tmp/var/run/dbus/system_bus_socket
 `)
-	systemdCheck = systemd.SystemdFactory()
+	systemdCheck = systemd.Factory()
 	systemdCheck.Configure(rawInstanceConfig, []byte(``))
 
 	// Setup mock sender

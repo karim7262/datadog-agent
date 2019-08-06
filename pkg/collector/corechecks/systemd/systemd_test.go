@@ -9,6 +9,7 @@ package systemd
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"testing"
 
@@ -72,7 +73,7 @@ func getCreatePropertieWithDefaults(props map[string]interface{}) map[string]int
 }
 
 func TestDefaultConfiguration(t *testing.T) {
-	check := SystemdCheck{}
+	check := Check{}
 	check.Configure([]byte(``), []byte(``))
 
 	assert.Equal(t, []string(nil), check.config.instance.UnitNames)
@@ -82,7 +83,7 @@ func TestDefaultConfiguration(t *testing.T) {
 
 func TestConfiguration(t *testing.T) {
 	// setup data
-	check := SystemdCheck{}
+	check := Check{}
 	rawInstanceConfig := []byte(`
 unit_names:
  - ssh.service
@@ -104,7 +105,7 @@ unit_regexes:
 
 func TestConfigurationSkipOnRegexErr(t *testing.T) {
 	// setup data
-	check := SystemdCheck{}
+	check := Check{}
 	rawInstanceConfig := []byte(`
 unit_regexes:
  - lvm2-.*
@@ -120,11 +121,26 @@ unit_regexes:
 	assert.Equal(t, regexes, check.config.instance.UnitRegexPatterns)
 }
 
+func TestEnvConfiguration(t *testing.T) {
+	// setup data
+	check := Check{}
+	rawInstanceConfig := []byte(`
+unit_names:
+- ssh.service
+system_bus_socket: /tmp/foo
+`)
+	check.Configure(rawInstanceConfig, []byte(``))
+
+	check.Run()
+
+	assert.Equal(t, "/tmp/foo", os.Getenv("DBUS_SYSTEM_BUS_ADDRESS"))
+}
+
 func TestDbusConnectionErr(t *testing.T) {
 	stats := &mockSystemdStats{}
 	stats.On("NewConn").Return((*dbus.Conn)(nil), fmt.Errorf("some error"))
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure([]byte(``), []byte(``))
 
 	mockSender := mocksender.NewMockSender(check.ID()) // required to initiate aggregator
@@ -143,7 +159,7 @@ func TestSystemStateCallErr(t *testing.T) {
 	stats.On("NewConn").Return(&dbus.Conn{}, nil)
 	stats.On("SystemState", mock.Anything).Return((*dbus.Property)(nil), fmt.Errorf("some error"))
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure([]byte(``), []byte(``))
 
 	mockSender := mocksender.NewMockSender(check.ID()) // required to initiate aggregator
@@ -160,7 +176,7 @@ func TestListUnitErr(t *testing.T) {
 	stats := createDefaultMockSystemdStats()
 	stats.On("ListUnits", mock.Anything).Return(([]dbus.UnitStatus)(nil), fmt.Errorf("some error"))
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure([]byte(``), []byte(``))
 
 	mockSender := mocksender.NewMockSender(check.ID()) // required to initiate aggregator
@@ -194,7 +210,7 @@ func TestCountMetrics(t *testing.T) {
 unit_names:
  - monitor_nothing
 `)
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure(rawInstanceConfig, nil)
 
 	// setup expectations
@@ -255,7 +271,7 @@ unit_names:
 		"ActiveEnterTimestamp": uint64(100),
 	}, nil)
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure(rawInstanceConfig, nil)
 
 	// setup expectation
@@ -320,7 +336,7 @@ unit_names:
 		"ActiveEnterTimestamp": uint64(1),
 	}, nil)
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure(rawInstanceConfig, nil)
 
 	// setup expectation
@@ -395,7 +411,7 @@ unit_names:
 		"TasksCurrent":     uint64(1),
 	}, nil)
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure(rawInstanceConfig, nil)
 
 	// setup expectation
@@ -443,7 +459,7 @@ func TestServiceCheckSystemStateAndCanConnect(t *testing.T) {
 			stats.On("SystemState", mock.Anything).Return(&dbus.Property{Name: "SystemState", Value: godbus.MakeVariant(d.systemStatus)}, nil)
 			stats.On("ListUnits", mock.Anything).Return([]dbus.UnitStatus{}, nil)
 
-			check := SystemdCheck{stats: stats}
+			check := Check{stats: stats}
 			check.Configure([]byte(``), []byte(``))
 
 			mockSender := mocksender.NewMockSender(check.ID()) // required to initiate aggregator
@@ -490,7 +506,7 @@ unit_names:
 		"ActiveEnterTimestamp": uint64(200),
 	}, nil)
 
-	check := SystemdCheck{stats: stats}
+	check := Check{stats: stats}
 	check.Configure(rawInstanceConfig, nil)
 
 	// setup expectation
@@ -545,7 +561,7 @@ func TestSendServicePropertyAsGaugeSkipAndWarnOnMissingProperty(t *testing.T) {
 	serviceUnitConfigCPU := metricConfigItem{metricName: "systemd.service.cpu_usage_n_sec", propertyName: "CPUUsageNSec", accountingProperty: "CPUAccounting", optional: false}
 	serviceUnitConfigNRestart := metricConfigItem{metricName: "systemd.service.n_restarts", propertyName: "NRestarts", accountingProperty: "", optional: false}
 
-	check := SystemdCheck{}
+	check := Check{}
 	mockSender := mocksender.NewMockSender(check.ID())
 	mockSender.On("Gauge", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
@@ -569,7 +585,7 @@ unit_regexes:
   - ^zyz$
 `)
 
-	check := SystemdCheck{}
+	check := Check{}
 	check.Configure(rawInstanceConfig, nil)
 
 	data := []struct {
@@ -598,7 +614,7 @@ unit_regexes:
 func TestIsMonitoredEmptyConfigShouldMonitorAll(t *testing.T) {
 	// setup data
 	rawInstanceConfig := []byte(``)
-	check := SystemdCheck{}
+	check := Check{}
 	check.Configure(rawInstanceConfig, nil)
 
 	data := []struct {
