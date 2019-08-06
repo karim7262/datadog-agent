@@ -79,8 +79,8 @@ func (suite *SystemdSuite) TestSystemd() {
 			"systemd.socket.n_connections",
 			"systemd.socket.n_accepted",
 
-			//"systemd.service.memory_current",
-			//"systemd.service.tasks_current",
+			"systemd.service.memory_current",
+			"systemd.service.tasks_current",
 
 			// centos/systemd:latest contains systemd v219, it does not contain CPUUsageNSec and NRestarts yet
 			// "systemd.service.cpu_usage_n_sec",
@@ -96,8 +96,6 @@ func (suite *SystemdSuite) TestSystemd() {
 			sender.AssertCalled(suite.T(), method, metric, mock.Anything, "", mock.Anything)
 		}
 	}
-
-	sender.AssertCalled(suite.T(), "Gauge", "systemd.unit.loaded.count", 50, "", mock.Anything)
 }
 
 func TestSystemdSuite(t *testing.T) {
