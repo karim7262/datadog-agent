@@ -5,6 +5,7 @@ services:
     privileged: true
     image: "centos/systemd:latest"
     volumes:
-      - ./container/run:/run
-      - ./container/var/run/dbus:/var/run/dbus
+#      - ./container/run:/run
+      - /tmp/var/run:/var/run:rw
+#      - /tmp/run/:/run:rw
 #      - ./system.conf:/etc/systemd/system.conf

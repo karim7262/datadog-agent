@@ -3,25 +3,25 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-2019 Datadog, Inc.
 
-package docker
+package systemd
 
-import (
-	"fmt"
-	"strings"
-)
-
-type catalog struct {
-	composeFilesByProjects map[string]string
-}
-
-var defaultCatalog = catalog{
-	composeFilesByProjects: make(map[string]string),
-}
-
-func (c *catalog) addCompose(projectName, filename string) {
-	c.composeFilesByProjects[projectName] = filename
-}
-
-func registerComposeFile(filename string) {
-	defaultCatalog.addCompose(strings.TrimSuffix(filename, ".compose"), fmt.Sprintf("testdata/%s", filename))
-}
+//import (
+//"fmt"
+//"strings"
+//)
+//
+//type catalog struct {
+//	composeFilesByProjects map[string]string
+//}
+//
+//var defaultCatalog = catalog{
+//	composeFilesByProjects: make(map[string]string),
+//}
+//
+//func (c *catalog) addCompose(projectName, filename string) {
+//	c.composeFilesByProjects[projectName] = filename
+//}
+//
+//func registerComposeFile(filename string) {
+//	defaultCatalog.addCompose(strings.TrimSuffix(filename, ".compose"), fmt.Sprintf("testdata/%s", filename))
+//}

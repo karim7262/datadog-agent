@@ -9,7 +9,9 @@ package systemd
 
 import (
 	"fmt"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/coreos/go-systemd/dbus"
+	godbus "github.com/godbus/dbus"
 	"gopkg.in/yaml.v2"
 
 	core "github.com/DataDog/datadog-agent/pkg/collector/corechecks"
@@ -145,8 +148,43 @@ type systemdStats interface {
 
 type defaultSystemdStats struct{}
 
+// NewSystemdConnection establishes a private, direct connection to systemd.
+// This can be used for communicating with systemd without a dbus daemon.
+// Callers should call Close() when done with the connection.
+func NewSystemdConnection() (*dbus.Conn, error) {
+	return dbus.NewConnection(func() (*godbus.Conn, error) {
+		// We skip Hello when talking directly to systemd.
+		return dbusAuthConnection(func() (*godbus.Conn, error) {
+			return godbus.Dial("unix:path=/tmp/run/systemd/private")
+		})
+	})
+}
+
+func dbusAuthConnection(createBus func() (*godbus.Conn, error)) (*godbus.Conn, error) {
+	conn, err := createBus()
+	if err != nil {
+		return nil, err
+	}
+
+	// Only use EXTERNAL method, and hardcode the uid (not username)
+	// to avoid a username lookup (which requires a dynamically linked
+	// libc)
+	methods := []godbus.Auth{godbus.AuthExternal(strconv.Itoa(os.Getuid()))}
+
+	err = conn.Auth(methods)
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+
+	return conn, nil
+}
+
 func (s *defaultSystemdStats) NewConn() (*dbus.Conn, error) {
-	return dbus.New()
+	//return dbus.New()
+	//return dbus.NewUserConnection()
+	return dbus.NewSystemConnection()
+	//return NewSystemdConnection()
 }
 
 func (s *defaultSystemdStats) CloseConn(c *dbus.Conn) {
