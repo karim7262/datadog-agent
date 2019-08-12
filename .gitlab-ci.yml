@@ -1,4 +1,5 @@
 stages:
+  - image_build
   - deploy
   - delete
 
@@ -82,6 +83,55 @@ before_script:
     variables:
       - $RELEASE_VERSION == "nightly"
       - $RELEASE_VERSION == "" # no  RELEASE_VERSION means a nightly build for omnibus
+
+.docker_build_job_definition: &docker_build_job_definition
+  stage: image_build
+  tags: [ "runner:docker", "size:large" ]
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
+  before_script: [ "# noop" ] # Override top level entry
+  dependencies: [] # Don't download Gitlab artifacts
+  script:
+    - TAG_SUFFIX=${TAG_SUFFIX:-}
+    - TARGET_TAG=$IMAGE:v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}$TAG_SUFFIX
+    # Pull base image(s) with content trust enabled
+    - pip install -r requirements.txt
+    # Build release stage and push to ECR
+    - docker pull datadog/agent:6.13.0-beta-1$TAG_SUFFIX
+    - docker tag datadog/agent:6.13.0-beta-1$TAG_SUFFIX $TARGET_TAG
+    - docker push $TARGET_TAG
+
+# build agent6 image
+build_agent6:
+  <<: *docker_build_job_definition
+  variables:
+    IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+    BUILD_CONTEXT: Dockerfiles/agent
+    TAG_SUFFIX: -py2
+
+# build agent6 jmx image
+build_agent6_jmx:
+  <<: *docker_build_job_definition
+  variables:
+    IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+    BUILD_CONTEXT: Dockerfiles/agent
+    TAG_SUFFIX: -py2-jmx
+
+# build agent7 jmx image
+build_agent7_py3_jmx:
+  <<: *docker_build_job_definition
+  variables:
+    IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+    BUILD_CONTEXT: Dockerfiles/agent
+    TAG_SUFFIX: -py3-jmx
+
+# build agent7 image
+build_agent7_py3:
+  <<: *docker_build_job_definition
+  variables:
+    IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+    BUILD_CONTEXT: Dockerfiles/agent
+    TAG_SUFFIX: -py3
+
 
 .docker_tag_job_definition: &docker_tag_job_definition
   stage: image_deploy
