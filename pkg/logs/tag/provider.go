@@ -12,6 +12,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 const refreshPeriod = 10 * time.Second
@@ -47,11 +48,13 @@ func NewProvider(entityID string) Provider {
 func (p *provider) GetTags() []string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	log.Infof("Tags in cache: %v", p.tags)
 	return p.tags
 }
 
 // Start starts the polling of new tags on another go routine.
 func (p *provider) Start() {
+	log.Infof("Starting tag provider for entityID: %v", p.entityID)
 	go func() {
 		p.updateTags()
 		ticker := time.NewTicker(refreshPeriod)
@@ -69,6 +72,7 @@ func (p *provider) Start() {
 
 // Stop stops the polling of new tags.
 func (p *provider) Stop() {
+	log.Infof("Stopping tag provider for entityID: %v", p.entityID)
 	p.done <- struct{}{}
 }
 
@@ -77,6 +81,8 @@ func (p *provider) updateTags() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	tags, err := tagger.Tag(p.entityID, collectors.HighCardinality)
+	log.Infof("New tags: %v", tags)
+	log.Infof("Old tags: %v", p.tags)
 	if err == nil && !reflect.DeepEqual(tags, p.tags) {
 		p.tags = tags
 	}

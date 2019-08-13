@@ -69,8 +69,10 @@ func NewTailer(outputChan chan *message.Message, source *config.LogSource, path 
 	}
 	var tagProvider tag.Provider
 	if source.Config.Identifier != "" {
+		log.Infof("Initializing tag provider for with identifier: %v", source.Config.Identifier)
 		tagProvider = tag.NewProvider(source.Config.Identifier)
 	} else {
+		log.Infof("No tag provider")
 		tagProvider = tag.NoopProvider
 	}
 	return &Tailer{
