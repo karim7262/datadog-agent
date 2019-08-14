@@ -131,9 +131,9 @@ tag_release_6:
   variables:
     <<: *docker_hub_variables
   script:
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1562987-f947d72-py2 datadog/agent:6.13.0-beta-1-py2
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1562987-f947d72-py2-jmx datadog/agent:6.13.0-beta-1-py2-jmx
-    - inv -e docker.publish --signed-push ${SRC_DSD}:v1562987-f947d72 datadog/dogstatsd:6.13.0-beta-1-py2
+    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1606814-9e56d34-py2 datadog/agent:6.13.0-beta-2-py2
+    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1606814-9e56d34-py2-jmx datadog/agent:6.13.0-beta-2-py2-jmx
+    - inv -e docker.publish --signed-push ${SRC_DSD}:v1606814-9e56d34 datadog/dogstatsd:6.13.0-beta-2-py2
 
 tag_release_7:
   <<: *docker_tag_job_definition
@@ -142,8 +142,8 @@ tag_release_7:
   variables:
     <<: *docker_hub_variables
   script:
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1562987-f947d72-py3 datadog/agent:6.13.0-beta-1-py3
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1562987-f947d72-py3-jmx datadog/agent:6.13.0-beta-1-py3-jmx
+    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1606814-9e56d34-py3 datadog/agent:6.13.0-beta-2-py3
+    - inv -e docker.publish --signed-push ${SRC_AGENT}:v1606814-9e56d34-py3-jmx datadog/agent:6.13.0-beta-2-py3-jmx
 
 # Use this step to delete a tag of a given image
 # We call the Docker Hub API because docker cli doesn't support deleting tags
