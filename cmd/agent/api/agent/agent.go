@@ -44,6 +44,7 @@ func SetupHandlers(r *mux.Router) {
 	r.HandleFunc("/status", getStatus).Methods("GET")
 	r.HandleFunc("/dogstatsd-stats", getDogstatsdStats).Methods("GET")
 	r.HandleFunc("/status/formatted", getFormattedStatus).Methods("GET")
+	r.HandleFunc("/status/memory/{component}/checks", getCheckMemoryStatus).Methods("GET")
 	r.HandleFunc("/status/health", getHealth).Methods("GET")
 	r.HandleFunc("/{component}/status", componentStatusGetterHandler).Methods("GET")
 	r.HandleFunc("/{component}/status", componentStatusHandler).Methods("POST")
@@ -217,6 +218,30 @@ func getFormattedStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write(s)
+}
+
+func getCheckMemoryStatus(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	component := vars["component"]
+
+	w.Header().Set("Content-Type", "application/json")
+	switch component {
+	case "py":
+		jsonStatus, err := status.GetPythonCheckMemoryUsage(common.Coll)
+		if err != nil {
+			log.Errorf("Unable to collect python check memory usage: %s", err.Error())
+			body, _ := json.Marshal(map[string]string{"error": err.Error()})
+			http.Error(w, string(body), 500)
+			return
+		}
+
+		w.Write(jsonStatus)
+	default:
+		err := fmt.Errorf("Bad url or resource does not exist")
+		log.Errorf("Unable to get check memory status: %s", err.Error())
+		body, _ := json.Marshal(map[string]string{"error": err.Error()})
+		http.Error(w, string(body), 404)
+	}
 }
 
 func getHealth(w http.ResponseWriter, r *http.Request) {
