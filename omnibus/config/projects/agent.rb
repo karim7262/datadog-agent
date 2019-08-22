@@ -42,6 +42,8 @@ description 'Datadog Monitoring Agent
  See http://www.datadoghq.com/ for more information
 '
 
+strip_build true
+
 # ------------------------------------
 # Generic package information
 # ------------------------------------
