@@ -6,9 +6,11 @@
 package listeners
 
 import (
+	"context"
 	"expvar"
 	"fmt"
 	"net"
+	"runtime/trace"
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -78,25 +80,57 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 func (l *UDPListener) Listen() {
 	log.Infof("dogstatsd-udp: starting to listen on %s", l.conn.LocalAddr())
 	for {
+		ctx, endTask := newTask("listen")
+		rGetPacketEnd := newRegion(ctx, "getPacket")
 		packet := l.packetPool.Get()
+		rGetPacketEnd()
+		rExp1VarEnd := newRegion(ctx, "expvar1")
 		udpPackets.Add(1)
+		rExp1VarEnd()
+		rRead := newRegion(ctx, "read")
 		n, _, err := l.conn.ReadFrom(packet.buffer)
+		rRead()
 		if err != nil {
+			rErr := newRegion(ctx, "err")
 			// connection has been closed
 			if strings.HasSuffix(err.Error(), " use of closed network connection") {
+				rErr()
+				endTask()
 				return
 			}
 
 			log.Errorf("dogstatsd-udp: error reading packet: %v", err)
 			udpPacketReadingErrors.Add(1)
+			rErr()
+			endTask()
 			continue
 		}
+		rExp2VarEnd := newRegion(ctx, "expvar2")
 		udpBytes.Add(int64(n))
+		rExp2VarEnd()
 		packet.Contents = packet.buffer[:n]
 
+		packetBufferEnd := newRegion(ctx, "packetBuffer")
 		// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
 		l.packetBuffer.append(packet)
+		packetBufferEnd()
+		endTask()
 	}
+}
+
+func newRegion(ctx context.Context, regionName string) func() {
+	if trace.IsEnabled() {
+		return trace.StartRegion(ctx, regionName).End
+	}
+	return func() {}
+}
+
+func newTask(taskName string) (context.Context, func()) {
+	if trace.IsEnabled() {
+		context, task := trace.NewTask(context.Background(), taskName)
+		return context, task.End
+	}
+	return nil, func() {}
 }
 
 // Stop closes the UDP connection and stops listening
