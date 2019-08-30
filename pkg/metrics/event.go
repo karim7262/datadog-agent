@@ -202,6 +202,11 @@ type eventsBySourceTypeMarshaler struct {
 }
 
 func (*eventsBySourceTypeMarshaler) WriteHeader(stream *jsoniter.Stream) error {
+	writeEventsHeader(stream)
+	return stream.Flush()
+}
+
+func writeEventsHeader(stream *jsoniter.Stream) {
 	stream.WriteObjectStart()
 	stream.WriteObjectField(apiKeyJSONField)
 	stream.WriteString("")
@@ -209,11 +214,13 @@ func (*eventsBySourceTypeMarshaler) WriteHeader(stream *jsoniter.Stream) error {
 
 	stream.WriteObjectField(eventsJSONField)
 	stream.WriteObjectStart()
-
-	return stream.Flush()
 }
 
 func (*eventsBySourceTypeMarshaler) WriteFooter(stream *jsoniter.Stream) error {
+	return writeEventsFooter(stream)
+}
+
+func writeEventsFooter(stream *jsoniter.Stream) error {
 	stream.WriteObjectEnd()
 	stream.WriteMore()
 
@@ -284,4 +291,59 @@ func (events Events) CreateMarshalerBySourceType() marshaler.StreamJSONMarshaler
 	}
 	return &eventsBySourceTypeMarshaler{events, values}
 }
+
+//-----------------------------------------------------------------------------
+// Implements a collection of StreamJSONMarshaler.
+// Each StreamJSONMarshaler is all events for a specific source type name.
+//-----------------------------------------------------------------------------
+type eventsMarshaler struct {
+	sourceTypeName string
+	Events
+}
+
+func (e *eventsMarshaler) WriteHeader(stream *jsoniter.Stream) error {
+	writeEventsHeader(stream)
+	stream.WriteObjectField(e.sourceTypeName)
+	stream.WriteArrayStart()
+	return stream.Flush()
+}
+
+func (e *eventsMarshaler) WriteFooter(stream *jsoniter.Stream) error {
+	stream.WriteArrayEnd()
+	return writeEventsFooter(stream)
+}
+
+func (e *eventsMarshaler) WriteItem(stream *jsoniter.Stream, i int) error {
+	if i < 0 || i > len(e.Events)-1 {
+		return errors.New(outOfRangeMsg)
+	}
+
+	event := e.Events[i]
+	writer := jsonrawobjectwriter.NewJSONRawObjectWriter(stream)
+	if err := writeEvent(event, writer); err != nil {
+		return err
+	}
+
+	return writer.Flush()
+}
+
+func (e *eventsMarshaler) Len() int { return len(e.Events) }
+
+func (e *eventsMarshaler) DescribeItem(i int) string {
+	if i < 0 || i > len(e.Events)-1 {
+		return outOfRangeMsg
+	}
+	event := e.Events[i]
+	return fmt.Sprintf("Title: %s, Text: %s, Source Type: %s", event.Title, event.Text, event.SourceTypeName)
+}
+
+// CreateMarshalerForEachSourceType creates a collection of marshaler.StreamJSONMarshaler.
+// Each StreamJSONMarshaler is all events for a specific source type name.
+func (events Events) CreateMarshalerForEachSourceType() []marshaler.StreamJSONMarshaler {
+	e := events.getEventsBySourceType()
+	var values []marshaler.StreamJSONMarshaler
+	for k, v := range e {
+		values = append(values, &eventsMarshaler{k, v})
+	}
+	return values
 }
