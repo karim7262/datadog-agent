@@ -67,7 +67,7 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 	listener := &UDPListener{
 		packetPool: packetPool,
 		conn:       conn,
-		packetBuffer: newPacketBuffer(uint(config.Datadog.GetInt("dogstatsd_packet_buffer_size")),
+		packetBuffer: newPacketBuffer(uint(config.Datadog.GetInt("dogstatsd_packet_buffer_size_udp")),
 			config.Datadog.GetDuration("dogstatsd_packet_buffer_flush_timeout"), packetOut),
 	}
 	log.Debugf("dogstatsd-udp: %s successfully initialized", conn.LocalAddr())
