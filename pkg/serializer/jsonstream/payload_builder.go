@@ -10,7 +10,7 @@ package jsonstream
 import (
 	"bytes"
 
-	"github.com/json-iterator/go"
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	"github.com/DataDog/datadog-agent/pkg/serializer/marshaler"
@@ -37,8 +37,26 @@ func NewPayloadBuilder() *PayloadBuilder {
 	}
 }
 
+type PayloadBuilderPolicy int
+
+const (
+	// ContinueOnErrTooBig: If found an errTooBig, skips the error and continue
+	ContinueOnErrTooBig PayloadBuilderPolicy = iota
+
+	// SkipErrTooBig: If found an errTooBig, returns the error and stop
+	FailedErrTooBig
+)
+
 // Build serializes a metadata payload and sends it to the forwarder
 func (b *PayloadBuilder) Build(m marshaler.StreamJSONMarshaler) (forwarder.Payloads, error) {
+	return b.BuildWithPolicy(m, ContinueOnErrTooBig)
+}
+
+// BuildWithPolicy serializes a metadata payload and sends it to the forwarder
+func (b *PayloadBuilder) BuildWithPolicy(
+	m marshaler.StreamJSONMarshaler,
+	payloadBuilderPolicy PayloadBuilderPolicy) (forwarder.Payloads, error) {
+
 	var payloads forwarder.Payloads
 	var i int
 	itemCount := m.Len()
@@ -98,6 +116,11 @@ func (b *PayloadBuilder) Build(m marshaler.StreamJSONMarshaler) (forwarder.Paylo
 			i++
 			expvarsTotalItems.Add(1)
 			continue
+		case errTooBig:
+			if payloadBuilderPolicy == FailedErrTooBig {
+				return nil, err
+			}
+			fallthrough
 		default:
 			// Unexpected error, drop the item
 			i++
