@@ -49,7 +49,7 @@ var (
 
 var (
 	errPayloadFull = errors.New("reached maximum payload size")
-	errTooBig      = errors.New("item alone exceeds maximum payload size")
+	ErrTooBig      = errors.New("item alone exceeds maximum payload size")
 )
 
 var jsonSeparator = []byte(",")
@@ -128,7 +128,7 @@ func (c *compressor) pack() error {
 func (c *compressor) addItem(data []byte) error {
 	// check item size sanity
 	if !c.checkItemSize(data) {
-		return errTooBig
+		return ErrTooBig
 	}
 	// check max repack cycles
 	if c.repacks >= maxRepacks {

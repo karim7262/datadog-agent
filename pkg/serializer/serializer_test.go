@@ -158,18 +158,34 @@ func mkPayloads(payload []byte, compress bool) (forwarder.Payloads, error) {
 	return payloads, nil
 }
 
+type testEventsPayload struct {
+	marshaler.StreamJSONMarshaler
+}
+
+func createTestEventsPayload(marshaler marshaler.StreamJSONMarshaler) *testEventsPayload {
+	return &testEventsPayload{marshaler}
+}
+
+func (t *testEventsPayload) CreateSingleMarshaler() marshaler.StreamJSONMarshaler {
+	return t.StreamJSONMarshaler
+}
+
+func (*testEventsPayload) CreateMarshalerCollection() []marshaler.StreamJSONMarshaler {
+	return nil
+}
+
 func TestSendV1Events(t *testing.T) {
 	f := &forwarder.MockedForwarder{}
 	f.On("SubmitV1Intake", jsonPayloads, jsonExtraHeadersWithCompression).Return(nil).Times(1)
 
 	s := NewSerializer(f)
 
-	payload := &testPayload{}
+	payload := createTestEventsPayload(&testPayload{})
 	err := s.SendEvents(payload)
 	require.Nil(t, err)
 	f.AssertExpectations(t)
 
-	errPayload := &testErrorPayload{}
+	errPayload := createTestEventsPayload(&testErrorPayload{})
 	err = s.SendEvents(errPayload)
 	require.NotNil(t, err)
 }
@@ -184,12 +200,12 @@ func TestSendEvents(t *testing.T) {
 
 	s := NewSerializer(f)
 
-	payload := &testPayload{}
+	payload := createTestEventsPayload(&testPayload{})
 	err := s.SendEvents(payload)
 	require.Nil(t, err)
 	f.AssertExpectations(t)
 
-	errPayload := &testErrorPayload{}
+	errPayload := createTestEventsPayload(&testErrorPayload{})
 	err = s.SendEvents(errPayload)
 	require.NotNil(t, err)
 }
@@ -350,8 +366,9 @@ func TestSendWithDisabledKind(t *testing.T) {
 	s := NewSerializer(f)
 
 	payload := &testPayload{}
+	payloadEvents := createTestEventsPayload(payload)
 
-	s.SendEvents(payload)
+	s.SendEvents(payloadEvents)
 	s.SendSeries(payload)
 	s.SendSketch(payload)
 	s.SendServiceChecks(payload)
