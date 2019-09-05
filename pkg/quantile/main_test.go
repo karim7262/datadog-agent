@@ -7,28 +7,6 @@ import (
 	"testing"
 )
 
-// ParseBuf creates a slice of float64s from the given dsl
-// TODO|DOC: add more examples
-func ParseBuf(t *testing.T, dsl string) []float64 {
-	t.Helper()
-	var (
-		c   = Default()
-		out []float64
-	)
-
-	eachParsedToken(t, dsl, 16, func(k Key, n uint64) {
-		if n > maxBinWidth {
-			t.Fatal("n > max", n, maxBinWidth)
-		}
-
-		for i := uint64(0); i < n; i++ {
-			out = append(out, c.f64(k))
-		}
-	})
-
-	return out
-}
-
 // ParseSketch creates a sketch with the exact bin layout given in the dsl
 // TODO|DOC: add more examples
 //

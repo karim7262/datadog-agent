@@ -368,11 +368,6 @@ func compileReplaceRules(rules []*ReplaceRule) error {
 	return nil
 }
 
-// getDuration returns the duration of the provided value in seconds
-func getDuration(seconds int) time.Duration {
-	return time.Duration(seconds) * time.Second
-}
-
 func parseServiceAndOp(name string) (string, string, error) {
 	splits := strings.Split(name, "|")
 	if len(splits) != 2 {

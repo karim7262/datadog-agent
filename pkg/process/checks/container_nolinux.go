@@ -18,7 +18,7 @@ var Container = &ContainerCheck{}
 // ContainerCheck is a check that returns container metadata and stats.
 type ContainerCheck struct {
 	sysInfo *model.SystemInfo
-	lastRun time.Time
+	_       time.Time
 }
 
 // Init initializes a ContainerCheck instance.

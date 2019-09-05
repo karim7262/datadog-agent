@@ -58,11 +58,10 @@ const (
 )
 
 const (
-	v1SeriesEndpoint       = "/api/v1/series"
-	v1CheckRunsEndpoint    = "/api/v1/check_run"
-	v1IntakeEndpoint       = "/intake/"
-	v1SketchSeriesEndpoint = "/api/v1/sketches"
-	v1ValidateEndpoint     = "/api/v1/validate"
+	v1SeriesEndpoint    = "/api/v1/series"
+	v1CheckRunsEndpoint = "/api/v1/check_run"
+	v1IntakeEndpoint    = "/intake/"
+	v1ValidateEndpoint  = "/api/v1/validate"
 
 	seriesEndpoint        = "/api/v2/series"
 	eventsEndpoint        = "/api/v2/events"

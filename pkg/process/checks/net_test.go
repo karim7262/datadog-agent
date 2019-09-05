@@ -32,7 +32,7 @@ func TestNetworkConnectionBatching(t *testing.T) {
 	cfg := config.NewDefaultAgentConfig()
 
 	for i, tc := range []struct {
-		cur, last      []*model.Connection
+		cur, _         []*model.Connection
 		maxSize        int
 		expectedTotal  int
 		expectedChunks int

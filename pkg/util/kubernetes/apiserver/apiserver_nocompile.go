@@ -25,8 +25,8 @@ type APIClient struct {
 	Cl interface{}
 }
 
-// metadataMapperBundle maps the podNames to the metadata they are associated with.
-type metadataMapperBundle struct{}
+// // metadataMapperBundle maps the podNames to the metadata they are associated with.
+// type metadataMapperBundle struct{}
 
 // GetAPIClient returns the shared ApiClient instance.
 func GetAPIClient() (*APIClient, error) {

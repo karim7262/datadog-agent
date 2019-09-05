@@ -59,19 +59,6 @@ func formatType(f ebpf.ConnectionType) model.ConnectionType {
 	}
 }
 
-func formatDirection(d ebpf.ConnectionDirection) model.ConnectionDirection {
-	switch d {
-	case ebpf.INCOMING:
-		return model.ConnectionDirection_incoming
-	case ebpf.OUTGOING:
-		return model.ConnectionDirection_outgoing
-	case ebpf.LOCAL:
-		return model.ConnectionDirection_local
-	default:
-		return model.ConnectionDirection_unspecified
-	}
-}
-
 func formatIPTranslation(ct *netlink.IPTranslation) *model.IPTranslation {
 	if ct == nil {
 		return nil

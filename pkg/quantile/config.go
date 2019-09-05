@@ -60,20 +60,6 @@ func (c *Config) f64(k Key) float64 {
 	return c.powGamma(exp)
 }
 
-func (c *Config) binLow(k Key) float64 {
-	switch {
-	case k < 0:
-		return -c.f64(-k)
-	case k.IsInf():
-		return math.Inf(int(k))
-	case k == 0:
-		return 0
-	}
-
-	exp := float64(int(k) - c.norm.bias)
-	return c.powGamma(exp)
-}
-
 // key returns a value k such that:
 //   γ^k <= v < γ^(k+1)
 func (c *Config) key(v float64) Key {

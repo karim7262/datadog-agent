@@ -54,9 +54,9 @@ type scanner struct {
 	err error
 
 	// 1-byte redo (see undo method)
-	redo      bool
-	redoCode  int
-	redoState func(*scanner, byte) int
+	redo bool
+	_    int
+	_    func(*scanner, byte) int
 
 	// total bytes consumed, updated by decoder.Decode
 	bytes int64
@@ -564,23 +564,4 @@ func quoteChar(c byte) string {
 	// use quoted string with different quotation marks
 	s := strconv.Quote(string(c))
 	return "'" + s[1:len(s)-1] + "'"
-}
-
-// undo causes the scanner to return scanCode from the next state transition.
-// This gives callers a simple 1-byte undo mechanism.
-func (s *scanner) undo(scanCode int) {
-	if s.redo {
-		panic("json: invalid use of scanner")
-	}
-	s.redoCode = scanCode
-	s.redoState = s.step
-	s.step = stateRedo
-	s.redo = true
-}
-
-// stateRedo helps implement the scanner's 1-byte undo.
-func stateRedo(s *scanner, c byte) int {
-	s.redo = false
-	s.step = s.redoState
-	return s.redoCode
 }

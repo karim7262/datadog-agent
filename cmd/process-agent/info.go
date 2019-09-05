@@ -200,18 +200,18 @@ type infoVersion struct {
 
 // StatusInfo is a structure to get information from expvar and feed to template
 type StatusInfo struct {
-	Pid             int                    `json:"pid"`
-	Uptime          int                    `json:"uptime"`
-	MemStats        struct{ Alloc uint64 } `json:"memstats"`
-	Version         infoVersion            `json:"version"`
-	Config          config.AgentConfig     `json:"config"`
-	DockerSocket    string                 `json:"docker_socket"`
-	LastCollectTime string                 `json:"last_collect_time"`
-	ProcessCount    int                    `json:"process_count"`
-	ContainerCount  int                    `json:"container_count"`
-	QueueSize       int                    `json:"queue_size"`
-	ContainerID     string                 `json:"container_id"`
-	ProxyURL        string                 `json:"proxy_url"`
+	Pid             int                `json:"pid"`
+	Uptime          int                `json:"uptime"`
+	MemStats        struct{ _ uint64 } `json:"memstats"`
+	Version         infoVersion        `json:"version"`
+	Config          config.AgentConfig `json:"config"`
+	DockerSocket    string             `json:"docker_socket"`
+	LastCollectTime string             `json:"last_collect_time"`
+	ProcessCount    int                `json:"process_count"`
+	ContainerCount  int                `json:"container_count"`
+	QueueSize       int                `json:"queue_size"`
+	ContainerID     string             `json:"container_id"`
+	ProxyURL        string             `json:"proxy_url"`
 }
 
 func initInfo(conf *config.AgentConfig) error {

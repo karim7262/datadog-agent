@@ -13,13 +13,6 @@ const (
 	defaultBinPerLine = 32
 )
 
-type memSized interface {
-	// MemSize returns memory use in bytes:
-	//   used: uses len(bins)
-	//   allocated: uses cap(bins)
-	MemSize() (used, allocated int)
-}
-
 // printBins pretty prints bins to w.
 //
 // output:

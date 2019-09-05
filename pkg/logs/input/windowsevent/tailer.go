@@ -33,7 +33,7 @@ type Config struct {
 }
 
 // eventContext links go and c
-type eventContext struct {
+type eventContext struct { // $$ to remove?
 	id int
 }
 
@@ -54,7 +54,7 @@ type Tailer struct {
 	stop       chan struct{}
 	done       chan struct{}
 
-	context *eventContext
+	_ *eventContext
 }
 
 // NewTailer returns a new tailer.

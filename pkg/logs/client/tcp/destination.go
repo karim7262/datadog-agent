@@ -29,7 +29,7 @@ type Destination struct {
 	conn                net.Conn
 	inputChan           chan []byte
 	once                sync.Once
-	warningCounter      int
+	_                   int
 }
 
 // NewDestination returns a new destination.

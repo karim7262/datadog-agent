@@ -115,6 +115,6 @@ type NetStats struct {
 // Util wraps interactions with the ECS agent
 type Util struct {
 	// used to setup the ECSUtil
-	initRetry retry.Retrier
-	agentURL  string
+	_ retry.Retrier
+	_ string // $$ check for reflection
 }

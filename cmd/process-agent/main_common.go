@@ -25,7 +25,7 @@ var opts struct {
 	configPath         string
 	sysProbeConfigPath string
 	pidfilePath        string
-	debug              bool
+	_                  bool
 	version            bool
 	check              string
 	info               bool

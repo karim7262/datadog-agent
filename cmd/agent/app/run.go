@@ -31,8 +31,7 @@ var (
 
 var (
 	// flags variables
-	runForeground bool
-	pidfilePath   string
+	pidfilePath string
 )
 
 func init() {

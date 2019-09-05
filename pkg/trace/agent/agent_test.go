@@ -35,10 +35,6 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-type mockSamplerEngine struct {
-	engine sampler.Engine
-}
-
 func newMockSampler(wantSampled bool, wantRate float64) *Sampler {
 	return &Sampler{engine: testutil.NewMockEngine(wantSampled, wantRate)}
 }

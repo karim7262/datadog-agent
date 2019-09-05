@@ -45,7 +45,6 @@ import (
 const (
 	maxRequestBodyLength = 10 * 1024 * 1024
 	tagTraceHandler      = "handler:traces"
-	tagServiceHandler    = "handler:services"
 )
 
 // Version is a dumb way to version our collector handlers
