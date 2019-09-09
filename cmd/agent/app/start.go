@@ -34,6 +34,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/pidfile"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
+	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/version"
@@ -195,6 +196,9 @@ func StartAgent() error {
 	s := serializer.NewSerializer(common.Forwarder)
 	agg := aggregator.InitAggregator(s, hostname, "agent")
 	agg.AddAgentStartupTelemetry(version.AgentVersion)
+
+	// start tagging system
+	tagger.Init()
 
 	// start dogstatsd
 	if config.Datadog.GetBool("use_dogstatsd") {
