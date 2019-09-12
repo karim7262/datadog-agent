@@ -122,15 +122,15 @@ end
 # Dependencies
 # ------------------------------------
 
+# creates required build directories
+dependency 'datadog-agent-prepare'
+
 # Linux-specific dependencies
 if linux?
   dependency 'procps-ng'
   dependency 'sysstat'
   dependency 'curl'
 end
-
-# creates required build directories
-dependency 'datadog-agent-prepare'
 
 # Datadog agent
 dependency 'datadog-agent'
