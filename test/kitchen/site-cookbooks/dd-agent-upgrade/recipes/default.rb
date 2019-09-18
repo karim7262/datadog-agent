@@ -122,7 +122,7 @@ if node['platform_family'] == 'windows'
   end
 
   execute "install-agent" do
-    command "start /wait msiexec /L* /log upgrade.log /q /i #{temp_file} #{install_options}; cat upgrade.log"
+    command "start /wait msiexec /log upgrade.log /q /i #{temp_file} #{install_options}; get-content -Path upgrade.log"
     action :run
     notifies :restart, 'service[datadog-agent]'
   end
