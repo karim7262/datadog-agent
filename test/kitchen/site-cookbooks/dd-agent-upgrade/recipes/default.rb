@@ -128,7 +128,7 @@ if node['platform_family'] == 'windows'
   end
 
   execute "log-install-agent" do
-    command "Get-Content -Path .\\upgrade.log"
+    command "type .\\upgrade.log"
     action :run
   end
 
