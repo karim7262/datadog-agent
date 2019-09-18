@@ -17,6 +17,7 @@ describe 'the upgraded agent' do
   }
 
   it 'runs with the expected version (based on the `info` command output)' do
+    system('type c:\\upgrade.log')
     agent_short_version = /(\.?\d)+/.match(agent_expected_version)[0]
     expect(info).to include "v#{agent_short_version}"
   end
