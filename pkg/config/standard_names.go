@@ -27,4 +27,7 @@ var StandardStatsdPrefixes = []string{
 	"solr",
 	"tomcat",
 	"kafka",
+
+	// Runtime metrics sent by tracers
+	"runtime",
 }
