@@ -33,4 +33,11 @@ describe 'the upgraded agent' do
     # Match the first line of the manifest file
     expect(File.open(version_manifest_file) {|f| f.readline.strip}).to match "agent #{agent_expected_version}"
   end
+
+  it 'prints logs' do
+    if os == :windows
+      p "Agent log"
+      system('type c:\\ProgramData\\Datadog\\logs\\agent.log')
+    end
+  end
 end
