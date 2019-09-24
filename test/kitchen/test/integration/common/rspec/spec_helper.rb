@@ -38,9 +38,10 @@ def wait_until_stopped(timeout = 15)
   # Check if the agent has stopped every second
   # Timeout after the given number of seconds
   for _ in 1..timeout do
-    break if !is_running?
+    return true if !is_running?
     sleep 1
   end
+  return false
 end
 
 def wait_until_started(timeout = 15)
@@ -56,7 +57,12 @@ def stop
   if os == :windows
     # forces the trace agent (and other dependent services) to stop
     result = system 'net stop /y datadogagent 2>&1'
-    wait_until_stopped 30
+    stopped = wait_until_stopped 30
+    if ! stopped
+      p "Didn't stop the first time..."
+      result = system 'net stop /y datadogagent 2>&1'
+      stopped = wait_until_stopped 30
+    end
   else
     if has_systemctl
       result = system 'sudo systemctl stop datadog-agent.service'
