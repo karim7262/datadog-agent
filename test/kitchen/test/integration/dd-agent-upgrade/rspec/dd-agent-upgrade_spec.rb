@@ -19,8 +19,6 @@ describe 'the upgraded agent' do
   it 'runs with the expected version (based on the `info` command output)' do
     p "Upgrade log"
     system('type c:\\upgrade.log')
-    p "Agent log"
-    system('type c:\\ProgramData\\Datadog\\logs\\agent.log')
     agent_short_version = /(\.?\d)+/.match(agent_expected_version)[0]
     expect(info).to include "v#{agent_short_version}"
   end

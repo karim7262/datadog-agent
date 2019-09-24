@@ -268,8 +268,17 @@ shared_examples_for 'Agent' do
   it_behaves_like 'an Agent that stops'
   it_behaves_like 'an Agent that restarts'
   it_behaves_like 'an Agent that is removed'
+  it_behaves_like 'an Agent with logs'
 end
 
+shared_examples_for "an Agent with logs" do
+  it 'prints logs' do
+    if os == :windows
+      p "Agent log"
+      system('type c:\\ProgramData\\Datadog\\logs\\agent.log')
+    end
+  end
+end
 
 shared_examples_for "an installed Agent" do
   it 'has an example config file' do
