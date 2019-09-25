@@ -36,8 +36,14 @@ describe 'the upgraded agent' do
 
   it 'prints logs' do
     if os == :windows
-      p "Agent log"
-      system('type c:\\ProgramData\\Datadog\\logs\\agent.log')
+      p "Agent 5 Service log"
+      system('type c:\\ProgramData\\Datadog\\logs\\service.log')
+      p "Agent 5 Forwarder log"
+      system('type c:\\ProgramData\\Datadog\\logs\\forwarder.log')
+      p "Agent 5 Collector log"
+      system('type c:\\ProgramData\\Datadog\\logs\\collector.log')
+      p "Agent 5 Dogstatsd log"
+      system('type c:\\ProgramData\\Datadog\\logs\\dogstatsd.log')
     end
   end
 end
