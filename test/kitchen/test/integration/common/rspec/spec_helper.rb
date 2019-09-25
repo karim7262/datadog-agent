@@ -56,10 +56,9 @@ end
 def stop
   if os == :windows
     # forces the trace agent (and other dependent services) to stop
-    result = system 'powershell -command "Stop-Service datadogagent"'
+    result = system 'powershell -command "Stop-Service datadogagent 2>&1"'
     wait_until_stopped 30
-    status_out = system 'powershell -command "Get-Service datadogagent"'
-    puts status_out
+    system 'powershell -command "Get-Service datadogagent 2>&1"'
   else
     if has_systemctl
       result = system 'sudo systemctl stop datadog-agent.service'
@@ -73,10 +72,9 @@ end
 
 def start
   if os == :windows
-    result = system 'powershell -command "Start-Service datadogagent"'
+    result = system 'powershell -command "Start-Service datadogagent 2>&1"'
     wait_until_started 30
-    status_out = system 'powershell -command "Get-Service datadogagent"'
-    puts status_out
+    system 'powershell -command "Get-Service datadogagent 2>&1"'
   else
     if has_systemctl
       result = system 'sudo systemctl start datadog-agent.service'
@@ -91,11 +89,10 @@ end
 def restart
   if os == :windows
     # forces the trace agent (and other dependent services) to stop
-    result = system 'powershell -command "Restart-Service datadogagent"'
+    result = system 'powershell -command "Restart-Service datadogagent 2>&1"'
     wait_until_stopped 30
     wait_until_started 30
-    status_out = system 'powershell -command "Get-Service datadogagent"'
-    puts status_out
+    system 'powershell -command "Get-Service datadogagent 2>&1"'
   else
     if has_systemctl
       result = system 'sudo systemctl restart datadog-agent.service'
@@ -133,7 +130,7 @@ end
 
 def status
   if os == :windows
-    status_out = system 'powershell -command "Get-Service datadogagent"'
+    status_out = system `powershell -command "Get-Service datadogagent 2>&1"`
     puts status_out
     status_out.include?('Running')
   else
