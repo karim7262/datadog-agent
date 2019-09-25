@@ -95,6 +95,12 @@ def restart
     if is_running?
       result = system 'net stop /y datadogagent 2>&1'
       wait_until_stopped 30
+      stopped = wait_until_stopped 30
+      if ! stopped
+        p "Didn't stop the first time..."
+        result = system 'net stop /y datadogagent 2>&1'
+        stopped = wait_until_stopped 30
+      end
     end
     result = system 'net start datadogagent 2>&1'
     wait_until_started 30
