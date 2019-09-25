@@ -57,7 +57,7 @@ def stop
   if os == :windows
     p "Stopping Agent..."
     # forces the trace agent (and other dependent services) to stop
-    result = system 'powershell -command "Stop-Service datadogagent 2>&1"'
+    result = system 'powershell -command "Stop-Service -Force datadogagent 2>&1"'
     wait_until_stopped 30
     system 'powershell -command "Get-Service datadogagent 2>&1"'
   else
@@ -92,7 +92,7 @@ def restart
   if os == :windows
     # forces the trace agent (and other dependent services) to stop
     p "Restarting Agent..."
-    result = system 'powershell -command "Restart-Service datadogagent 2>&1"'
+    result = system 'powershell -command "Restart-Service -Force datadogagent 2>&1"'
     wait_until_stopped 30
     wait_until_started 30
     system 'powershell -command "Get-Service datadogagent 2>&1"'
