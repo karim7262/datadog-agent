@@ -130,7 +130,7 @@ end
 
 def status
   if os == :windows
-    status_out = system `powershell -command "Get-Service datadogagent 2>&1"`
+    status_out = `powershell -command "Get-Service datadogagent 2>&1"`
     puts status_out
     status_out.include?('Running')
   else
