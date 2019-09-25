@@ -271,6 +271,8 @@ shared_examples_for "an Agent with logs" do
     if os == :windows
       p "Agent log"
       system('type c:\\ProgramData\\Datadog\\logs\\agent.log')
+      p "Event log"
+      system('powershell -command "wevtutil qe System \"/q:*[System [(EventID=7036)]]\"  | Select-String -Pattern agent"')
     end
   end
 end
