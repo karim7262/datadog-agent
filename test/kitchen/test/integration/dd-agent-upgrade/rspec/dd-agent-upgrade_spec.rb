@@ -44,6 +44,8 @@ describe 'the upgraded agent' do
       system('IF EXIST c:\\ProgramData\\Datadog\\logs\\collector.log. (type c:\\ProgramData\\Datadog\\logs\\collector.log)')
       p "Agent 5 Dogstatsd log"
       system('IF EXIST c:\\ProgramData\\Datadog\\logs\\dogstatsd.log. (type c:\\ProgramData\\Datadog\\logs\\dogstatsd.log)')
+      p "Event log"
+      system('powershell -command "wevtutil qe System \"/q:*[System [(EventID=7036)]]\"  | Select-String -Pattern agent"')
     end
   end
 end
