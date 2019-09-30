@@ -70,6 +70,7 @@ end
 def start
   if os == :windows
     result = system 'powershell -command "Start-Service datadogagent 2>&1"'
+    sleep 10
   else
     if has_systemctl
       result = system 'sudo systemctl start datadog-agent.service'
@@ -84,8 +85,11 @@ end
 def restart
   if os == :windows
     # forces the trace agent (and other dependent services) to stop
-    result = system 'powershell -command "Restart-Service -Force datadogagent 2>&1"'
+    result = system 'powershell -command "stop-service -F datadogagent 2>&1"'
     wait_until_stopped
+    sleep 15
+    result = system 'powershell -command "start-Service datadogagent 2>&1"'
+    sleep 15
     wait_until_started
   else
     if has_systemctl
