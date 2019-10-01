@@ -8,6 +8,39 @@ package check
 import (
 	"sync"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
+)
+
+var (
+	tlmMetricsSamples = telemetry.NewCounter(
+		"datadog",
+		"checks",
+		"metrics_samples",
+		[]string{"id", "name", "version"},
+		"Metrics count",
+	)
+	tlmEvents = telemetry.NewCounter(
+		"datadog",
+		"checks",
+		"events",
+		[]string{"id", "name", "version"},
+		"Events count",
+	)
+	tlmServices = telemetry.NewCounter(
+		"datadog",
+		"checks",
+		"services_checks",
+		[]string{"id", "name", "version"},
+		"Service checks count",
+	)
+	tlmExecutionTime = telemetry.NewGauge(
+		"datadog",
+		"checks",
+		"execution_time",
+		[]string{"id", "name", "version"},
+		"Check execution time",
+	)
 )
 
 // Stats holds basic runtime statistics about check instances
@@ -50,6 +83,7 @@ func (cs *Stats) Add(t time.Duration, err error, warnings []error, metricStats m
 	// store execution times in Milliseconds
 	tms := t.Nanoseconds() / 1e6
 	cs.LastExecutionTime = tms
+	tlmExecutionTime.Set(float64(tms), string(cs.CheckID), cs.CheckName, cs.CheckVersion)
 	cs.ExecutionTimes[cs.TotalRuns%uint64(len(cs.ExecutionTimes))] = tms
 	cs.TotalRuns++
 	var totalExecutionTime int64
@@ -80,18 +114,21 @@ func (cs *Stats) Add(t time.Duration, err error, warnings []error, metricStats m
 		cs.MetricSamples = m
 		if cs.TotalMetricSamples <= 1000001 {
 			cs.TotalMetricSamples += m
+			tlmMetricsSamples.Add(float64(m), string(cs.CheckID), cs.CheckName, cs.CheckVersion)
 		}
 	}
 	if ev, ok := metricStats["Events"]; ok {
 		cs.Events = ev
 		if cs.TotalEvents <= 1000001 {
 			cs.TotalEvents += ev
+			tlmEvents.Add(float64(ev), string(cs.CheckID), cs.CheckName, cs.CheckVersion)
 		}
 	}
 	if sc, ok := metricStats["ServiceChecks"]; ok {
 		cs.ServiceChecks = sc
 		if cs.TotalServiceChecks <= 1000001 {
 			cs.TotalServiceChecks += sc
+			tlmServices.Add(float64(sc), string(cs.CheckID), cs.CheckName, cs.CheckVersion)
 		}
 	}
 }

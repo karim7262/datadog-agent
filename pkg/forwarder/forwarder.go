@@ -13,9 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/version"
 )
@@ -33,13 +32,12 @@ var (
 	transactionsCheckRunsV1   = expvar.Int{}
 	transactionsIntakeV1      = expvar.Int{}
 
-	tlm = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: "datadog_agent",
-			Name:      "forwarder",
-			Help:      "Series telemetry",
-		},
+	tlm = telemetry.NewCounter(
+		"datadog",
+		"forwarder",
+		"transactions",
 		[]string{"endpoint", "route"},
+		"Forwarder telemetry",
 	)
 )
 
@@ -58,8 +56,6 @@ func init() {
 	initDomainForwarderExpvars()
 	initTransactionExpvars()
 	initForwarderHealthExpvars()
-
-	prometheus.MustRegister(tlm)
 }
 
 const (
@@ -203,7 +199,7 @@ func (f *DefaultForwarder) State() uint32 {
 	return f.internalState
 }
 
-func (f *DefaultForwarder) createHTTPTransactions(endpoint string, payloads Payloads, apiKeyInQueryString bool, extra http.Header, typ string) []*HTTPTransaction {
+func (f *DefaultForwarder) createHTTPTransactions(endpoint string, payloads Payloads, apiKeyInQueryString bool, extra http.Header, routeName string) []*HTTPTransaction {
 	transactions := []*HTTPTransaction{}
 	for _, payload := range payloads {
 		for domain, apiKeys := range f.keysPerDomains {
@@ -220,7 +216,7 @@ func (f *DefaultForwarder) createHTTPTransactions(endpoint string, payloads Payl
 				t.Headers.Set(versionHTTPHeaderKey, version.AgentVersion)
 				t.Headers.Set(useragentHTTPHeaderKey, fmt.Sprintf("datadog-agent/%s", version.AgentVersion))
 
-				tlm.WithLabelValues(t.Domain, typ).Inc() // telemetry
+				tlm.Inc(t.Domain, routeName) // telemetry
 
 				for key := range extra {
 					t.Headers.Set(key, extra.Get(key))
