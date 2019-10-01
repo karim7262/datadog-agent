@@ -95,7 +95,7 @@ func TestCreateHTTPTransactions(t *testing.T) {
 	headers := make(http.Header)
 	headers.Set("HTTP-MAGIC", "foo")
 
-	transactions := forwarder.createHTTPTransactions(endpoint, payloads, false, headers)
+	transactions := forwarder.createHTTPTransactions(endpoint, payloads, false, headers, "foo")
 	require.Len(t, transactions, 4)
 	assert.Equal(t, testVersionDomain, transactions[0].Domain)
 	assert.Equal(t, testVersionDomain, transactions[1].Domain)
@@ -115,7 +115,7 @@ func TestCreateHTTPTransactions(t *testing.T) {
 	assert.Equal(t, p2, *(transactions[2].Payload))
 	assert.Equal(t, p2, *(transactions[3].Payload))
 
-	transactions = forwarder.createHTTPTransactions(endpoint, payloads, true, headers)
+	transactions = forwarder.createHTTPTransactions(endpoint, payloads, true, headers, "foo")
 	require.Len(t, transactions, 4)
 	assert.Contains(t, transactions[0].Endpoint, "api_key=api-key-1")
 	assert.Contains(t, transactions[1].Endpoint, "api_key=api-key-2")
@@ -129,7 +129,7 @@ func TestSendHTTPTransactions(t *testing.T) {
 	p1 := []byte("A payload")
 	payloads := Payloads{&p1}
 	headers := make(http.Header)
-	tr := forwarder.createHTTPTransactions(endpoint, payloads, false, headers)
+	tr := forwarder.createHTTPTransactions(endpoint, payloads, false, headers, "foo")
 
 	// fw is stopped, we should get an error
 	err := forwarder.sendHTTPTransactions(tr)
