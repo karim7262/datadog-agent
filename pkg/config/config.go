@@ -8,6 +8,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -23,16 +24,22 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/version"
 )
 
-// DefaultForwarderRecoveryInterval is the default recovery interval, also used if
-// the user-provided value is invalid.
-const DefaultForwarderRecoveryInterval = 2
+const (
+	// DefaultSite is the default site the Agent sends data to.
+	DefaultSite    = "datadoghq.com"
+	infraURLPrefix = "https://app."
 
-const megaByte = 1024 * 1024
+	// DefaultNumWorkers default number of workers for our check runner
+	DefaultNumWorkers = 4
+	// MaxNumWorkers maximum number of workers for our check runner
+	MaxNumWorkers = 25
 
-// DefaultSite is the default site the Agent sends data to.
-const DefaultSite = "datadoghq.com"
+	// DefaultForwarderRecoveryInterval is the default recovery interval,
+	// also used if the user-provided value is invalid.
+	DefaultForwarderRecoveryInterval = 2
 
-const infraURLPrefix = "https://app."
+	megaByte = 1024 * 1024
+)
 
 var overrideVars = map[string]interface{}{}
 
@@ -123,12 +130,22 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("check_runners", int64(4))
 	config.BindEnvAndSetDefault("auth_token_file_path", "")
 	config.BindEnvAndSetDefault("bind_host", "localhost")
+	config.BindEnvAndSetDefault("ipc_address", "localhost")
 	config.BindEnvAndSetDefault("health_port", int64(0))
 	config.BindEnvAndSetDefault("disable_py3_validation", false)
 	config.BindEnvAndSetDefault("python_version", "2")
-	// C-land crash feature flags
+	// Debugging + C-land crash feature flags
 	config.BindEnvAndSetDefault("c_stacktrace_collection", false)
 	config.BindEnvAndSetDefault("c_core_dump", false)
+	config.BindEnvAndSetDefault("memtrack_enabled", true)
+	config.BindEnvAndSetDefault("tracemalloc_debug", false)
+	config.BindEnvAndSetDefault("tracemalloc_whitelist", "")
+	config.BindEnvAndSetDefault("tracemalloc_blacklist", "")
+
+	// Python 3 linter timeout, in seconds
+	// NOTE: linter is notoriously slow, in the absence of a better solution we
+	//       can only increase this timeout value. Linting operation is async.
+	config.BindEnvAndSetDefault("python3_linter_timeout", 120)
 
 	// if/when the default is changed to true, make the default platform
 	// dependent; default should remain false on Windows to maintain backward
@@ -187,6 +204,8 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("histogram_percentiles", []string{"0.95"})
 	// Serializer
 	config.BindEnvAndSetDefault("enable_stream_payload_serialization", true)
+	config.BindEnvAndSetDefault("enable_service_checks_stream_payload_serialization", true)
+
 	// Warning: do not change the two following values. Your payloads will get dropped by Datadog's intake.
 	config.BindEnvAndSetDefault("serializer_max_payload_size", 2*megaByte+megaByte/2)
 	config.BindEnvAndSetDefault("serializer_max_uncompressed_payload_size", 4*megaByte)
@@ -293,6 +312,7 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("cluster_agent.auth_token", "")
 	config.BindEnvAndSetDefault("cluster_agent.url", "")
 	config.BindEnvAndSetDefault("cluster_agent.kubernetes_service_name", "datadog-cluster-agent")
+	config.BindEnvAndSetDefault("cluster_agent.tagging_fallback", false)
 	config.BindEnvAndSetDefault("metrics_port", "5000")
 
 	// Metadata endpoints
@@ -317,6 +337,7 @@ func initConfig(config Config) {
 	// JMXFetch
 	config.BindEnvAndSetDefault("jmx_custom_jars", []string{})
 	config.BindEnvAndSetDefault("jmx_use_cgroup_memory_limit", false)
+	config.BindEnvAndSetDefault("jmx_use_container_support", false)
 	config.BindEnvAndSetDefault("jmx_max_restarts", int64(3))
 	config.BindEnvAndSetDefault("jmx_restart_interval", int64(5))
 	config.BindEnvAndSetDefault("jmx_thread_pool_size", 3)
@@ -329,6 +350,9 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("expvar_port", "5000")
 
 	// Trace agent
+	// Note that trace-agent environment variables are parsed in pkg/trace/config/env.go
+	// since some of them require custom parsing algorithms. DO NOT add environment variable
+	// bindings here, add them there instead.
 	config.BindEnvAndSetDefault("apm_config.enabled", true)
 
 	// Process agent
@@ -404,6 +428,14 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("cluster_checks.warmup_duration", 30)         // value in seconds
 	config.BindEnvAndSetDefault("cluster_checks.cluster_tag_name", "cluster_name")
 	config.BindEnvAndSetDefault("cluster_checks.extra_tags", []string{})
+	config.BindEnvAndSetDefault("cluster_checks.advanced_dispatching_enabled", false)
+	config.BindEnvAndSetDefault("cluster_checks.clc_runners_port", 5005)
+	// Cluster check runner
+	config.BindEnvAndSetDefault("clc_runner_enabled", false)
+	config.BindEnvAndSetDefault("clc_runner_host", "") // must be set using the Kubernetes downward API
+	config.BindEnvAndSetDefault("clc_runner_port", 5005)
+	config.BindEnvAndSetDefault("clc_runner_server_write_timeout", 15)
+	config.BindEnvAndSetDefault("clc_runner_server_readheader_timeout", 10)
 
 	// Declare other keys that don't have a default/env var.
 	// Mostly, keys we use IsSet() on, because IsSet always returns true if a key has a default.
@@ -445,6 +477,7 @@ func initConfig(config Config) {
 	config.SetKnown("system_probe_config.disable_tcp")
 	config.SetKnown("system_probe_config.disable_udp")
 	config.SetKnown("system_probe_config.disable_ipv6")
+	config.SetKnown("system_probe_config.disable_dns_inspection")
 	config.SetKnown("system_probe_config.collect_local_dns")
 	config.SetKnown("system_probe_config.use_local_system_probe")
 	config.SetKnown("system_probe_config.enable_conntrack")
@@ -455,6 +488,12 @@ func initConfig(config Config) {
 	config.SetKnown("system_probe_config.max_closed_connections_buffered")
 	config.SetKnown("system_probe_config.max_connection_state_buffered")
 	config.SetKnown("system_probe_config.excluded_linux_versions")
+	config.SetKnown("system_probe_config.source_excludes")
+	config.SetKnown("system_probe_config.dest_excludes")
+	config.SetKnown("system_probe_config.closed_channel_size")
+
+	// Network
+	config.BindEnv("network.id")
 
 	// APM
 	config.SetKnown("apm_config.enabled")
@@ -636,6 +675,9 @@ func load(config Config, origin string, loadSecret bool) error {
 	loadProxyFromEnv(config)
 	sanitizeAPIKey(config)
 	applyOverrides(config)
+	// setTracemallocEnabled *must* be called before setNumWorkers
+	setTracemallocEnabled(config)
+	setNumWorkers(config)
 	return nil
 }
 
@@ -696,7 +738,7 @@ func GetMultipleEndpoints() (map[string][]string, error) {
 
 // getDomainPrefix provides the right prefix for agent X.Y.Z
 func getDomainPrefix(app string) string {
-	v, _ := version.New(version.AgentVersion, version.Commit)
+	v, _ := version.Agent()
 	return fmt.Sprintf("%d-%d-%d-%s.agent", v.Major, v.Minor, v.Patch, app)
 }
 
@@ -812,6 +854,31 @@ func FileUsedDir() string {
 	return filepath.Dir(Datadog.ConfigFileUsed())
 }
 
+// GetIPCAddress returns the IPC address or an error if the address is not local
+func GetIPCAddress() (string, error) {
+	address := Datadog.GetString("ipc_address")
+	if address == "localhost" {
+		return address, nil
+	}
+	ip := net.ParseIP(address)
+	if ip == nil {
+		return "", fmt.Errorf("ipc_address was set to an invalid IP address: %s", address)
+	}
+	for _, cidr := range []string{
+		"127.0.0.0/8", // IPv4 loopback
+		"::1/128",     // IPv6 loopback
+	} {
+		_, block, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return "", err
+		}
+		if block.Contains(ip) {
+			return address, nil
+		}
+	}
+	return "", fmt.Errorf("ipc_address was set to a non-loopback IP address: %s", address)
+}
+
 // GetEnv retrieves the value of the environment variable named by the key,
 // or def if the environment variable was not set.
 func GetEnv(key, def string) string {
@@ -847,4 +914,37 @@ func applyOverrides(config Config) {
 	for k, v := range overrideVars {
 		config.Set(k, v)
 	}
+}
+
+// setTracemallocEnabled is a helper to get the effective tracemalloc
+// configuration.
+func setTracemallocEnabled(config Config) {
+	pyVersion := config.GetString("python_version")
+	wTracemalloc := config.GetBool("tracemalloc_debug")
+	if pyVersion == "2" && wTracemalloc {
+		log.Warnf("Tracemalloc was enabled but unavailable with python version %q, disabling.", pyVersion)
+		wTracemalloc = false
+	}
+
+	// update config with the actual effective tracemalloc
+	config.Set("tracemalloc_debug", wTracemalloc)
+}
+
+// setNumWorkers is a helper to set the effective number of workers for
+// a given config.
+func setNumWorkers(config Config) {
+	wTracemalloc := config.GetBool("tracemalloc_debug")
+	numWorkers := config.GetInt("check_runners")
+	if wTracemalloc {
+		log.Infof("Tracemalloc enabled, only one check runner enabled to run checks serially")
+		numWorkers = 1
+	}
+
+	if numWorkers > MaxNumWorkers {
+		numWorkers = MaxNumWorkers
+		log.Warnf("Configured number of checks workers (%v) is too high: %v will be used", numWorkers, MaxNumWorkers)
+	}
+
+	// update config with the actual effective number of workers
+	config.Set("check_runners", numWorkers)
 }

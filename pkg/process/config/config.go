@@ -73,23 +73,26 @@ type AgentConfig struct {
 	ProcessExpVarPort  int
 
 	// System probe collection configuration
-	EnableSystemProbe            bool
-	EnableLocalSystemProbe       bool // To have the system probe embedded in the process-agent
-	DisableTCPTracing            bool
-	DisableUDPTracing            bool
-	DisableIPv6Tracing           bool
-	CollectLocalDNS              bool
-	SystemProbeSocketPath        string
-	SystemProbeLogFile           string
-	MaxTrackedConnections        uint
-	SysProbeBPFDebug             bool
-	ExcludedBPFLinuxVersions     []string
-	EnableConntrack              bool
-	ConntrackShortTermBufferSize int
-	SystemProbeDebugPort         int
-	ClosedChannelSize            int
-	MaxClosedConnectionsBuffered int
-	MaxConnectionsStateBuffered  int
+	EnableSystemProbe              bool
+	EnableLocalSystemProbe         bool // To have the system probe embedded in the process-agent
+	DisableTCPTracing              bool
+	DisableUDPTracing              bool
+	DisableIPv6Tracing             bool
+	DisableDNSInspection           bool
+	CollectLocalDNS                bool
+	SystemProbeSocketPath          string
+	SystemProbeLogFile             string
+	MaxTrackedConnections          uint
+	SysProbeBPFDebug               bool
+	ExcludedBPFLinuxVersions       []string
+	ExcludedSourceConnections      map[string][]string
+	ExcludedDestinationConnections map[string][]string
+	EnableConntrack                bool
+	ConntrackShortTermBufferSize   int
+	SystemProbeDebugPort           int
+	ClosedChannelSize              int
+	MaxClosedConnectionsBuffered   int
+	MaxConnectionsStateBuffered    int
 
 	// Check config
 	EnabledChecks  []string
@@ -118,10 +121,10 @@ func (a AgentConfig) CheckInterval(checkName string) time.Duration {
 }
 
 const (
-	defaultEndpoint          = "https://process.datadoghq.com"
-	maxMessageBatch          = 100
-	maxConnsMessageBatch     = 1000
-	maxMaxTrackedConnections = 65536
+	defaultEndpoint              = "https://process.datadoghq.com"
+	maxMessageBatch              = 100
+	maxConnsMessageBatch         = 1000
+	defaultMaxTrackedConnections = 65536
 )
 
 // NewDefaultTransport provides a http transport configuration with sane default timeouts
@@ -152,6 +155,11 @@ func NewDefaultAgentConfig() *AgentConfig {
 	_, err = util.GetContainers()
 	canAccessContainers := err == nil
 
+	var enabledChecks []string
+	if canAccessContainers {
+		enabledChecks = containerChecks
+	}
+
 	ac := &AgentConfig{
 		Enabled:            canAccessContainers, // We'll always run inside of a container.
 		APIEndpoints:       []APIEndpoint{{Endpoint: u}},
@@ -176,15 +184,16 @@ func NewDefaultAgentConfig() *AgentConfig {
 		DisableTCPTracing:            false,
 		DisableUDPTracing:            false,
 		DisableIPv6Tracing:           false,
+		DisableDNSInspection:         false,
 		SystemProbeSocketPath:        defaultSystemProbeSocketPath,
 		SystemProbeLogFile:           defaultSystemProbeFilePath,
-		MaxTrackedConnections:        maxMaxTrackedConnections,
+		MaxTrackedConnections:        defaultMaxTrackedConnections,
 		EnableConntrack:              true,
 		ClosedChannelSize:            500,
 		ConntrackShortTermBufferSize: defaultConntrackShortTermBufferSize,
 
 		// Check config
-		EnabledChecks: containerChecks,
+		EnabledChecks: enabledChecks,
 		CheckIntervals: map[string]time.Duration{
 			"process":     10 * time.Second,
 			"rtprocess":   2 * time.Second,
@@ -341,6 +350,7 @@ func loadEnvVariables() {
 		"DD_DISABLE_TCP_TRACING":    "system_probe_config.disable_tcp",
 		"DD_DISABLE_UDP_TRACING":    "system_probe_config.disable_udp",
 		"DD_DISABLE_IPV6_TRACING":   "system_probe_config.disable_ipv6",
+		"DD_DISABLE_DNS_INSPECTION": "system_probe_config.disable_dns_inspection",
 		"DD_COLLECT_LOCAL_DNS":      "system_probe_config.collect_local_dns",
 		"DD_USE_LOCAL_SYSTEM_PROBE": "system_probe_config.use_local_system_probe",
 

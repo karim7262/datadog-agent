@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/ebpf/netlink"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
+	"github.com/dustin/go-humanize"
 )
 
 // ConnectionType will be either TCP or UDP
@@ -65,6 +68,7 @@ func (d ConnectionDirection) String() string {
 
 // Connections wraps a collection of ConnectionStats
 type Connections struct {
+	Names map[util.Address][]string
 	Conns []ConnectionStats
 }
 
@@ -85,6 +89,9 @@ type ConnectionStats struct {
 	MonotonicRetransmits uint32
 	LastRetransmits      uint32
 
+	RTT    uint32 // Stored in µs
+	RTTVar uint32
+
 	Pid   uint32
 	NetNS uint32
 
@@ -97,19 +104,7 @@ type ConnectionStats struct {
 }
 
 func (c ConnectionStats) String() string {
-	return fmt.Sprintf(
-		"[%s] [PID: %d] [%v:%d ⇄ %v:%d] (%s) %d bytes sent (+%d), %d bytes received (+%d), %d retransmits (+%d)",
-		c.Type,
-		c.Pid,
-		c.Source,
-		c.SPort,
-		c.Dest,
-		c.DPort,
-		c.Direction,
-		c.MonotonicSentBytes, c.LastSentBytes,
-		c.MonotonicRecvBytes, c.LastRecvBytes,
-		c.MonotonicRetransmits, c.LastRetransmits,
-	)
+	return ConnectionSummary(c, nil)
 }
 
 // ByteKey returns a unique key for this connection represented as a byte array
@@ -182,4 +177,39 @@ func BeautifyKey(key string) string {
 	dest := bytesToAddress(raw[9+addrSize : 9+2*addrSize])
 
 	return fmt.Sprintf(keyFmt, pid, source, sport, dest, dport, family, typ)
+}
+
+// ConnectionSummary returns a string summarizing a connection
+func ConnectionSummary(c ConnectionStats, names map[util.Address][]string) string {
+	str := fmt.Sprintf(
+		"[%s] [PID: %d] [%v:%d ⇄ %v:%d] (%s) %s sent (+%s), %s received (+%s)",
+		c.Type,
+		c.Pid,
+		printAddress(c.Source, names[c.Source]),
+		c.SPort,
+		printAddress(c.Dest, names[c.Dest]),
+		c.DPort,
+		c.Direction,
+		humanize.Bytes(c.MonotonicSentBytes), humanize.Bytes(c.LastSentBytes),
+		humanize.Bytes(c.MonotonicRecvBytes), humanize.Bytes(c.LastRecvBytes),
+	)
+
+	if c.Type == TCP {
+		str += fmt.Sprintf(
+			", %d retransmits (+%d), RTT %s (± %s)",
+			c.MonotonicRetransmits, c.LastRetransmits,
+			time.Duration(c.RTT)*time.Microsecond,
+			time.Duration(c.RTTVar)*time.Microsecond,
+		)
+	}
+
+	return str
+}
+
+func printAddress(address util.Address, names []string) string {
+	if len(names) == 0 {
+		return address.String()
+	}
+
+	return strings.Join(names, ",")
 }

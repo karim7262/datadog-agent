@@ -19,9 +19,11 @@ import (
 
 	"github.com/DataDog/datadog-agent/cmd/agent/common"
 	api "github.com/DataDog/datadog-agent/pkg/api/util"
+	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -31,6 +33,7 @@ const (
 	defaultJvmMaxMemoryAllocation     = " -Xmx200m"
 	defaultJvmInitialMemoryAllocation = " -Xms50m"
 	jvmCgroupMemoryAwareness          = " -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
+	jvmContainerSupport               = " -XX:+UseContainerSupport"
 	defaultJavaBinPath                = "java"
 	defaultLogLevel                   = "info"
 )
@@ -71,6 +74,22 @@ type JMXFetch struct {
 	managed            bool
 	shutdown           chan struct{}
 	stopped            chan struct{}
+}
+
+// checkInstanceCfg lists the config options on the instance against which we make some sanity checks
+// on how they're configured. All the other options should be checked on JMXFetch's side.
+type checkInstanceCfg struct {
+	JavaBinPath      string `yaml:"java_bin_path,omitempty"`
+	JavaOptions      string `yaml:"java_options,omitempty"`
+	ToolsJarPath     string `yaml:"tools_jar_path,omitempty"`
+	ProcessNameRegex string `yaml:"process_name_regex,omitempty"`
+}
+
+type checkInitCfg struct {
+	CustomJarPaths []string `yaml:"custom_jar_paths,omitempty"`
+	ToolsJarPath   string   `yaml:"tools_jar_path,omitempty"`
+	JavaBinPath    string   `yaml:"java_bin_path,omitempty"`
+	JavaOptions    string   `yaml:"java_options,omitempty"`
 }
 
 func (j *JMXFetch) setDefaults() {
@@ -124,7 +143,15 @@ func (j *JMXFetch) Start(manage bool) error {
 
 	// Specify a maximum memory allocation pool for the JVM
 	javaOptions := j.JavaOptions
-	if config.Datadog.GetBool("jmx_use_cgroup_memory_limit") {
+
+	useContainerSupport := config.Datadog.GetBool("jmx_use_container_support")
+	useCgroupMemoryLimit := config.Datadog.GetBool("jmx_use_cgroup_memory_limit")
+
+	if useContainerSupport && useCgroupMemoryLimit {
+		return fmt.Errorf("incompatible options %q and %q", jvmContainerSupport, jvmCgroupMemoryAwareness)
+	} else if useContainerSupport {
+		javaOptions += jvmContainerSupport
+	} else if useCgroupMemoryLimit {
 		passOption := true
 		// This option is incompatible with the Xmx and Xms options, log a warning if there are found in the javaOptions
 		for _, option := range jvmCgroupMemoryIncompatOptions {
@@ -266,4 +293,76 @@ func (j *JMXFetch) Up() (bool, error) {
 	// if sig is 0, then no signal is sent, but error checking is still performed
 	err = process.Signal(syscall.Signal(0))
 	return err == nil, err
+}
+
+// ConfigureFromInitConfig configures various options from the init_config
+// section of the configuration
+func (j *JMXFetch) ConfigureFromInitConfig(initConfig integration.Data) error {
+	var initConf checkInitCfg
+
+	// unmarshall init config
+	if err := yaml.Unmarshal(initConfig, &initConf); err != nil {
+		return err
+	}
+
+	if j.JavaBinPath == "" {
+		if initConf.JavaBinPath != "" {
+			j.JavaBinPath = initConf.JavaBinPath
+		}
+	}
+
+	if j.JavaOptions == "" {
+		if initConf.JavaOptions != "" {
+			j.JavaOptions = initConf.JavaOptions
+		}
+	}
+
+	if j.JavaToolsJarPath == "" {
+		if initConf.ToolsJarPath != "" {
+			j.JavaToolsJarPath = initConf.ToolsJarPath
+		}
+	}
+	if j.JavaCustomJarPaths == nil {
+		if initConf.CustomJarPaths != nil {
+			j.JavaCustomJarPaths = initConf.CustomJarPaths
+		}
+	}
+
+	return nil
+}
+
+// ConfigureFromInitConfig configures various options from the instance
+// section of the configuration
+func (j *JMXFetch) ConfigureFromInstance(instance integration.Data) error {
+
+	var instanceConf checkInstanceCfg
+
+	// unmarshall instance info
+	if err := yaml.Unmarshal(instance, &instanceConf); err != nil {
+		return err
+	}
+
+	if j.JavaBinPath == "" {
+		if instanceConf.JavaBinPath != "" {
+			j.JavaBinPath = instanceConf.JavaBinPath
+		}
+	}
+	if j.JavaOptions == "" {
+		if instanceConf.JavaOptions != "" {
+			j.JavaOptions = instanceConf.JavaOptions
+		}
+	}
+	if j.JavaToolsJarPath == "" {
+		if instanceConf.ToolsJarPath != "" {
+			j.JavaToolsJarPath = instanceConf.ToolsJarPath
+		}
+	}
+
+	if instanceConf.ProcessNameRegex != "" {
+		if j.JavaToolsJarPath == "" {
+			return fmt.Errorf("You must specify the path to tools.jar. See http://docs.datadoghq.com/integrations/java/ for more information")
+		}
+	}
+
+	return nil
 }

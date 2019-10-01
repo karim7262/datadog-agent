@@ -14,6 +14,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/metadata/externalhost"
+	"github.com/DataDog/datadog-agent/pkg/metadata/inventories"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/clustername"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -21,9 +22,11 @@ import (
 )
 
 /*
-#include <datadog_agent_rtloader.h>
 #cgo !windows LDFLAGS: -ldatadog-agent-rtloader -ldl
 #cgo windows LDFLAGS: -ldatadog-agent-rtloader -lstdc++ -static
+
+#include "datadog_agent_rtloader.h"
+#include "rtloader_mem.h"
 */
 import (
 	"C"
@@ -32,9 +35,9 @@ import (
 // GetVersion exposes the version of the agent to Python checks.
 //export GetVersion
 func GetVersion(agentVersion **C.char) {
-	av, _ := version.New(version.AgentVersion, version.Commit)
+	av, _ := version.Agent()
 	// version will be free by rtloader when it's done with it
-	*agentVersion = C.CString(av.GetNumber())
+	*agentVersion = TrackedCString(av.GetNumber())
 }
 
 // GetHostname exposes the current hostname of the agent to Python checks.
@@ -46,7 +49,7 @@ func GetHostname(hostname **C.char) {
 		goHostname = ""
 	}
 	// hostname will be free by rtloader when it's done with it
-	*hostname = C.CString(goHostname)
+	*hostname = TrackedCString(goHostname)
 }
 
 // GetClusterName exposes the current clustername (if it exists) of the agent to Python checks.
@@ -54,7 +57,13 @@ func GetHostname(hostname **C.char) {
 func GetClusterName(clusterName **C.char) {
 	goClusterName := clustername.GetClusterName()
 	// clusterName will be free by rtloader when it's done with it
-	*clusterName = C.CString(goClusterName)
+	*clusterName = TrackedCString(goClusterName)
+}
+
+// TracemallocEnabled exposes the tracemalloc configuration of the agent to Python checks.
+//export TracemallocEnabled
+func TracemallocEnabled() C.bool {
+	return C.bool(config.Datadog.GetBool("tracemalloc_debug"))
 }
 
 // Headers returns a basic set of HTTP headers that can be used by clients in Python checks.
@@ -69,7 +78,7 @@ func Headers(yamlPayload **C.char) {
 		return
 	}
 	// yamlPayload will be free by rtloader when it's done with it
-	*yamlPayload = C.CString(string(data))
+	*yamlPayload = TrackedCString(string(data))
 }
 
 // GetConfig returns a value from the agent configuration.
@@ -90,7 +99,7 @@ func GetConfig(key *C.char, yamlPayload **C.char) {
 		return
 	}
 	// yaml Payload will be free by rtloader when it's done with it
-	*yamlPayload = C.CString(string(data))
+	*yamlPayload = TrackedCString(string(data))
 }
 
 // LogMessage logs a message from python through the agent logger (see
@@ -141,4 +150,15 @@ func SetExternalTags(hostname *C.char, sourceType *C.char, tags **C.char) {
 	}
 
 	externalhost.SetExternalTags(hname, stype, tagsStrings)
+}
+
+// SetCheckMetadata updates a metadata value for one check instance in the cache.
+// Indirectly used by the C function `set_check_metadata` that's mapped to `datadog_agent.set_check_metadata`.
+//export SetCheckMetadata
+func SetCheckMetadata(checkID, name, value *C.char) {
+	cid := C.GoString(checkID)
+	key := C.GoString(name)
+	val := C.GoString(value)
+
+	inventories.SetCheckMetadata(cid, key, val)
 }

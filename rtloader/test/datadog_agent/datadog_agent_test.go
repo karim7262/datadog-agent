@@ -107,6 +107,14 @@ func TestGetClustername(t *testing.T) {
 	}
 }
 
+func TestGetTracemallocEnabled(t *testing.T) {
+	code := `assert datadog_agent.tracemalloc_enabled()`
+	_, err := run(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLog(t *testing.T) {
 	code := `
 	datadog_agent.log("foo message", 99)
@@ -116,6 +124,19 @@ func TestLog(t *testing.T) {
 		t.Fatal(err)
 	}
 	if out != "[99]foo message" {
+		t.Errorf("Unexpected printed value: '%s'", out)
+	}
+}
+
+func TestSetCheckMetadata(t *testing.T) {
+	code := `
+	datadog_agent.set_check_metadata("redis:test:12345", "version.raw", "5.0.6")
+	`
+	out, err := run(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "redis:test:12345,version.raw,5.0.6" {
 		t.Errorf("Unexpected printed value: '%s'", out)
 	}
 }

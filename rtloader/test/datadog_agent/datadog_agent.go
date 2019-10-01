@@ -19,28 +19,32 @@ import (
 // #include <stdlib.h>
 // #include <datadog_agent_rtloader.h>
 //
-// extern void getVersion(char **);
-// extern void getConfig(char *, char **);
-// extern void headers(char **);
-// extern void getHostname(char **);
-// extern void getClustername(char **);
 // extern void doLog(char*, int);
+// extern void getClustername(char **);
+// extern void getConfig(char *, char **);
+// extern void getHostname(char **);
+// extern bool getTracemallocEnabled();
+// extern void getVersion(char **);
+// extern void headers(char **);
+// extern void setCheckMetadata(char*, char*, char*);
 // extern void setExternalHostTags(char*, char*, char**);
 //
 // static void initDatadogAgentTests(rtloader_t *rtloader) {
-//    set_get_version_cb(rtloader, getVersion);
-//    set_get_config_cb(rtloader, getConfig);
-//    set_headers_cb(rtloader, headers);
-//    set_get_hostname_cb(rtloader, getHostname);
 //    set_get_clustername_cb(rtloader, getClustername);
+//    set_get_config_cb(rtloader, getConfig);
+//    set_get_hostname_cb(rtloader, getHostname);
+//    set_tracemalloc_enabled_cb(rtloader, getTracemallocEnabled);
+//    set_get_version_cb(rtloader, getVersion);
+//    set_headers_cb(rtloader, headers);
 //    set_log_cb(rtloader, doLog);
+//    set_set_check_metadata_cb(rtloader, setCheckMetadata);
 //    set_set_external_tags_cb(rtloader, setExternalHostTags);
 // }
 import "C"
 
 var (
-	rtloader     *C.rtloader_t
-	tmpfile *os.File
+	rtloader *C.rtloader_t
+	tmpfile  *os.File
 )
 
 type message struct {
@@ -150,10 +154,27 @@ func getClustername(in **C.char) {
 	*in = C.CString("the-cluster")
 }
 
+//export getTracemallocEnabled
+func getTracemallocEnabled() C.bool {
+	return C.bool(true)
+}
+
 //export doLog
 func doLog(msg *C.char, level C.int) {
 	data := []byte(fmt.Sprintf("[%d]%s", int(level), C.GoString(msg)))
 	ioutil.WriteFile(tmpfile.Name(), data, 0644)
+}
+
+//export setCheckMetadata
+func setCheckMetadata(checkID, name, value *C.char) {
+	cid := C.GoString(checkID)
+	key := C.GoString(name)
+	val := C.GoString(value)
+
+	f, _ := os.OpenFile(tmpfile.Name(), os.O_APPEND|os.O_RDWR|os.O_CREATE, 0666)
+	defer f.Close()
+
+	f.WriteString(strings.Join([]string{cid, key, val}, ","))
 }
 
 //export setExternalHostTags

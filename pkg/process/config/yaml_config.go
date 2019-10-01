@@ -42,11 +42,16 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 	a.DisableTCPTracing = config.Datadog.GetBool(key(spNS, "disable_tcp"))
 	a.DisableUDPTracing = config.Datadog.GetBool(key(spNS, "disable_udp"))
 	a.DisableIPv6Tracing = config.Datadog.GetBool(key(spNS, "disable_ipv6"))
+	a.DisableDNSInspection = config.Datadog.GetBool(key(spNS, "disable_dns_inspection"))
 
 	a.CollectLocalDNS = config.Datadog.GetBool(key(spNS, "collect_local_dns"))
 
 	if config.Datadog.GetBool(key(spNS, "enabled")) {
 		a.EnabledChecks = append(a.EnabledChecks, "connections")
+		if !a.Enabled {
+			log.Info("enabling process-agent for connections check as the system-probe is enabled")
+			a.Enabled = true
+		}
 		a.EnableSystemProbe = true
 	}
 
@@ -82,11 +87,7 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 
 	// The maximum number of connections the tracer can track
 	if mtc := config.Datadog.GetInt64(key(spNS, "max_tracked_connections")); mtc > 0 {
-		if mtc <= maxMaxTrackedConnections {
-			a.MaxTrackedConnections = uint(mtc)
-		} else {
-			log.Warnf("Overriding the configured max tracked connections limit because it exceeds maximum 65536, got: %v", mtc)
-		}
+		a.MaxTrackedConnections = uint(mtc)
 	}
 
 	// MaxClosedConnectionsBuffered represents the maximum number of closed connections we'll buffer in memory. These closed connections
@@ -116,6 +117,14 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 	// The tcp port that agent should expose expvar and pprof endpoint to
 	if debugPort := config.Datadog.GetInt(key(spNS, "debug_port")); debugPort > 0 {
 		a.SystemProbeDebugPort = debugPort
+	}
+
+	if sourceExclude := key(spNS, "source_excludes"); config.Datadog.IsSet(sourceExclude) {
+		a.ExcludedSourceConnections = config.Datadog.GetStringMapStringSlice(sourceExclude)
+	}
+
+	if destinationExclude := key(spNS, "dest_excludes"); config.Datadog.IsSet(destinationExclude) {
+		a.ExcludedDestinationConnections = config.Datadog.GetStringMapStringSlice(destinationExclude)
 	}
 
 	return nil
@@ -161,10 +170,13 @@ func (a *AgentConfig) loadProcessYamlConfig(path string) error {
 		//   If "true" we will collect containers and processes.
 		//   If "disabled" the agent will be disabled altogether and won't start.
 		enabled := config.Datadog.GetString(k)
-		if ok, _ := isAffirmative(enabled); ok {
+		ok, err := isAffirmative(enabled)
+		if ok {
 			a.Enabled, a.EnabledChecks = true, processChecks
 		} else if enabled == "disabled" {
 			a.Enabled = false
+		} else if !ok && err == nil {
+			a.Enabled, a.EnabledChecks = true, containerChecks
 		}
 	}
 

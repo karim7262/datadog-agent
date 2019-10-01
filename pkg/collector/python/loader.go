@@ -19,6 +19,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
 	"github.com/DataDog/datadog-agent/pkg/collector/loaders"
+	"github.com/DataDog/datadog-agent/pkg/config"
 	agentConfig "github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/DataDog/datadog-agent/pkg/version"
@@ -26,8 +27,12 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
-// #include <stdlib.h>
-// #include <datadog_agent_rtloader.h>
+/*
+#include <stdlib.h>
+
+#include "datadog_agent_rtloader.h"
+#include "rtloader_mem.h"
+*/
 import "C"
 
 var (
@@ -43,6 +48,7 @@ const (
 	a7TagReady     = "ready"
 	a7TagNotReady  = "not_ready"
 	a7TagUnknown   = "unknown"
+	a7TagPython3   = "python3" //Already running on python3, linting is disabled
 )
 
 func init() {
@@ -58,7 +64,7 @@ func init() {
 	pyLoaderStats.Set("Py3Warnings", expvar.Func(expvarPy3Warnings))
 
 	agentVersionTags = []string{}
-	if agentVersion, err := version.New(version.AgentVersion, version.Commit); err == nil {
+	if agentVersion, err := version.Agent(); err == nil {
 		agentVersionTags = []string{
 			fmt.Sprintf("agent_version_major:%d", agentVersion.Major),
 			fmt.Sprintf("agent_version_minor:%d", agentVersion.Minor),
@@ -122,8 +128,9 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 	var checkModule *C.rtloader_pyobject_t
 	var checkClass *C.rtloader_pyobject_t
 	for _, name = range modules {
-		moduleName := C.CString(name)
-		defer C.free(unsafe.Pointer(moduleName))
+		// TrackedCStrings untracked by memory tracker currently
+		moduleName := TrackedCString(name)
+		defer C._free(unsafe.Pointer(moduleName))
 		if res := C.get_class(rtloader, moduleName, &checkModule, &checkClass); res != 0 {
 			if strings.HasPrefix(name, fmt.Sprintf("%s.", wheelNamespace)) {
 				loadedAsWheel = true
@@ -147,8 +154,11 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 	wheelVersion := "unversioned"
 	// getting the wheel version for the check
 	var version *C.char
-	versionAttr := C.CString("__version__")
-	defer C.free(unsafe.Pointer(versionAttr))
+
+	// TrackedCStrings untracked by memory tracker currently
+	versionAttr := TrackedCString("__version__")
+	defer C._free(unsafe.Pointer(versionAttr))
+	// get_attr_string allocation tracked by memory tracker
 	if res := C.get_attr_string(rtloader, checkModule, versionAttr, &version); res != 0 {
 		wheelVersion = C.GoString(version)
 		C.rtloader_free(rtloader, unsafe.Pointer(version))
@@ -161,15 +171,19 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 		// Let's use the module namespace to try to decide if this was a
 		// custom check, check for py3 compatibility
 		var checkFilePath *C.char
-		fileAttr := C.CString("__file__")
-		defer C.free(unsafe.Pointer(fileAttr))
+		var goCheckFilePath string
+
+		fileAttr := TrackedCString("__file__")
+		defer C._free(unsafe.Pointer(fileAttr))
+		// get_attr_string allocation tracked by memory tracker
 		if res := C.get_attr_string(rtloader, checkModule, fileAttr, &checkFilePath); res != 0 {
-			reportPy3Warnings(name, C.GoString(checkFilePath))
+			goCheckFilePath = C.GoString(checkFilePath)
 			C.rtloader_free(rtloader, unsafe.Pointer(checkFilePath))
 		} else {
-			reportPy3Warnings(name, "")
 			log.Debugf("Could not query the __file__ attribute for check %s: %s", name, getRtLoaderError())
 		}
+
+		go reportPy3Warnings(name, goCheckFilePath)
 	}
 
 	// Get an AgentCheck for each configuration instance and add it to the registry
@@ -177,7 +191,7 @@ func (cl *PythonCheckLoader) Load(config integration.Config) ([]check.Check, err
 		check := NewPythonCheck(moduleName, checkClass)
 
 		// The GIL should be unlocked at this point, `check.Configure` uses its own stickyLock and stickyLocks must not be nested
-		if err := check.Configure(i, config.InitConfig); err != nil {
+		if err := check.Configure(i, config.InitConfig, config.Source); err != nil {
 			addExpvarConfigureError(fmt.Sprintf("%s (%s)", moduleName, wheelVersion), err.Error())
 			continue
 		}
@@ -245,13 +259,22 @@ func reportPy3Warnings(checkName string, checkFilePath string) {
 			checkFilePath = checkFilePath[:len(checkFilePath)-1]
 		}
 
-		if warnings, err := validatePython3(checkName, checkFilePath); err != nil {
+		if strings.TrimSpace(config.Datadog.GetString("python_version")) == "3" {
+			// the linter used by validatePython3 doesn't work when run from python3
+			status = a7TagPython3
+			metricValue = 1.0
+		} else if warnings, err := validatePython3(checkName, checkFilePath); err != nil {
 			status = a7TagUnknown
+			log.Errorf("Failed to validate Python 3 linting for check '%s': '%s'", checkName, err)
 		} else if len(warnings) == 0 {
 			status = a7TagReady
 			metricValue = 1.0
 		} else {
 			status = a7TagNotReady
+			log.Warnf("The Python 3 linter returned warnings for check '%s'. Set the log level to \"debug\" and restart the Agent to have the linter warnings logged.", checkName)
+			for _, warning := range warnings {
+				log.Debug(warning)
+			}
 		}
 	}
 	py3Warnings[checkName] = status

@@ -21,7 +21,7 @@ import (
 
 var (
 	expvarEndpoints map[string]*expvar.Map
-	expvarTypes     = [5]string{"conntrack", "state", "tracer", "ebpf", "kprobes"}
+	expvarTypes     = []string{"conntrack", "state", "tracer", "ebpf", "kprobes", "dns"}
 )
 
 func init() {
@@ -41,6 +41,8 @@ type Tracer struct {
 	localAddresses map[util.Address]struct{}
 
 	conntracker netlink.Conntracker
+
+	reverseDNS ReverseDNS
 
 	perfMap *bpflib.PerfMap
 
@@ -68,6 +70,10 @@ type Tracer struct {
 
 	// Internal buffer used to compute bytekeys
 	buf *bytes.Buffer
+
+	// Connections for the tracer to blacklist
+	sourceExcludes []*util.ConnectionFilter
+	destExcludes   []*util.ConnectionFilter
 }
 
 const (
@@ -94,19 +100,65 @@ func NewTracer(config *Config) (*Tracer, error) {
 		return nil, fmt.Errorf("could not load bpf module: %s", err)
 	}
 
+	// Enable kernel probes used for offset guessing.
+	// TODO: Disable them once offsets have been figured out.
+	for _, probeName := range offsetGuessProbes(config) {
+		if err := m.EnableKprobe(string(probeName), maxActive); err != nil {
+			return nil, fmt.Errorf(
+				"could not enable kprobe(%s) used for offset guessing: %s",
+				probeName,
+				err,
+			)
+		}
+	}
+
+	start := time.Now()
+	if err := guessOffsets(m, config); err != nil {
+		return nil, fmt.Errorf("failed to init module: error guessing offsets: %v", err)
+	}
+	log.Infof("socket struct offset guessing complete (took %v)", time.Since(start))
+
+	// check if current platform is RHEL or CentOS because it affects what kprobe are we going to enable
+	isRHELOrCentos, err := isRHELOrCentOS()
+	if err != nil {
+		// if the platform couldn't be determined, treat it as non RHEL case
+		log.Warn("could not detect the platform, will use kprobes from kernel version > 4.1.x")
+	}
+
+	if isRHELOrCentos {
+		log.Info("detected platform as RHEL/CentOS, switch to use kprobes from kernel version 3.3.x")
+	}
+
 	// Use the config to determine what kernel probes should be enabled
-	enabledProbes := config.EnabledKProbes()
+	enabledProbes := config.EnabledKProbes(isRHELOrCentos)
+
 	for k := range m.IterKprobes() {
-		if _, ok := enabledProbes[KProbeName(k.Name)]; ok {
-			if err = m.EnableKprobe(k.Name, maxActive); err != nil {
+		probeName := KProbeName(k.Name)
+		if _, ok := enabledProbes[probeName]; ok {
+			// check if we should override kprobe name
+			if override, ok := kprobeOverrides[probeName]; ok {
+				if err = m.SetKprobeForSection(string(probeName), string(override)); err != nil {
+					return nil, fmt.Errorf("could not update kprobe \"%s\" to \"%s\" : %s", k.Name, string(override), err)
+				}
+			}
+			if err = m.EnableKprobe(string(probeName), maxActive); err != nil {
 				return nil, fmt.Errorf("could not enable kprobe(%s): %s", k.Name, err)
 			}
 		}
 	}
 
-	// TODO: Disable TCPv{4,6} connect kernel probes once offsets have been figured out.
-	if err := guess(m, config); err != nil {
-		return nil, fmt.Errorf("failed to init module: error guessing offsets: %v", err)
+	var reverseDNS ReverseDNS = nullReverseDNS{}
+	if config.DNSInspection {
+		filter := m.SocketFilter("socket/dns_filter")
+		if filter == nil {
+			return nil, fmt.Errorf("error retrieving socket filter")
+		}
+
+		if snooper, err := NewSocketFilterSnooper(filter); err == nil {
+			reverseDNS = snooper
+		} else {
+			fmt.Errorf("error enabling DNS traffic inspection: %s", err)
+		}
 	}
 
 	portMapping := NewPortMapping(config.ProcRoot, config)
@@ -130,10 +182,13 @@ func NewTracer(config *Config) (*Tracer, error) {
 		config:         config,
 		state:          state,
 		portMapping:    portMapping,
+		reverseDNS:     reverseDNS,
 		localAddresses: readLocalAddresses(),
 		buffer:         make([]ConnectionStats, 0, 512),
 		buf:            &bytes.Buffer{},
 		conntracker:    conntracker,
+		sourceExcludes: util.ParseConnectionFilters(config.ExcludedSourceConnections),
+		destExcludes:   util.ParseConnectionFilters(config.ExcludedDestinationConnections),
 	}
 
 	tr.perfMap, err = tr.initPerfPolling()
@@ -249,10 +304,16 @@ func (t *Tracer) initPerfPolling() (*bpflib.PerfMap, error) {
 //  • Local DNS (*:53) requests if configured (default: true)
 func (t *Tracer) shouldSkipConnection(conn *ConnectionStats) bool {
 	isDNSConnection := conn.DPort == 53 || conn.SPort == 53
-	return !t.config.CollectLocalDNS && isDNSConnection && conn.Direction == LOCAL
+	if !t.config.CollectLocalDNS && isDNSConnection && conn.Direction == LOCAL {
+		return true
+	} else if util.IsBlacklistedConnection(t.sourceExcludes, conn.Source, conn.SPort) || util.IsBlacklistedConnection(t.destExcludes, conn.Dest, conn.DPort) {
+		return true
+	}
+	return false
 }
 
 func (t *Tracer) Stop() {
+	t.reverseDNS.Close()
 	_ = t.m.Close()
 	t.perfMap.PollStop()
 	t.conntracker.Close()
@@ -274,7 +335,9 @@ func (t *Tracer) GetActiveConnections(clientID string) (*Connections, error) {
 		t.buffer = make([]ConnectionStats, 0, cap(t.buffer)/2)
 	}
 
-	return &Connections{Conns: t.state.Connections(clientID, latestTime, latestConns)}, nil
+	conns := t.state.Connections(clientID, latestTime, latestConns)
+	names := t.reverseDNS.Resolve(conns)
+	return &Connections{Conns: conns, Names: names}, nil
 }
 
 // getConnections returns all of the active connections in the ebpf maps along with the latest timestamp.  It takes
@@ -365,7 +428,6 @@ func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
 	keys := make([]string, 0, len(entries))
 	// Used to create the keys
 	statsWithTs, tcpStats := &ConnStatsWithTimestamp{}, &TCPStats{}
-
 	// Remove the entries from the eBPF Map
 	for i := range entries {
 		err := t.m.DeleteElement(mp, unsafe.Pointer(entries[i]))
@@ -395,7 +457,7 @@ func (t *Tracer) removeEntries(mp, tcpMp *bpflib.Map, entries []*ConnTuple) {
 
 // getTCPStats reads tcp related stats for the given ConnTuple
 func (t *Tracer) getTCPStats(mp *bpflib.Map, tuple *ConnTuple, seen map[ConnTuple]struct{}) *TCPStats {
-	stats := &TCPStats{retransmits: 0}
+	stats := new(TCPStats)
 
 	if !tuple.isTCP() {
 		return stats
@@ -405,17 +467,17 @@ func (t *Tracer) getTCPStats(mp *bpflib.Map, tuple *ConnTuple, seen map[ConnTupl
 	pid := tuple.pid
 	tuple.pid = 0
 
-	// This is required to avoid (over)reporting stats for connections sharing the same socket.
+	_ = t.m.LookupElement(mp, unsafe.Pointer(tuple), unsafe.Pointer(stats))
+
+	// This is required to avoid (over)reporting retransmits for connections sharing the same socket.
 	if _, reported := seen[*tuple]; reported {
 		atomic.AddInt64(&t.pidCollisions, 1)
-		tuple.pid = pid
-		return stats
+		stats.retransmits = 0
+	} else {
+		seen[*tuple] = struct{}{}
 	}
 
-	_ = t.m.LookupElement(mp, unsafe.Pointer(tuple), unsafe.Pointer(stats))
-	seen[*tuple] = struct{}{}
 	tuple.pid = pid
-
 	return stats
 }
 
@@ -533,6 +595,7 @@ func (t *Tracer) GetStats() (map[string]interface{}, error) {
 		},
 		"ebpf":    t.getEbpfTelemetry(),
 		"kprobes": GetProbeStats(),
+		"dns":     t.reverseDNS.GetStats(),
 	}, nil
 }
 
@@ -647,5 +710,6 @@ func SectionsFromConfig(c *Config) map[string]bpflib.SectionParams {
 		tcpCloseEventMap.sectionName(): {
 			MapMaxEntries: 1024,
 		},
+		"socket/dns_filter": {},
 	}
 }

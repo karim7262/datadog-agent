@@ -100,7 +100,7 @@ func EnsureParentDirsExist(p string) error {
 
 // HTTPHeaders returns a http headers including various basic information (User-Agent, Content-Type...).
 func HTTPHeaders() map[string]string {
-	av, _ := version.New(version.AgentVersion, version.Commit)
+	av, _ := version.Agent()
 	return map[string]string{
 		"User-Agent":   fmt.Sprintf("Datadog Agent/%s", av.GetNumber()),
 		"Content-Type": "application/x-www-form-urlencoded",
@@ -208,10 +208,8 @@ func CreateHTTPTransport() *http.Transport {
 			Timeout: 30 * time.Second,
 			// Enables TCP keepalives to detect broken connections
 			KeepAlive: 30 * time.Second,
-			// Disable happy eyeballs. This option will be deprecated in go 1.12.
-			// At this point we will need to disable it by setting a new attribute to false.
-			// See https://github.com/DataDog/datadog-agent/pull/2464
-			DualStack: false,
+			// Disable RFC 6555 Fast Fallback ("Happy Eyeballs")
+			FallbackDelay: -1 * time.Nanosecond,
 		}).DialContext,
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 5,

@@ -18,6 +18,10 @@ type Config struct {
 	// CollectLocalDNS specifies whether the tracer should capture traffic for local DNS calls
 	CollectLocalDNS bool
 
+	// DNSInspection specifies whether the tracer should enhance connection data with domain names by inspecting DNS traffic
+	// Notice this does *not* depend on CollectLocalDNS
+	DNSInspection bool
+
 	// UDPConnTimeout determines the length of traffic inactivity between two (IP, port)-pairs before declaring a UDP
 	// connection as inactive.
 	// Note: As UDP traffic is technically "connection-less", for tracking, we consider a UDP connection to be traffic
@@ -61,6 +65,12 @@ type Config struct {
 
 	// ClosedChannelSize specifies the size for closed channel for the tracer
 	ClosedChannelSize int
+
+	// ExcludedSourceConnections is a map of source connections to blacklist
+	ExcludedSourceConnections map[string][]string
+
+	// ExcludedDestinationConnections is a map of destination connections to blacklist
+	ExcludedDestinationConnections map[string][]string
 }
 
 // NewDefaultConfig enables traffic collection for all connection types
@@ -70,6 +80,7 @@ func NewDefaultConfig() *Config {
 		CollectUDPConns:       true,
 		CollectIPv6Conns:      true,
 		CollectLocalDNS:       false,
+		DNSInspection:         true,
 		UDPConnTimeout:        30 * time.Second,
 		TCPConnTimeout:        2 * time.Minute,
 		MaxTrackedConnections: 65536,
@@ -84,17 +95,17 @@ func NewDefaultConfig() *Config {
 	}
 }
 
-// EnabledKProbes returns a map of kprobes that are enabled per config settings
-func (c *Config) EnabledKProbes() map[KProbeName]struct{} {
+// EnabledKProbes returns a map of kprobes that are enabled per config settings.
+// This map does not include the probes used exclusively in the offset guessing process.
+func (c *Config) EnabledKProbes(isRHELOrCentos bool) map[KProbeName]struct{} {
 	enabled := make(map[KProbeName]struct{}, 0)
 
-	// Note: TCPv4Connect & TCPv4ConnectReturn are always included as they're needed for initialization
-	// and can be disabled after field offset guessing has completed.
-	enabled[TCPv4Connect] = struct{}{}
-	enabled[TCPv4ConnectReturn] = struct{}{}
-
 	if c.CollectTCPConns {
-		enabled[TCPSendMsg] = struct{}{}
+		if isRHELOrCentos {
+			enabled[TCPSendMsgRHEL] = struct{}{}
+		} else {
+			enabled[TCPSendMsg] = struct{}{}
+		}
 		enabled[TCPCleanupRBuf] = struct{}{}
 		enabled[TCPClose] = struct{}{}
 		enabled[TCPRetransmit] = struct{}{}
@@ -109,12 +120,12 @@ func (c *Config) EnabledKProbes() map[KProbeName]struct{} {
 	if c.CollectUDPConns {
 		enabled[UDPRecvMsgReturn] = struct{}{}
 		enabled[UDPRecvMsg] = struct{}{}
-		enabled[UDPSendMsg] = struct{}{}
-	}
+		if isRHELOrCentos {
+			enabled[UDPSendMsgRHEL] = struct{}{}
+		} else {
+			enabled[UDPSendMsg] = struct{}{}
+		}
 
-	if c.CollectIPv6Conns {
-		enabled[TCPv6Connect] = struct{}{}
-		enabled[TCPv6ConnectReturn] = struct{}{}
 	}
 
 	return enabled
