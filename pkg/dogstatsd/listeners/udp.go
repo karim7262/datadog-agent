@@ -23,12 +23,12 @@ var (
 	udpPackets             = expvar.Int{}
 	udpBytes               = expvar.Int{}
 
-	tlmUdpPackets = telemetry.NewCounter(
+	tlmUDPPackets = telemetry.NewCounter(
 		"agent", "dogstatsd", "udp_packets",
 		[]string{"state"},
 		"Amount of packets processed",
 	)
-	tlmUdpBytes = telemetry.NewCounter(
+	tlmUDPBytes = telemetry.NewCounter(
 		"agent", "dogstatsd", "udp_bytes",
 		nil,
 		"Amount of bytes processed",
@@ -101,11 +101,11 @@ func (l *UDPListener) Listen() {
 
 			log.Errorf("dogstatsd-udp: error reading packet: %v", err)
 			udpPacketReadingErrors.Add(1)
-			tlmUdpPackets.Inc("error")
+			tlmUDPPackets.Inc("error")
 			continue
 		}
-		tlmUdpPackets.Inc("ok")
-		tlmUdpBytes.Add(float64(n))
+		tlmUDPPackets.Inc("ok")
+		tlmUDPBytes.Add(float64(n))
 		udpBytes.Add(int64(n))
 		packet.Contents = packet.buffer[:n]
 
