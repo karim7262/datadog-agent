@@ -15,22 +15,22 @@ import (
 var (
 	tlmMetricsSamples = telemetry.NewCounter(
 		"agent", "checks", "metrics_samples",
-		[]string{"id", "name", "version"},
+		[]string{"check_id", "check_name", "check_version"},
 		"Metrics count",
 	)
 	tlmEvents = telemetry.NewCounter(
 		"agent", "checks", "events",
-		[]string{"id", "name", "version"},
+		[]string{"check_id", "check_name", "check_version"},
 		"Events count",
 	)
 	tlmServices = telemetry.NewCounter(
 		"agent", "checks", "services_checks",
-		[]string{"id", "name", "version"},
+		[]string{"check_id", "check_name", "check_version"},
 		"Service checks count",
 	)
 	tlmExecutionTime = telemetry.NewGauge(
 		"agent", "checks", "execution_time",
-		[]string{"id", "name", "version"},
+		[]string{"check_id", "check_name", "check_version"},
 		"Check execution time",
 	)
 )

@@ -37,5 +37,5 @@ func (g *PromGauge) Reset() {
 
 // Set sets the gauge with the given value.
 func (g *PromGauge) Set(value float64, tags ...string) {
-	g.pg.WithLabelValues(tags...).Add(value)
+	g.pg.WithLabelValues(tags...).Set(value)
 }
