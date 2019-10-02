@@ -33,9 +33,7 @@ var (
 	transactionsIntakeV1      = expvar.Int{}
 
 	tlm = telemetry.NewCounter(
-		"datadog",
-		"forwarder",
-		"transactions",
+		"agent", "forwarder", "transactions",
 		[]string{"endpoint", "route"},
 		"Forwarder telemetry",
 	)
@@ -262,7 +260,7 @@ func (f *DefaultForwarder) SubmitServiceChecks(payload Payloads, extra http.Head
 	return f.sendHTTPTransactions(transactions)
 }
 
-// SubmitSketchSeries will send payloads to Datadog bakend - PROTOTYPE FOR PERCENTILE
+// SubmitSketchSeries will send payloads to Datadog backend - PROTOTYPE FOR PERCENTILE
 func (f *DefaultForwarder) SubmitSketchSeries(payload Payloads, extra http.Header) error {
 	transactions := f.createHTTPTransactions(sketchSeriesEndpoint, payload, true, extra, "sketch_series")
 	transactionsSketchSeries.Add(1)

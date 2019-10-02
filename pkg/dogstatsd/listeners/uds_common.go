@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -24,6 +25,22 @@ var (
 	udsPacketReadingErrors   = expvar.Int{}
 	udsPackets               = expvar.Int{}
 	udsBytes                 = expvar.Int{}
+
+	tlmUdsOriginDectionErrors = telemetry.NewCounter(
+		"agent", "dogstatsd", "uds_origin_detection_errors",
+		nil,
+		"Uds Origin detection errors amount",
+	)
+	tlmUdsPackets = telemetry.NewCounter(
+		"agent", "dogstatsd", "uds_packets",
+		[]string{"state"},
+		"Uds packets counter",
+	)
+	tlmUdsBytes = telemetry.NewCounter(
+		"agent", "dogstatsd", "uds_bytes",
+		nil,
+		"Uds packets counter",
+	)
 )
 
 func init() {
@@ -130,8 +147,9 @@ func (l *UDSListener) Listen() {
 			// Extract container id from credentials
 			container, taggingErr := processUDSOrigin(oob[:oobn])
 			if taggingErr != nil {
-				log.Warnf("dogstatsd-uds: error processing origin, data will not be tagged : %v", taggingErr)
+				log.Warnf("dogstatsd-uds: error processing origin, data will not be tagged: %v", taggingErr)
 				udsOriginDetectionErrors.Add(1)
+				tlmUdsOriginDectionErrors.Inc()
 			} else {
 				packet.Origin = container
 			}
@@ -150,9 +168,12 @@ func (l *UDSListener) Listen() {
 
 			log.Errorf("dogstatsd-uds: error reading packet: %v", err)
 			udsPacketReadingErrors.Add(1)
+			tlmUdsPackets.Inc("error")
 			continue
 		}
 
+		tlmUdsPackets.Inc("ok")
+		tlmUdsBytes.Add(float64(n))
 		udsBytes.Add(int64(n))
 		packet.Contents = packet.buffer[:n]
 

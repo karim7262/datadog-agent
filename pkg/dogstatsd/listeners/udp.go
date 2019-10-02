@@ -11,6 +11,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -21,6 +22,17 @@ var (
 	udpPacketReadingErrors = expvar.Int{}
 	udpPackets             = expvar.Int{}
 	udpBytes               = expvar.Int{}
+
+	tlmUdpPackets = telemetry.NewCounter(
+		"agent", "dogstatsd", "udp_packets",
+		[]string{"state"},
+		"Amount of packets processed",
+	)
+	tlmUdpBytes = telemetry.NewCounter(
+		"agent", "dogstatsd", "udp_bytes",
+		nil,
+		"Amount of bytes processed",
+	)
 )
 
 func init() {
@@ -89,8 +101,11 @@ func (l *UDPListener) Listen() {
 
 			log.Errorf("dogstatsd-udp: error reading packet: %v", err)
 			udpPacketReadingErrors.Add(1)
+			tlmUdpPackets.Inc("error")
 			continue
 		}
+		tlmUdpPackets.Inc("ok")
+		tlmUdpBytes.Add(float64(n))
 		udpBytes.Add(int64(n))
 		packet.Contents = packet.buffer[:n]
 
