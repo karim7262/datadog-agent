@@ -45,7 +45,7 @@ func (r *RTProcessCheck) RealTime() bool { return true }
 // Processes are split up into a chunks of at most 100 processes per message to
 // limit the message size on intake.
 // See agent.proto for the schema of the message and models used.
-func (r *RTProcessCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error) {
+func (r *RTProcessCheck) Run(cfg *config.AgentConfig, groupID, batchsize int32) ([]model.MessageBody, error) {
 	cpuTimes, err := cpu.Times(false)
 	if err != nil {
 		return nil, err
@@ -65,8 +65,7 @@ func (r *RTProcessCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.Me
 		return nil, nil
 	}
 
-	chunkedStats := fmtProcessStats(cfg, procs, r.lastProcs,
-		ctrList, cpuTimes[0], r.lastCPUTime, r.lastRun)
+	chunkedStats := fmtProcessStats(cfg, procs, r.lastProcs, ctrList, cpuTimes[0], r.lastCPUTime, r.lastRun, int(batchsize))
 	groupSize := len(chunkedStats)
 	chunkedCtrStats := fmtContainerStats(ctrList, r.lastCtrRates, r.lastRun, groupSize)
 	messages := make([]model.MessageBody, 0, groupSize)
@@ -99,6 +98,7 @@ func fmtProcessStats(
 	ctrList []*containers.Container,
 	syst2, syst1 cpu.TimesStat,
 	lastRun time.Time,
+	batchSize int,
 ) [][]*model.ProcessStat {
 	cidByPid := make(map[int32]string, len(ctrList))
 	for _, c := range ctrList {
@@ -108,7 +108,7 @@ func fmtProcessStats(
 	}
 
 	chunked := make([][]*model.ProcessStat, 0)
-	chunk := make([]*model.ProcessStat, 0, cfg.MaxPerMessage)
+	chunk := make([]*model.ProcessStat, 0, batchSize)
 	for _, fp := range procs {
 		if skipProcess(cfg, fp, lastProcs) {
 			continue
@@ -128,11 +128,12 @@ func fmtProcessStats(
 			InvoluntaryCtxSwitches: uint64(fp.CtxSwitches.Involuntary),
 			ContainerId:            cidByPid[fp.Pid],
 		})
-		if len(chunk) == cfg.MaxPerMessage {
+		if len(chunk) == batchSize {
 			chunked = append(chunked, chunk)
-			chunk = make([]*model.ProcessStat, 0, cfg.MaxPerMessage)
+			chunk = make([]*model.ProcessStat, 0, batchSize)
 		}
 	}
+
 	if len(chunk) > 0 {
 		chunked = append(chunked, chunk)
 	}

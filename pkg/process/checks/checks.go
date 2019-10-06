@@ -14,7 +14,7 @@ type Check interface {
 	Name() string
 	Endpoint() string
 	RealTime() bool
-	Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error)
+	Run(cfg *config.AgentConfig, groupID int32, batchSize int32) ([]model.MessageBody, error)
 }
 
 // All is all the singleton check instances.

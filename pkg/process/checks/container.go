@@ -56,7 +56,7 @@ func (c *ContainerCheck) RealTime() bool { return false }
 
 // Run runs the ContainerCheck to collect a list of running ctrList and the
 // stats for each container.
-func (c *ContainerCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error) {
+func (c *ContainerCheck) Run(cfg *config.AgentConfig, groupID, batchSize int32) ([]model.MessageBody, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -74,11 +74,11 @@ func (c *ContainerCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.Me
 		return nil, nil
 	}
 
-	groupSize := len(ctrList) / cfg.MaxPerMessage
-	if len(ctrList)%cfg.MaxPerMessage != 0 {
+	groupSize := len(ctrList) / int(batchSize)
+	if len(ctrList)%int(batchSize) != 0 {
 		groupSize++
 	}
-	chunked := chunkContainers(ctrList, c.lastRates, c.lastRun, groupSize, cfg.MaxPerMessage)
+	chunked := chunkContainers(ctrList, c.lastRates, c.lastRun, groupSize, int(batchSize))
 	messages := make([]model.MessageBody, 0, groupSize)
 	totalContainers := float64(0)
 	for i := 0; i < groupSize; i++ {

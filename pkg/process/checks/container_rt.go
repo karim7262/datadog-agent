@@ -38,7 +38,7 @@ func (r *RTContainerCheck) Endpoint() string { return "/api/v1/container" }
 func (r *RTContainerCheck) RealTime() bool { return true }
 
 // Run runs the real-time container check getting container-level stats from the Cgroups and Docker APIs.
-func (r *RTContainerCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error) {
+func (r *RTContainerCheck) Run(cfg *config.AgentConfig, groupID, batchSize int32) ([]model.MessageBody, error) {
 	ctrList, err := util.GetContainers()
 	if err != nil {
 		return nil, err
@@ -51,8 +51,8 @@ func (r *RTContainerCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.
 		return nil, nil
 	}
 
-	groupSize := len(ctrList) / cfg.MaxPerMessage
-	if len(ctrList)%cfg.MaxPerMessage != 0 {
+	groupSize := len(ctrList) / int(batchSize)
+	if len(ctrList)%int(batchSize) != 0 {
 		groupSize++
 	}
 	chunked := fmtContainerStats(ctrList, r.lastRates, r.lastRun, groupSize)

@@ -22,8 +22,9 @@ import (
 )
 
 type checkPayload struct {
-	messages []model.MessageBody
-	endpoint string
+	messages  []model.MessageBody
+	endpoint  string
+	checkName string
 }
 
 // Collector will collect metrics from the local system and ship to the backend.
@@ -39,12 +40,10 @@ type Collector struct {
 	cfg          *config.AgentConfig
 	httpClient   http.Client
 
-	// counters for each type of check
-	runCounters   sync.Map
-	enabledChecks []checks.Check
-
-	// Controls the real-time interval, can change live.
-	realTimeInterval time.Duration
+	runCounters      sync.Map      // Counters for each type of check
+	batchSizes       sync.Map      // The configured batch size for a check - can change live
+	realTimeInterval time.Duration // The configured interval for real-time checks - can change live.
+	enabledChecks    []checks.Check
 }
 
 // NewCollector creates a new Collector
@@ -76,33 +75,72 @@ func NewCollector(cfg *config.AgentConfig) (Collector, error) {
 	}, nil
 }
 
-func (l *Collector) runCheck(c checks.Check) {
-	runCounter := int32(1)
+func (l *Collector) incrementCountForCheck(c checks.Check) int32 {
+	counter := int32(1)
 	if rc, ok := l.runCounters.Load(c.Name()); ok {
-		runCounter = rc.(int32) + 1
+		counter = rc.(int32) + 1
 	}
-	l.runCounters.Store(c.Name(), runCounter)
+	l.runCounters.Store(c.Name(), counter)
+	return counter
+}
 
-	s := time.Now()
-	// update the last collected timestamp for info
-	updateLastCollectTime(time.Now())
-	messages, err := c.Run(l.cfg, atomic.AddInt32(&l.groupID, 1))
+func (l *Collector) batchSizeForCheck(c checks.Check) int32 {
+	batchSize := int32(l.cfg.MaxPerMessage)
+
+	if bs, ok := l.batchSizes.Load(c.Name()); ok {
+		batchSize = bs.(int32)
+	} else if c.Name() == checks.Connections.Name() { // Not initialized - lets check to see if it's a connections check
+		batchSize = int32(l.cfg.MaxConnsPerMessage)
+	}
+
+	l.batchSizes.Store(c.Name(), batchSize)
+
+	return batchSize
+}
+
+// updateBatchSizeForCheck will change the user/default configured batch size for a check if the new value is greater
+// than 0 & different than the existing configured value.
+func (l *Collector) updateBatchSizeForCheck(checkName string, batchSize int32) {
+	if batchSize <= 0 {
+		return
+	}
+
+	if bs, ok := l.batchSizes.Load(checkName); ok && bs.(int32) != batchSize {
+		log.Infof("batch size for %s check updated to %d", checkName, batchSize)
+		l.batchSizes.Store(checkName, batchSize)
+	}
+}
+
+func (l *Collector) runCheck(c checks.Check) {
+	runCounter := l.incrementCountForCheck(c)
+	batchSize := l.batchSizeForCheck(c)
+
+	start := time.Now()
+	updateLastCollectTime(start) // Update the last collected timestamp for info command
+
+	messages, err := c.Run(l.cfg, atomic.AddInt32(&l.groupID, 1), batchSize)
 	if err != nil {
 		log.Criticalf("Unable to run check '%s': %s", c.Name(), err)
-	} else {
-		l.send <- checkPayload{messages, c.Endpoint()}
-		// update proc and container count for info
-		updateProcContainerCount(messages)
-		if !c.RealTime() {
-			d := time.Since(s)
-			switch {
-			case runCounter < 5:
-				log.Infof("Finished %s check #%d in %s", c.Name(), runCounter, d)
-			case runCounter == 5:
-				log.Infof("Finished %s check #%d in %s. First 5 check runs finished, next runs will be logged every 20 runs.", c.Name(), runCounter, d)
-			case runCounter%20 == 0:
-				log.Infof("Finish %s check #%d in %s", c.Name(), runCounter, d)
-			}
+		return
+	}
+
+	l.send <- checkPayload{
+		messages:  messages,
+		endpoint:  c.Endpoint(),
+		checkName: c.Name(),
+	}
+
+	updateProcContainerCount(messages) // Update process and container count for info command
+
+	if !c.RealTime() {
+		d := time.Since(start)
+		switch {
+		case runCounter < 5:
+			log.Infof("Finished %s check #%d in %s", c.Name(), runCounter, d)
+		case runCounter == 5:
+			log.Infof("Finished %s check #%d in %s. First 5 check runs finished, next runs will be logged every 20 runs.", c.Name(), runCounter, d)
+		case runCounter%20 == 0:
+			log.Infof("Finish %s check #%d in %s", c.Name(), runCounter, d)
 		}
 	}
 }
@@ -131,7 +169,7 @@ func (l *Collector) run(exit chan bool) {
 					<-l.send
 				}
 				for _, m := range payload.messages {
-					l.postMessage(payload.endpoint, m)
+					l.postMessage(payload.checkName, payload.endpoint, m)
 				}
 			case <-heartbeat.C:
 				statsd.Client.Gauge("datadog.process.agent", 1, tags, 1)
@@ -175,7 +213,7 @@ func (l *Collector) run(exit chan bool) {
 	<-exit
 }
 
-func (l *Collector) postMessage(checkPath string, m model.MessageBody) {
+func (l *Collector) postMessage(checkName, checkPath string, m model.MessageBody) {
 	msgType, err := model.DetectMessageType(m)
 	if err != nil {
 		log.Errorf("Unable to detect message type: %s", err)
@@ -222,11 +260,11 @@ func (l *Collector) postMessage(checkPath string, m model.MessageBody) {
 	}
 
 	if len(statuses) > 0 {
-		l.updateStatus(statuses)
+		l.updateStatus(checkName, statuses)
 	}
 }
 
-func (l *Collector) updateStatus(statuses []*model.CollectorStatus) {
+func (l *Collector) updateStatus(checkName string, statuses []*model.CollectorStatus) {
 	curEnabled := atomic.LoadInt32(&l.realTimeEnabled) == 1
 
 	// If any of the endpoints wants real-time we'll do that.
@@ -234,14 +272,23 @@ func (l *Collector) updateStatus(statuses []*model.CollectorStatus) {
 	// only set if we're trying to limit load on the backend.
 	shouldEnableRT := false
 	maxInterval := 0 * time.Second
+
+	maxBatchSize := int32(0)
+
+	// Process each CollectorStatus response
 	for _, s := range statuses {
 		shouldEnableRT = shouldEnableRT || (s.ActiveClients > 0 && l.cfg.AllowRealTime)
-		interval := time.Duration(s.Interval) * time.Second
-		if interval > maxInterval {
+
+		if interval := time.Duration(s.Interval) * time.Second; interval > maxInterval {
 			maxInterval = interval
+		}
+
+		if s.BatchSize > maxBatchSize {
+			maxBatchSize = s.BatchSize
 		}
 	}
 
+	// Update real-time status if needed
 	if curEnabled && !shouldEnableRT {
 		log.Info("Detected 0 clients, disabling real-time mode")
 		atomic.StoreInt32(&l.realTimeEnabled, 0)
@@ -250,17 +297,23 @@ func (l *Collector) updateStatus(statuses []*model.CollectorStatus) {
 		atomic.StoreInt32(&l.realTimeEnabled, 1)
 	}
 
+	// Update real-time check interval if needed
 	if maxInterval != l.realTimeInterval {
 		l.realTimeInterval = maxInterval
 		if l.realTimeInterval <= 0 {
 			l.realTimeInterval = 2 * time.Second
 		}
+
 		// Pass along the real-time interval, one per check, so that every
 		// check routine will see the new interval.
 		for range l.enabledChecks {
 			l.rtIntervalCh <- l.realTimeInterval
 		}
 		log.Infof("real time interval updated to %s", l.realTimeInterval)
+	}
+
+	if maxBatchSize > 0 {
+		l.updateBatchSizeForCheck(checkName, maxBatchSize)
 	}
 }
 

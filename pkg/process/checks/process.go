@@ -63,7 +63,7 @@ func (p *ProcessCheck) RealTime() bool { return false }
 // Processes are split up into a chunks of at most 100 processes per message to
 // limit the message size on intake.
 // See agent.proto for the schema of the message and models used.
-func (p *ProcessCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error) {
+func (p *ProcessCheck) Run(cfg *config.AgentConfig, groupID int32, batchSize int32) ([]model.MessageBody, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -112,14 +112,14 @@ func createProcCtrMessages(
 	containers []*model.Container,
 	cfg *config.AgentConfig,
 	sysInfo *model.SystemInfo,
-	groupID int32,
+	batchSize, groupID int32,
 	networkID string,
 ) ([]model.MessageBody, int, int) {
 	totalProcs, totalContainers := 0, 0
 	msgs := make([]*model.CollectorProc, 0)
 
 	// we first split non-container processes in chunks
-	chunks := chunkProcesses(procsByCtr[emptyCtrID], cfg.MaxPerMessage)
+	chunks := chunkProcesses(procsByCtr[emptyCtrID], int(batchSize))
 	for _, c := range chunks {
 		msgs = append(msgs, &model.CollectorProc{
 			HostName:  cfg.HostName,

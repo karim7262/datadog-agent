@@ -28,6 +28,7 @@ type ConnectionsCheck struct {
 	// Local system probe
 	useLocalTracer bool
 	localTracer    *ebpf.Tracer
+
 	tracerClientID string
 	networkID      string
 }
@@ -36,6 +37,7 @@ type ConnectionsCheck struct {
 func (c *ConnectionsCheck) Init(cfg *config.AgentConfig, sysInfo *model.SystemInfo) {
 	// We use the current process PID as the local tracer client ID
 	c.tracerClientID = fmt.Sprintf("%d", os.Getpid())
+
 	if cfg.EnableLocalSystemProbe {
 		log.Info("starting system probe locally")
 		c.useLocalTracer = true
@@ -67,7 +69,7 @@ func (c *ConnectionsCheck) Init(cfg *config.AgentConfig, sysInfo *model.SystemIn
 	c.networkID = networkID
 
 	// Run the check one time on init to register the client on the system probe
-	c.Run(cfg, 0)
+	c.Run(cfg, 0, int32(cfg.MaxConnsPerMessage))
 }
 
 // Name returns the name of the ConnectionsCheck.
@@ -84,7 +86,7 @@ func (c *ConnectionsCheck) RealTime() bool { return false }
 // this information. For each connection we'll return a `model.Connection`
 // that will be bundled up into a `CollectorConnections`.
 // See agent.proto for the schema of the message and models.
-func (c *ConnectionsCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageBody, error) {
+func (c *ConnectionsCheck) Run(cfg *config.AgentConfig, groupID int32, batchSize int32) ([]model.MessageBody, error) {
 	// If local tracer failed to initialize, so we shouldn't be doing any checks
 	if c.useLocalTracer && c.localTracer == nil {
 		return nil, nil
@@ -102,7 +104,7 @@ func (c *ConnectionsCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.
 	}
 
 	log.Debugf("collected connections in %s", time.Since(start))
-	return batchConnections(cfg, groupID, c.enrichConnections(conns), c.networkID), nil
+	return batchConnections(cfg, groupID, batchSize, c.enrichConnections(conns), c.networkID), nil
 }
 
 func (c *ConnectionsCheck) getConnections() ([]*model.Connection, error) {
@@ -144,12 +146,12 @@ func (c *ConnectionsCheck) enrichConnections(conns []*model.Connection) []*model
 
 // Connections are split up into a chunks of at most 100 connections per message to
 // limit the message size on intake.
-func batchConnections(cfg *config.AgentConfig, groupID int32, cxs []*model.Connection, networkID string) []model.MessageBody {
-	groupSize := groupSize(len(cxs), cfg.MaxConnsPerMessage)
+func batchConnections(cfg *config.AgentConfig, groupID, batchSize int32, cxs []*model.Connection, networkID string) []model.MessageBody {
+	groupSize := groupSize(len(cxs), int(batchSize))
 	batches := make([]model.MessageBody, 0, groupSize)
 
 	for len(cxs) > 0 {
-		batchSize := min(cfg.MaxConnsPerMessage, len(cxs))
+		batchSize := min(int(batchSize), len(cxs))
 		// get the container and process relationship from either process check or container check
 		ctrIDForPID := getCtrIDsByPIDs(connectionPIDs(cxs[:batchSize]))
 		batches = append(batches, &model.CollectorConnections{
