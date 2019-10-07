@@ -11,6 +11,4 @@ type Counter interface {
 	Inc(tags ...string)
 	// TODO(remy): doc
 	Add(value float64, tags ...string)
-	// TODO(remy): doc
-	Reset()
 }

@@ -9,6 +9,4 @@ package telemetry
 type Gauge interface {
 	// TODO(remy): doc
 	Set(value float64, tags ...string)
-	// TODO(remy): doc
-	Reset()
 }

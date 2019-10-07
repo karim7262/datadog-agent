@@ -9,7 +9,7 @@ import (
 // NewGauge creates a gauge telemetry Gauge.
 // TODO(remy): doc
 func NewGauge(namespace, subsystem, name string, tags []string, help string) Gauge {
-	g := &PromGauge{
+	g := &promGauge{
 		pg: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: namespace,
@@ -24,18 +24,13 @@ func NewGauge(namespace, subsystem, name string, tags []string, help string) Gau
 	return g
 }
 
-// PromGauge is TODO(remy):
-type PromGauge struct {
+// promGauge is TODO(remy):
+type promGauge struct {
 	pg   *prometheus.GaugeVec
 	once sync.Once
 }
 
-// Reset resets the counter to 0.
-func (g *PromGauge) Reset() {
-	g.pg.Reset()
-}
-
 // Set sets the gauge with the given value.
-func (g *PromGauge) Set(value float64, tags ...string) {
+func (g *promGauge) Set(value float64, tags ...string) {
 	g.pg.WithLabelValues(tags...).Set(value)
 }
