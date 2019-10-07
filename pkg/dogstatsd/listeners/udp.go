@@ -24,12 +24,12 @@ var (
 	udpBytes               = expvar.Int{}
 
 	tlmUDPPackets = telemetry.NewCounter(
-		"agent", "dogstatsd", "udp_packets",
+		"dogstatsd", "udp_packets",
 		[]string{"state"},
 		"Amount of packets processed",
 	)
 	tlmUDPBytes = telemetry.NewCounter(
-		"agent", "dogstatsd", "udp_bytes",
+		"dogstatsd", "udp_bytes",
 		nil,
 		"Amount of bytes processed",
 	)

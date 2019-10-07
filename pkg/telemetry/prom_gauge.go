@@ -8,7 +8,7 @@ import (
 
 // NewGauge creates a gauge telemetry Gauge.
 // TODO(remy): doc
-func NewGauge(namespace, subsystem, name string, tags []string, help string) Gauge {
+func NewGauge(subsystem, name string, tags []string, help string) Gauge {
 	g := &promGauge{
 		pg: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{

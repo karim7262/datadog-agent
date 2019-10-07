@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
@@ -22,6 +23,12 @@ var (
 	schedulerExpvars       *expvar.Map
 	schedulerQueuesCount   = expvar.Int{}
 	schedulerChecksEntered = expvar.Int{}
+
+	tlmChecksEntered = telemetry.NewCounter(
+		"checks", "entered",
+		[]string{"check_name"},
+		"How many checks entered the scheduler",
+	)
 )
 
 func init() {

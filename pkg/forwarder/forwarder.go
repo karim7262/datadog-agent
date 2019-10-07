@@ -33,7 +33,7 @@ var (
 	transactionsIntakeV1      = expvar.Int{}
 
 	tlm = telemetry.NewCounter(
-		"agent", "forwarder", "transactions",
+		"forwarder", "transactions",
 		[]string{"endpoint", "route"},
 		"Forwarder telemetry",
 	)

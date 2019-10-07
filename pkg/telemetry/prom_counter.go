@@ -8,7 +8,7 @@ import (
 
 // NewCounter creates a new telemetry Counter.
 // TODO(remy): documentation
-func NewCounter(namespace, subsystem, name string, tags []string, help string) Counter {
+func NewCounter(subsystem, name string, tags []string, help string) Counter {
 	c := &promCounter{
 		pc: prometheus.NewCounterVec(
 			prometheus.CounterOpts{

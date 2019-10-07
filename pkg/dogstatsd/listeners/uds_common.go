@@ -27,17 +27,17 @@ var (
 	udsBytes                 = expvar.Int{}
 
 	tlmUdsOriginDectionErrors = telemetry.NewCounter(
-		"agent", "dogstatsd", "uds_origin_detection_errors",
+		"dogstatsd", "uds_origin_detection_errors",
 		nil,
 		"Uds Origin detection errors amount",
 	)
 	tlmUdsPackets = telemetry.NewCounter(
-		"agent", "dogstatsd", "uds_packets",
+		"dogstatsd", "uds_packets",
 		[]string{"state"},
 		"Uds packets counter",
 	)
 	tlmUdsBytes = telemetry.NewCounter(
-		"agent", "dogstatsd", "uds_bytes",
+		"dogstatsd", "uds_bytes",
 		nil,
 		"Uds packets counter",
 	)

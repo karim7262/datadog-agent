@@ -39,17 +39,17 @@ var (
 	dogstatsdPacketsLastSec          = expvar.Int{}
 
 	tlmServiceChecks = telemetry.NewCounter(
-		"agent", "dogstatsd", "service_checks",
+		"dogstatsd", "service_checks",
 		[]string{"state"},
 		"Service check parsing count",
 	)
 	tlmEvents = telemetry.NewCounter(
-		"agent", "dogstatsd", "events",
+		"dogstatsd", "events",
 		[]string{"state"},
 		"Event parsing count",
 	)
 	tlmMetrics = telemetry.NewCounter(
-		"agent", "dogstatsd", "metrics",
+		"dogstatsd", "metrics",
 		[]string{"state"},
 		"Metric parsing count",
 	)
