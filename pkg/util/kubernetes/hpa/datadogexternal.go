@@ -154,6 +154,7 @@ func NewDatadogClient() (*datadog.Client, error) {
 
 	client := datadog.NewClient(apiKey, appKey)
 	client.HttpClient.Transport = httputils.CreateHTTPTransport()
+	client.ExtraHeader = map[string]string{"User-Agent":"Datadog-Cluster-Agent"}
 
 	return client, nil
 }

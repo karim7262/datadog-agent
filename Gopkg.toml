@@ -141,7 +141,7 @@
 
 [[constraint]]
   name = "gopkg.in/zorkian/go-datadog-api.v2"
-  version = "~v2.12"
+  revision = "39d6fc4c5678639adf0d6c41b89d79f956f0b718"
 
 [[constraint]]
   name = "github.com/aws/aws-sdk-go"
