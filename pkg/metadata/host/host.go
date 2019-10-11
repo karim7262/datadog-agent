@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/metadata/common"
 	"github.com/DataDog/datadog-agent/pkg/util"
 	"github.com/DataDog/datadog-agent/pkg/util/alibaba"
@@ -137,6 +138,7 @@ func getMeta() *Meta {
 		EC2Hostname:    ec2Hostname,
 		HostAliases:    getHostAliases(),
 		InstanceID:     instanceID,
+		AgentHostname:  config.Datadog.GetString("hostname"),
 	}
 
 	// Cache the metadata for use in other payload
