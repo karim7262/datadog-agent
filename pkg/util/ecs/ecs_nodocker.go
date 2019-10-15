@@ -35,6 +35,12 @@ func IsFargateInstance() bool {
 	return false
 }
 
+// HasFargateResourceTags returns whether the ECS introspection endpoint in
+// Fargate exposes resource tags.
+func HasFargateResourceTags() bool {
+	return false
+}
+
 // GetTaskMetadata extracts the metadata payload for the task the agent is in.
 func GetTaskMetadata() (TaskMetadata, error) {
 	var meta TaskMetadata

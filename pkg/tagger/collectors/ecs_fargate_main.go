@@ -29,6 +29,7 @@ type ECSFargateCollector struct {
 	lastExpire   time.Time
 	expireFreq   time.Duration
 	labelsAsTags map[string]string
+	retrieveTags bool
 }
 
 // Detect tries to connect to the ECS metadata API
@@ -41,6 +42,7 @@ func (c *ECSFargateCollector) Detect(out chan<- []*TagInfo) (CollectionMode, err
 		c.expireFreq = ecsFargateExpireFreq
 		c.expire, err = taggerutil.NewExpire(ecsFargateExpireFreq)
 		c.labelsAsTags = retrieveMappingFromConfig("docker_labels_as_tags")
+		c.retrieveTags = ecsutil.HasFargateResourceTags()
 
 		if err != nil {
 			return PullCollection, fmt.Errorf("Failed to instantiate the container expiring process")
@@ -53,7 +55,7 @@ func (c *ECSFargateCollector) Detect(out chan<- []*TagInfo) (CollectionMode, err
 
 // Pull looks for new containers and computes deletions
 func (c *ECSFargateCollector) Pull() error {
-	meta, err := ecsutil.GetTaskMetadata()
+	meta, err := ecsutil.GetTaskMetadata(c.retrieveTags)
 	if err != nil {
 		return err
 	}
@@ -85,7 +87,7 @@ func (c *ECSFargateCollector) Pull() error {
 // Fetch parses tags for a container on cache miss. We avoid races with Pull,
 // we re-parse the whole list, but don't send updates on other containers.
 func (c *ECSFargateCollector) Fetch(container string) ([]string, []string, []string, error) {
-	meta, err := ecsutil.GetTaskMetadata()
+	meta, err := ecsutil.GetTaskMetadata(c.retrieveTags)
 	if err != nil {
 		return []string{}, []string{}, []string{}, err
 	}

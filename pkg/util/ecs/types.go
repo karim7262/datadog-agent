@@ -9,14 +9,16 @@ import "github.com/DataDog/datadog-agent/pkg/util/retry"
 
 // TaskMetadata is the info returned by the ECS task metadata API
 type TaskMetadata struct {
-	ClusterName   string             `json:"Cluster"`
-	Containers    []Container        `json:"Containers"`
-	KnownStatus   string             `json:"KnownStatus"`
-	TaskARN       string             `json:"TaskARN"`
-	Family        string             `json:"Family"`
-	Version       string             `json:"Revision"`
-	Limits        map[string]float64 `json:"Limits"`
-	DesiredStatus string             `json:"DesiredStatus"`
+	ClusterName           string             `json:"Cluster"`
+	Containers            []Container        `json:"Containers"`
+	KnownStatus           string             `json:"KnownStatus"`
+	TaskARN               string             `json:"TaskARN"`
+	Family                string             `json:"Family"`
+	Version               string             `json:"Revision"`
+	Limits                map[string]float64 `json:"Limits"`
+	DesiredStatus         string             `json:"DesiredStatus"`
+	ContainerInstanceTags map[string]string  `json:"ContainerInstanceTags,omitempty"`
+	TaskTags              map[string]string  `json:"TaskTags,omitempty"`
 }
 
 // Container is the representation of a container as exposed by the ECS metadata API

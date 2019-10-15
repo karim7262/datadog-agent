@@ -15,6 +15,7 @@ import (
 func init() {
 	diagnosis.Register("ECS Metadata availability", diagnoseECS)
 	diagnosis.Register("ECS Fargate Metadata availability", diagnoseFargate)
+	diagnosis.Register("ECS Fargate Metadata with tags availability", diagnoseFargateTags)
 }
 
 // diagnose the ECS metadata API availability
@@ -28,7 +29,16 @@ func diagnoseECS() error {
 
 // diagnose the ECS Fargate metadata API availability
 func diagnoseFargate() error {
-	_, err := GetTaskMetadata()
+	_, err := GetTaskMetadata(false)
+	if err != nil {
+		log.Error(err)
+	}
+	return err
+}
+
+// diagnose the ECS Fargate metadata with tags API availability
+func diagnoseFargateTags() error {
+	_, err := GetTaskMetadata(true)
 	if err != nil {
 		log.Error(err)
 	}

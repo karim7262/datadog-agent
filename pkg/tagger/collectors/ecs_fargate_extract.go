@@ -52,6 +52,10 @@ func (c *ECSFargateCollector) parseMetadata(meta ecs.TaskMetadata, parseAll bool
 				tags.AddLow("region", region)
 			}
 
+			// aws resource tags
+			addResourceTags(tags, meta.ContainerInstanceTags)
+			addResourceTags(tags, meta.TaskTags)
+
 			// task
 			tags.AddLow("task_family", meta.Family)
 			tags.AddLow("task_version", meta.Version)
@@ -95,6 +99,12 @@ func (c *ECSFargateCollector) parseMetadata(meta ecs.TaskMetadata, parseAll bool
 	}
 
 	return output, nil
+}
+
+func addResourceTags(t *utils.TagList, m map[string]string) {
+	for k, v := range m {
+		t.AddLow(k, v)
+	}
 }
 
 // parseECSClusterName allows to handle user-friendly values and arn values

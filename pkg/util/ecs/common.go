@@ -20,19 +20,23 @@ import (
 )
 
 const (
-	metadataURL string = "http://169.254.170.2/v2/metadata"
-	statsURL    string = "http://169.254.170.2/v2/stats"
-	timeout            = 500 * time.Millisecond
+	metadataURL         string = "http://169.254.170.2/v2/metadata"
+	metadataURLWithTags string = metadataURL + "WithTags"
+	statsURL            string = "http://169.254.170.2/v2/stats"
+	timeout                    = 500 * time.Millisecond
 )
 
 // GetTaskMetadata extracts the metadata payload for the task the agent is in.
-func GetTaskMetadata() (TaskMetadata, error) {
+func GetTaskMetadata(withTags bool) (TaskMetadata, error) {
+	if withTags {
+		return getTaskMetadataWithURL(metadataURLWithTags)
+	}
 	return getTaskMetadataWithURL(metadataURL)
 }
 
 // getECSContainers returns all containers exposed by the ECS API as plain ECSContainers
 func getECSContainers() ([]Container, error) {
-	meta, err := GetTaskMetadata()
+	meta, err := GetTaskMetadata(false)
 	if err != nil || len(meta.Containers) == 0 {
 		log.Errorf("unable to retrieve task metadata")
 		return nil, err

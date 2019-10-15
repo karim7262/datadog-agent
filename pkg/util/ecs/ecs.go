@@ -29,7 +29,8 @@ const (
 	DefaultAgentPort = 51678
 	// Cache the fact we're running on ECS Fargate
 	isFargateInstanceCacheKey = "IsFargateInstanceCacheKey"
-
+	// Cache the fact resources tags are exposed on ECS Fargate
+	hasFargateResourceTagsCacheKey = "HasFargateResourceTagsCacheKey"
 	// CloudProviderName contains the inventory name of for ECS
 	CloudProviderName = "AWS"
 )
@@ -116,16 +117,17 @@ func (u *Util) init() error {
 
 // IsFargateInstance returns whether the agent is in an ECS fargate task.
 // It detects it by getting and unmarshalling the metadata API response.
-func IsFargateInstance() bool {
-	var ok, isFargate bool
+func IsFargateInstance() (isFargate bool) {
 	if cached, hit := cache.Cache.Get(isFargateInstanceCacheKey); hit {
-		isFargate, ok = cached.(bool)
-		if !ok {
-			log.Errorf("Invalid fargate instance cache format, forcing a cache miss")
-		} else {
-			return isFargate
+		if v, ok := cached.(bool); ok {
+			return v
 		}
+		log.Errorf("Invalid fargate instance cache format, forcing a cache miss")
 	}
+
+	defer func() {
+		setCacheBool(isFargateInstanceCacheKey, isFargate, 5*time.Minute, cache.NoExpiration)
+	}()
 
 	// This envvar is set to AWS_ECS_EC2 on classic EC2 instances
 	// Versions 1.0.0 to 1.3.0 (latest at the time) of the Fargate
@@ -133,37 +135,54 @@ func IsFargateInstance() bool {
 	// If Fargate detection were to fail, running a container with
 	// `env` as cmd will allow to check if it is still present.
 	if os.Getenv("AWS_EXECUTION_ENV") != "AWS_ECS_FARGATE" {
-		cacheIsFargateInstance(false)
 		return false
 	}
 
 	client := &http.Client{Timeout: timeout}
 	r, err := client.Get(metadataURL)
-	if err != nil {
-		cacheIsFargateInstance(false)
-		return false
-	}
-	if r.StatusCode != http.StatusOK {
-		cacheIsFargateInstance(false)
+	if err != nil || r.StatusCode != http.StatusOK {
 		return false
 	}
 	var resp TaskMetadata
 	if err := json.NewDecoder(r.Body).Decode(&resp); err != nil {
 		log.Debugf("Error decoding response: %s", err)
-		cacheIsFargateInstance(false)
 		return false
 	}
 
-	cacheIsFargateInstance(true)
 	return true
 }
 
-func cacheIsFargateInstance(isFargate bool) {
-	cacheDuration := 5 * time.Minute
-	if isFargate {
-		cacheDuration = cache.NoExpiration
+// HasFargateResourceTags returns whether the ECS introspection endpoint in
+// Fargate exposes resource tags.
+func HasFargateResourceTags() bool {
+	var hasResourceTags, ok bool
+
+	if cached, hit := cache.Cache.Get(hasFargateResourceTagsCacheKey); hit {
+		if hasResourceTags, ok = cached.(bool); ok {
+			return hasResourceTags
+		}
+		log.Errorf("Invalid fargate instance cache format, forcing a cache miss")
 	}
-	cache.Cache.Set(isFargateInstanceCacheKey, isFargate, cacheDuration)
+
+	client := &http.Client{Timeout: timeout}
+	r, err := client.Get(metadataURLWithTags)
+
+	hasResourceTags = (err == nil && r.StatusCode == http.StatusOK)
+	setCacheBool(hasFargateResourceTagsCacheKey, hasResourceTags, 5*time.Minute, cache.NoExpiration)
+	return hasResourceTags
+}
+
+func setCacheBool(k string, v bool, durationTrue, durationFalse time.Duration) {
+	var cacheDuration time.Duration
+
+	if v == true {
+		cacheDuration = durationTrue
+	}
+	if v == false {
+		cacheDuration = durationFalse
+	}
+
+	cache.Cache.Set(k, v, cacheDuration)
 }
 
 // IsAgentNotDetected indicates if an error from GetTasks was about no
