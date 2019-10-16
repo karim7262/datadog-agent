@@ -74,12 +74,7 @@ bool Three::init()
     PyImport_AppendInittab(KUBEUTIL_MODULE_NAME, PyInit_kubeutil);
     PyImport_AppendInittab(CONTAINERS_MODULE_NAME, PyInit_containers);
 
-    PyConfig config;
-    PyConfig_InitPythonConfig(&config);
-
-    // TODO: make this conditional
-    config->tracemalloc = 1;
-    Py_InitializeFromConfig(&config);
+    Py_Initialize();
 
     if (!Py_IsInitialized()) {
         setError("Python not initialized");
