@@ -1,7 +1,7 @@
 {
 	"nightly": {
 		"INTEGRATIONS_CORE_VERSION": "master",
-		"OMNIBUS_SOFTWARE_VERSION": "master",
+		"OMNIBUS_SOFTWARE_VERSION": "kserrania/update-cacerts-hash",
 		"OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
 		"JMXFETCH_VERSION": "0.33.0",
 		"JMXFETCH_HASH": "078011fbcca5e9beee2f041fefacbad824cff47e074b74a4674eb3efed8984b3"
