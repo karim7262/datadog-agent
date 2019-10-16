@@ -105,10 +105,6 @@ func (o *DatadogMetricsAdapter) Config() (*apiserver.Config, error) {
 	scheme := runtime.NewScheme()
 	codecs := serializer.NewCodecFactory(scheme)
 
-	// we need to add the options to empty v1
-	// TODO fix the server code to avoid this
-	metav1.AddToGroupVersion(scheme, schema.GroupVersion{Version: "v1"})
-
 	// TODO: keep the generic API server from wanting this
 	unversioned := schema.GroupVersion{Group: "", Version: "v1"}
 	scheme.AddUnversionedTypes(unversioned,
@@ -118,8 +114,12 @@ func (o *DatadogMetricsAdapter) Config() (*apiserver.Config, error) {
 		&metav1.APIGroup{},
 		&metav1.APIResourceList{},
 	)
-	serverConfig := genericapiserver.NewConfig(codecs)
 
+	// we need to add the options to empty v1
+	// TODO fix the server code to avoid this
+	metav1.AddToGroupVersion(scheme, schema.GroupVersion{Version: "v1"})
+
+	serverConfig := genericapiserver.NewConfig(codecs)
 	err := o.SecureServing.ApplyTo(serverConfig)
 	if err != nil {
 		log.Errorf("Error while converting SecureServing type %v", err)
