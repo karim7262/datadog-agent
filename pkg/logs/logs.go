@@ -8,8 +8,9 @@ package logs
 import (
 	"errors"
 	"fmt"
-	"github.com/DataDog/datadog-agent/pkg/logs/metrics"
 	"sync/atomic"
+
+	"github.com/DataDog/datadog-agent/pkg/logs/metrics"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
@@ -87,15 +88,21 @@ func Start() error {
 func Stop() {
 	log.Info("Stopping logs-agent")
 	if IsAgentRunning() {
+		fmt.Println("Stop(): Agent's running")
 		if agent != nil {
+			fmt.Println("Stop(): agent != nil")
 			agent.Stop()
+			fmt.Println("Stop(): agent.Stop() called")
 			agent = nil
 		}
 		if adScheduler != nil {
+			fmt.Println("Stop(): adScheduler != nil")
 			adScheduler.Stop()
+			fmt.Println("Stop(): adScheduler.Stop() called")
 			adScheduler = nil
 		}
 		status.Clear()
+		fmt.Println("Stop(): will storeInt32")
 		atomic.StoreInt32(&isRunning, 0)
 	}
 	log.Info("logs-agent stopped")

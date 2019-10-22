@@ -161,6 +161,7 @@ func (t *Tailer) readForever() {
 		select {
 		case <-t.stop:
 			// stop reading data from file
+			fmt.Println("Tailer.readForever: received stop value.")
 			return
 		default:
 			// keep reading data from file
@@ -191,12 +192,18 @@ func (t *Tailer) StartFromBeginning() error {
 
 // Stop stops the tailer and returns only when the decoder is flushed
 func (t *Tailer) Stop() {
+	fmt.Println("Tailer.Stop(): in")
 	atomic.StoreInt32(&t.didFileRotate, 0)
+	fmt.Println("Tailer.Stop(): Value stored")
 	t.stop <- struct{}{}
+	fmt.Println("Tailer.Stop(): stop signal sent")
 	t.tagProvider.Stop()
+	fmt.Println("Tailer.Stop(): tagProvider.Stop() called")
 	t.source.RemoveInput(t.path)
+	fmt.Println("Tailer.Stop(): input removed.")
 	// wait for the decoder to be flushed
 	<-t.done
+	fmt.Println("Tailer.Stop(): out")
 }
 
 // StopAfterFileRotation prepares the tailer to stop after a timeout
