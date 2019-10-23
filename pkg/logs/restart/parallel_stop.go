@@ -7,6 +7,8 @@ package restart
 
 import (
 	"sync"
+
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // parallelStopper implements the logic to stop different components from a data pipeline in parallel
@@ -29,12 +31,17 @@ func (g *parallelStopper) Add(components ...Stoppable) {
 // Stop stops all components in parallel and returns when they are all stopped
 func (g *parallelStopper) Stop() {
 	wg := &sync.WaitGroup{}
+	log.Info("parallelStopper in")
+	log.Info("parellelStopper", len(g.components))
 	for _, component := range g.components {
 		wg.Add(1)
 		go func(s Stoppable) {
+			log.Info("parallelStopper stop in")
 			s.Stop()
 			wg.Done()
+			log.Info("parallelStopper stop out")
 		}(component)
 	}
 	wg.Wait()
+	log.Info("parallelStopper out")
 }

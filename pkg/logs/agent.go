@@ -84,16 +84,25 @@ func (a *Agent) Start() {
 // Stop stops all the elements of the data pipeline
 // in the right order to prevent data loss
 func (a *Agent) Stop() {
+	log.Info("LogsAgent.Stop(): in")
+	defer func() { log.Info("LogsAgent.Stop(): out") }()
+
 	inputs := restart.NewParallelStopper()
+	log.Info("LogsAgent.Stop(): restart.NewParallelStopper() called")
 	for _, input := range a.inputs {
 		inputs.Add(input)
 	}
+
+	log.Info("LogsAgent.Stop(): after adding inputs")
+
 	stopper := restart.NewSerialStopper(
 		inputs,
 		a.pipelineProvider,
 		a.auditor,
 		a.destinationsCtx,
 	)
+
+	log.Info("LogsAgent.Stop(): new serial stopper created")
 
 	// This will try to stop everything in order, including the potentially blocking
 	// parts like the sender. After StopTimeout it will just stop the last part of the
@@ -102,8 +111,11 @@ func (a *Agent) Stop() {
 	// TODO: Add this feature in the stopper.
 	c := make(chan struct{})
 	go func() {
+		log.Info("LogsAgent.Stop(): stopper in")
 		stopper.Stop()
+		log.Info("LogsAgent.Stop(): stopper stopped")
 		close(c)
+		log.Info("LogsAgent.Stop(): stopper out")
 	}()
 	timeout := time.Duration(coreConfig.Datadog.GetInt("logs_config.stop_grace_period")) * time.Second
 	select {
@@ -112,8 +124,11 @@ func (a *Agent) Stop() {
 		log.Info("Timed out when stopping logs-agent, forcing it to stop now")
 		// We force all destinations to read/flush all the messages they get without
 		// trying to write to the network.
+		log.Info("LogsAgent.Stop(): destination Stop")
 		a.destinationsCtx.Stop()
 		// Wait again for the stopper to complete.
+		log.Info("LogsAgent.Stop(): before <-c")
 		<-c
+		log.Info("LogsAgent.Stop(): after <-c")
 	}
 }
