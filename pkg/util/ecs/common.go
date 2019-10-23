@@ -17,15 +17,16 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/containers/metrics"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+
+	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
 )
 
 const (
 	timeout = 500 * time.Millisecond
 )
 
-// getECSContainers returns all containers exposed by the ECS API as plain ECSContainers
-func getECSContainers() ([]Container, error) {
-	meta, err := GetTaskMetadata(false)
+func getContainersInTaskV2() ([]v2.Container, error) {
+	meta, err := MetaV2().GetTask()
 	if err != nil || len(meta.Containers) == 0 {
 		log.Errorf("unable to retrieve task metadata")
 		return nil, err
@@ -37,7 +38,7 @@ func getECSContainers() ([]Container, error) {
 func ListContainers() ([]*containers.Container, error) {
 	var cList []*containers.Container
 
-	ecsContainers, err := getECSContainers()
+	ecsContainers, err := getContainersInTaskV2()
 	if err != nil {
 		log.Error("unable to get the container list from ecs")
 		return cList, err

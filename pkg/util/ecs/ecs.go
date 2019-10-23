@@ -19,6 +19,7 @@ import (
 
 	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
 	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
+	v3 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v3"
 )
 
 const (
@@ -37,11 +38,13 @@ var globalUtil util
 type util struct {
 	// used to setup the ECSUtil
 	initRetryV1 retry.Retrier
+	initRetryV3 retry.Retrier
 	initV1      sync.Once
 	initV2      sync.Once
 	initV3      sync.Once
 	v1          *v1.Client
 	v2          *v2.Client
+	v3          *v3.Client
 }
 
 // IsRunningOn returns true if the agent is running on ECS/Fargate
@@ -52,7 +55,7 @@ func IsRunningOn() bool {
 func MetaV1() (*v1.Client, error) {
 	globalUtil.initV1.Do(func() {
 		globalUtil.initRetryV1.SetupRetrier(&retry.Config{
-			Name:          "ecsutil",
+			Name:          "ecsmetav1",
 			AttemptMethod: initV1,
 			Strategy:      retry.RetryCount,
 			RetryCount:    10,
@@ -64,7 +67,6 @@ func MetaV1() (*v1.Client, error) {
 		return nil, err
 	}
 	return globalUtil.v1, nil
-
 }
 
 func MetaV2() *v2.Client {
@@ -74,10 +76,25 @@ func MetaV2() *v2.Client {
 	return globalUtil.v2
 }
 
-func MetaV3() {
-	globalUtil.initV3.Do(func() {
+func MetaV3(containerID string) (*v3.Client, error) {
+	return v3.NewClientForContainer(containerID)
+}
 
+func MetaV3InCurrentTask() (*v3.Client, error) {
+	globalUtil.initV3.Do(func() {
+		globalUtil.initRetryV3.SetupRetrier(&retry.Config{
+			Name:          "ecsmetav3",
+			AttemptMethod: initV3,
+			Strategy:      retry.RetryCount,
+			RetryCount:    10,
+			RetryDelay:    30 * time.Second,
+		})
 	})
+	if err := globalUtil.initRetryV3.TriggerRetry(); err != nil {
+		log.Debugf("ECS init error: %s", err)
+		return nil, err
+	}
+	return globalUtil.v3, nil
 }
 
 // IsECSInstance returns whether the agent is running in ECS.
@@ -123,18 +140,13 @@ func HasFargateResourceTags() bool {
 // resource tags.
 func HasECSResourceTags() bool {
 	return cacheQueryBool(hasECSResourceTagsCacheKey, func() (bool, time.Duration) {
-		_, err := MetaV3().GetTaskWithTags()
+		client, err := MetaV3InCurrentTask()
+		if err != nil {
+			return newBoolEntry(false)
+		}
+		_, err = client.GetTaskWithTags()
 		return newBoolEntry(err == nil)
 	})
-}
-
-func initV1() error {
-	client, err := v1.NewAutodetectedClient()
-	if err != nil {
-		return err
-	}
-	globalUtil.v1 = client
-	return nil
 }
 
 func cacheQueryBool(cacheKey string, cacheMissEvalFunc func() (bool, time.Duration)) bool {
@@ -149,6 +161,24 @@ func cacheQueryBool(cacheKey string, cacheMissEvalFunc func() (bool, time.Durati
 	cache.Cache.Set(cacheKey, newValue, ttl)
 
 	return newValue
+}
+
+func initV1() error {
+	client, err := v1.NewAutodetectedClient()
+	if err != nil {
+		return err
+	}
+	globalUtil.v1 = client
+	return nil
+}
+
+func initV3() error {
+	client, err := v3.NewClientForCurrentTask()
+	if err != nil {
+		return err
+	}
+	globalUtil.v3 = client
+	return nil
 }
 
 func newBoolEntry(v bool) (bool, time.Duration) {

@@ -32,8 +32,11 @@ type Client struct {
 }
 
 func NewClient(agentURL string) *Client {
+	if !strings.hasSuffix(agentURL, "/") {
+		agentURL += "/"
+	}
 	return &Client{
-		agentURL: agentURL
+		agentURL: agentURL,
 	}
 }
 

@@ -14,22 +14,34 @@ import (
 
 func init() {
 	diagnosis.Register("ECS Metadata availability", diagnoseECS)
+	diagnosis.Register("ECS Metadata with tags availability", diagnoseECSTags)
 	diagnosis.Register("ECS Fargate Metadata availability", diagnoseFargate)
 	diagnosis.Register("ECS Fargate Metadata with tags availability", diagnoseFargateTags)
 }
 
 // diagnose the ECS metadata API availability
 func diagnoseECS() error {
-	_, err := GetUtil()
+	client, err := MetaV1()
 	if err != nil {
 		log.Error(err)
 	}
+	_, err = client.GetTasks()
+	return err
+}
+
+// diagnose the ECS metadata with tags API availability
+func diagnoseECSTags() error {
+	client, err := MetaV3InCurrentTask()
+	if err != nil {
+		log.Error(err)
+	}
+	_, err = client.GetTaskWithTags()
 	return err
 }
 
 // diagnose the ECS Fargate metadata API availability
 func diagnoseFargate() error {
-	_, err := GetTaskMetadata(false)
+	_, err := MetaV2().GetTask()
 	if err != nil {
 		log.Error(err)
 	}
@@ -38,7 +50,7 @@ func diagnoseFargate() error {
 
 // diagnose the ECS Fargate metadata with tags API availability
 func diagnoseFargateTags() error {
-	_, err := GetTaskMetadata(true)
+	_, err := MetaV2().GetTaskWithTags()
 	if err != nil {
 		log.Error(err)
 	}

@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -32,21 +32,28 @@ type Client struct {
 }
 
 func NewClient(agentURL string) *Client {
+	if !strings.HasSuffix(agentURL, "/") {
+		agentURL += "/"
+	}
 	return &Client{
 		agentURL: agentURL,
 	}
 }
 
 func NewClientForCurrentTask() (*Client, error) {
-	agentURL, found := os.LookupEnv("ECS_CONTAINER_METADATA_URI")
-	if !found {
-		return nil, fmt.Errorf("Could not initialize client: missing metadata URI")
+	agentURL, err := getAgentURLFromEnv()
+	if err != nil {
+		return nil, err
 	}
 	return NewClient(agentURL), nil
 }
 
 func NewClientForContainer(id string) (*Client, error) {
-
+	agentURL, err := getAgentURLFromDocker(id)
+	if err != nil {
+		return nil, err
+	}
+	return NewClient(agentURL), nil
 }
 
 func (c *Client) GetTask() (*Task, error) {

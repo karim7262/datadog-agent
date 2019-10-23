@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -31,6 +32,9 @@ type Client struct {
 }
 
 func NewClient(agentURL string) *Client {
+	if !strings.HasSuffix(agentURL, "/") {
+		agentURL += "/"
+	}
 	return &Client{
 		agentURL: agentURL,
 	}

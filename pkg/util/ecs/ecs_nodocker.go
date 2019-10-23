@@ -7,7 +7,13 @@
 
 package ecs
 
-import "github.com/DataDog/datadog-agent/pkg/util/docker"
+import (
+	"github.com/DataDog/datadog-agent/pkg/util/docker"
+
+	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
+	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
+	v3 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v3"
+)
 
 const (
 	// CloudProviderName contains the inventory name of for ECS
@@ -19,8 +25,15 @@ func IsRunningOn() bool {
 	return false
 }
 
-// GetUtil returns an ECS util
-func GetUtil() (*Util, error) {
+func MetaV1() (*v1.Client, error) {
+	return nil, docker.ErrDockerNotCompiled
+}
+
+func MetaV2() *v2.Client {
+	return nil
+}
+
+func MetaV3() (*v3.Client, error) {
 	return nil, docker.ErrDockerNotCompiled
 }
 
@@ -41,8 +54,14 @@ func HasFargateResourceTags() bool {
 	return false
 }
 
-// GetTaskMetadata extracts the metadata payload for the task the agent is in.
-func GetTaskMetadata() (TaskMetadata, error) {
-	var meta TaskMetadata
-	return meta, nil
+// HasECSResourceTags returns whether the ECS metadata endpoint in exposes
+// resource tags.
+func HasECSResourceTags() bool {
+	return false
 }
+
+// GetTaskMetadata extracts the metadata payload for the task the agent is in.
+//func GetTaskMetadata() (TaskMetadata, error) {
+//	var meta TaskMetadata
+//	return meta, nil
+//}
