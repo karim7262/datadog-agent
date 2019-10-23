@@ -88,21 +88,21 @@ func Start() error {
 func Stop() {
 	log.Info("Stopping logs-agent")
 	if IsAgentRunning() {
-		fmt.Println("Stop(): Agent's running")
+		log.Info("Stop(): Agent's running")
 		if agent != nil {
-			fmt.Println("Stop(): agent != nil")
+			log.Info("Stop(): agent != nil")
 			agent.Stop()
-			fmt.Println("Stop(): agent.Stop() called")
+			log.Info("Stop(): agent.Stop() called")
 			agent = nil
 		}
 		if adScheduler != nil {
-			fmt.Println("Stop(): adScheduler != nil")
+			log.Info("Stop(): adScheduler != nil")
 			adScheduler.Stop()
-			fmt.Println("Stop(): adScheduler.Stop() called")
+			log.Info("Stop(): adScheduler.Stop() called")
 			adScheduler = nil
 		}
 		status.Clear()
-		fmt.Println("Stop(): will storeInt32")
+		log.Info("Stop(): will storeInt32")
 		atomic.StoreInt32(&isRunning, 0)
 	}
 	log.Info("logs-agent stopped")
