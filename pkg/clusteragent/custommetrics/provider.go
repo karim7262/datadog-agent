@@ -140,12 +140,12 @@ func (p *datadogProvider) externalMetricsSetter(ctx context.Context) {
 }
 
 // GetMetricByName - Not implemented
-func (p *datadogProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo) (*custom_metrics.MetricValue, error) {
+func (p *datadogProvider) GetMetricByName(name types.NamespacedName, info provider.CustomMetricInfo, labels labels.Selector) (*custom_metrics.MetricValue, error) {
 	return nil, fmt.Errorf("not Implemented - GetMetricByName")
 }
 
 // GetMetricBySelector - Not implemented
-func (p *datadogProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo) (*custom_metrics.MetricValueList, error) {
+func (p *datadogProvider) GetMetricBySelector(namespace string, selector labels.Selector, info provider.CustomMetricInfo, label labels.Selector) (*custom_metrics.MetricValueList, error) {
 	return nil, fmt.Errorf("not Implemented - GetMetricBySelector")
 }
 
