@@ -29,17 +29,17 @@ type ECSCollector struct {
 	expire      *taggerutil.Expire
 	lastExpire  time.Time
 	expireFreq  time.Duration
-	ecsUtil     *ecs.Util
+	metaV1 *v1.Client
 	clusterName string
 }
 
 // Detect tries to connect to the ECS agent
 func (c *ECSCollector) Detect(out chan<- []*TagInfo) (CollectionMode, error) {
-	ecsUtil, err := ecs.GetUtil()
+	metaV1, err := ecs.MetaV1()
 	if err != nil {
 		return NoCollection, err
 	}
-	c.ecsUtil = ecsUtil
+	c.metaV1 = metaV1
 	c.infoOut = out
 	c.lastExpire = time.Now()
 	c.expireFreq = ecsExpireFreq
@@ -49,7 +49,7 @@ func (c *ECSCollector) Detect(out chan<- []*TagInfo) (CollectionMode, error) {
 		return NoCollection, err
 	}
 
-	c.clusterName, err = ecsUtil.GetClusterName()
+	c.clusterName, err = c.metaV1.GetClusterName()
 	if err != nil {
 		log.Warnf("Cannot determine ECS cluster name: %s", err)
 	}
@@ -63,11 +63,11 @@ func (c *ECSCollector) Fetch(entity string) ([]string, []string, []string, error
 		return nil, nil, nil, nil
 	}
 
-	tasks_list, err := c.ecsUtil.GetTasks()
+	tasks, err := c.metaV1.GetTasks()
 	if err != nil {
 		return []string{}, []string{}, []string{}, err
 	}
-	updates, err := c.parseTasks(tasks_list, cID)
+	updates, err := c.parseTasks(tasks, cID)
 	if err != nil {
 		return []string{}, []string{}, []string{}, err
 	}

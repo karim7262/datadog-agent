@@ -20,19 +20,8 @@ import (
 )
 
 const (
-	metadataURL         string = "http://169.254.170.2/v2/metadata"
-	metadataURLWithTags string = metadataURL + "WithTags"
-	statsURL            string = "http://169.254.170.2/v2/stats"
-	timeout                    = 500 * time.Millisecond
+	timeout = 500 * time.Millisecond
 )
-
-// GetTaskMetadata extracts the metadata payload for the task the agent is in.
-func GetTaskMetadata(withTags bool) (TaskMetadata, error) {
-	if withTags {
-		return getTaskMetadataWithURL(metadataURLWithTags)
-	}
-	return getTaskMetadataWithURL(metadataURL)
-}
 
 // getECSContainers returns all containers exposed by the ECS API as plain ECSContainers
 func getECSContainers() ([]Container, error) {
@@ -166,27 +155,6 @@ func convertECSStats(stats ContainerStats) (metrics.CgroupTimesStat, metrics.Cgr
 		WriteBytes: stats.IO.WriteBytes,
 	}
 	return cpu, mem, io, stats.Memory.Details.Limit
-}
-
-// getTaskMetadataWithURL implements the logic of extracting metadata payload for the task.
-// Separated from GetTaskMetadata so the logic could be tested.
-func getTaskMetadataWithURL(url string) (TaskMetadata, error) {
-	var meta TaskMetadata
-	client := http.Client{
-		Timeout: timeout,
-	}
-	resp, err := client.Get(url)
-	if err != nil {
-		return meta, err
-	}
-	defer resp.Body.Close()
-
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&meta)
-	if err != nil {
-		log.Errorf("Decoding task metadata failed - %s", err)
-	}
-	return meta, err
 }
 
 // parseContainerNetworkAddresses converts ECS container ports

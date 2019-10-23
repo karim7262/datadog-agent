@@ -8,307 +8,152 @@
 package ecs
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
-	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/util/cache"
-	"github.com/DataDog/datadog-agent/pkg/util/docker"
 	"github.com/DataDog/datadog-agent/pkg/util/retry"
+
+	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
+	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
 )
 
 const (
-	// DefaultAgentPort is the default port used by the ECS Agent.
-	DefaultAgentPort = 51678
 	// Cache the fact we're running on ECS Fargate
 	isFargateInstanceCacheKey = "IsFargateInstanceCacheKey"
 	// Cache the fact resources tags are exposed on ECS Fargate
 	hasFargateResourceTagsCacheKey = "HasFargateResourceTagsCacheKey"
+	// Cache the fact resources tags are exposed on ECS over EC2
+	hasECSResourceTagsCacheKey = "HasECSResourceTagsCacheKey"
 	// CloudProviderName contains the inventory name of for ECS
 	CloudProviderName = "AWS"
 )
 
-type (
-	// CommandsV1Response is the format of a response from the ECS-agent on the root.
-	CommandsV1Response struct {
-		AvailableCommands []string `json:"AvailableCommands"`
-	}
+var globalUtil util
 
-	// TasksV1Response is the format of a response from the ECS tasks API.
-	// See http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-introspection.html
-	TasksV1Response struct {
-		Tasks []TaskV1 `json:"tasks"`
-	}
-
-	// MetadataV1Response is the format of a response from the ECS metadata API.
-	// See http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-introspection.html
-	MetadataV1Response struct {
-		Cluster string `json:"Cluster"`
-	}
-
-	// TaskV1 is the format of a Task in the ECS tasks API.
-	TaskV1 struct {
-		Arn           string        `json:"Arn"`
-		DesiredStatus string        `json:"DesiredStatus"`
-		KnownStatus   string        `json:"KnownStatus"`
-		Family        string        `json:"Family"`
-		Version       string        `json:"Version"`
-		Containers    []ContainerV1 `json:"containers"`
-	}
-
-	// ContainerV1 is the format of a Container in the ECS tasks API.
-	ContainerV1 struct {
-		DockerID   string `json:"DockerId"`
-		DockerName string `json:"DockerName"`
-		Name       string `json:"Name"`
-	}
-)
-
-var globalUtil *Util
-var initOnce sync.Once
+type util struct {
+	// used to setup the ECSUtil
+	initRetryV1 retry.Retrier
+	initV1      sync.Once
+	initV2      sync.Once
+	initV3      sync.Once
+	v1          *v1.Client
+	v2          *v2.Client
+}
 
 // IsRunningOn returns true if the agent is running on ECS/Fargate
 func IsRunningOn() bool {
 	return IsECSInstance() || IsFargateInstance()
 }
 
-// GetUtil returns a ready to use ecs Util. It is backed by a shared singleton.
-func GetUtil() (*Util, error) {
-	initOnce.Do(func() {
-		globalUtil = &Util{}
-		globalUtil.initRetry.SetupRetrier(&retry.Config{
+func MetaV1() (*v1.Client, error) {
+	globalUtil.initV1.Do(func() {
+		globalUtil.initRetryV1.SetupRetrier(&retry.Config{
 			Name:          "ecsutil",
-			AttemptMethod: globalUtil.init,
+			AttemptMethod: initV1,
 			Strategy:      retry.RetryCount,
 			RetryCount:    10,
 			RetryDelay:    30 * time.Second,
 		})
 	})
-	if err := globalUtil.initRetry.TriggerRetry(); err != nil {
+	if err := globalUtil.initRetryV1.TriggerRetry(); err != nil {
 		log.Debugf("ECS init error: %s", err)
 		return nil, err
 	}
-	return globalUtil, nil
+	return globalUtil.v1, nil
+
+}
+
+func MetaV2() *v2.Client {
+	globalUtil.initV2.Do(func() {
+		globalUtil.v2 = v2.NewDefaultClient()
+	})
+	return globalUtil.v2
+}
+
+func MetaV3() {
+	globalUtil.initV3.Do(func() {
+
+	})
 }
 
 // IsECSInstance returns whether the agent is running in ECS.
 func IsECSInstance() bool {
-	_, err := GetUtil()
+	_, err := MetaV1()
 	return err == nil
-}
-
-// init makes an empty Util bootstrap itself.
-func (u *Util) init() error {
-	url, err := detectAgentURL()
-	if err != nil {
-		return err
-	}
-	u.agentURL = url
-
-	return nil
 }
 
 // IsFargateInstance returns whether the agent is in an ECS fargate task.
 // It detects it by getting and unmarshalling the metadata API response.
-func IsFargateInstance() (isFargate bool) {
-	if cached, hit := cache.Cache.Get(isFargateInstanceCacheKey); hit {
-		if v, ok := cached.(bool); ok {
+func IsFargateInstance() bool {
+	return cacheQueryBool(isFargateInstanceCacheKey, func() (bool, time.Duration) {
+
+		// This envvar is set to AWS_ECS_EC2 on classic EC2 instances
+		// Versions 1.0.0 to 1.3.0 (latest at the time) of the Fargate
+		// platform set this envvar.
+		// If Fargate detection were to fail, running a container with
+		// `env` as cmd will allow to check if it is still present.
+		if os.Getenv("AWS_EXECUTION_ENV") != "AWS_ECS_FARGATE" {
+			return newBoolEntry(false)
+		}
+
+		_, err := MetaV2().GetTask()
+		if err != nil {
+			log.Debug(err)
+			return newBoolEntry(false)
+		}
+
+		return newBoolEntry(true)
+	})
+}
+
+// HasFargateResourceTags returns whether the metadata endpoint in Fargate
+// exposes resource tags.
+func HasFargateResourceTags() bool {
+	return cacheQueryBool(hasFargateResourceTagsCacheKey, func() (bool, time.Duration) {
+		_, err := MetaV2().GetTaskWithTags()
+		return newBoolEntry(err == nil)
+	})
+}
+
+// HasECSResourceTags returns whether the metadata endpoint in ECS exposes
+// resource tags.
+func HasECSResourceTags() bool {
+	return cacheQueryBool(hasECSResourceTagsCacheKey, func() (bool, time.Duration) {
+		_, err := MetaV3().GetTaskWithTags()
+		return newBoolEntry(err == nil)
+	})
+}
+
+func initV1() error {
+	client, err := v1.NewAutodetectedClient()
+	if err != nil {
+		return err
+	}
+	globalUtil.v1 = client
+	return nil
+}
+
+func cacheQueryBool(cacheKey string, cacheMissEvalFunc func() (bool, time.Duration)) bool {
+	if cachedValue, found := cache.Cache.Get(cacheKey); found {
+		if v, ok := cachedValue.(bool); ok {
 			return v
 		}
-		log.Errorf("Invalid fargate instance cache format, forcing a cache miss")
+		log.Errorf("Invalid cache format for key %q: forcing a cache miss", cacheKey)
 	}
 
-	defer func() {
-		setCacheBool(isFargateInstanceCacheKey, isFargate, 5*time.Minute, cache.NoExpiration)
-	}()
+	newValue, ttl := cacheMissEvalFunc()
+	cache.Cache.Set(cacheKey, newValue, ttl)
 
-	// This envvar is set to AWS_ECS_EC2 on classic EC2 instances
-	// Versions 1.0.0 to 1.3.0 (latest at the time) of the Fargate
-	// platform set this envvar.
-	// If Fargate detection were to fail, running a container with
-	// `env` as cmd will allow to check if it is still present.
-	if os.Getenv("AWS_EXECUTION_ENV") != "AWS_ECS_FARGATE" {
-		return false
-	}
-
-	client := &http.Client{Timeout: timeout}
-	r, err := client.Get(metadataURL)
-	if err != nil || r.StatusCode != http.StatusOK {
-		return false
-	}
-	var resp TaskMetadata
-	if err := json.NewDecoder(r.Body).Decode(&resp); err != nil {
-		log.Debugf("Error decoding response: %s", err)
-		return false
-	}
-
-	return true
+	return newValue
 }
 
-// HasFargateResourceTags returns whether the ECS introspection endpoint in
-// Fargate exposes resource tags.
-func HasFargateResourceTags() bool {
-	var hasResourceTags, ok bool
-
-	if cached, hit := cache.Cache.Get(hasFargateResourceTagsCacheKey); hit {
-		if hasResourceTags, ok = cached.(bool); ok {
-			return hasResourceTags
-		}
-		log.Errorf("Invalid fargate instance cache format, forcing a cache miss")
-	}
-
-	client := &http.Client{Timeout: timeout}
-	r, err := client.Get(metadataURLWithTags)
-
-	hasResourceTags = (err == nil && r.StatusCode == http.StatusOK)
-	setCacheBool(hasFargateResourceTagsCacheKey, hasResourceTags, 5*time.Minute, cache.NoExpiration)
-	return hasResourceTags
-}
-
-func setCacheBool(k string, v bool, durationTrue, durationFalse time.Duration) {
-	var cacheDuration time.Duration
-
+func newBoolEntry(v bool) (bool, time.Duration) {
 	if v == true {
-		cacheDuration = durationTrue
+		return v, 5 * time.Minute
 	}
-	if v == false {
-		cacheDuration = durationFalse
-	}
-
-	cache.Cache.Set(k, v, cacheDuration)
-}
-
-// IsAgentNotDetected indicates if an error from GetTasks was about no
-// ECS agent being detected. This is a used as a way to check if is available
-// or if the host is not in an ECS cluster.
-func IsAgentNotDetected(err error) bool {
-	return strings.Contains(err.Error(), "could not detect ECS agent")
-}
-
-// GetTasks returns a TasksV1Response containing information about the state
-// of the local ECS containers running on this node. This data is provided via
-// the local ECS agent
-func (u *Util) GetTasks() (TasksV1Response, error) {
-	var resp TasksV1Response
-	r, err := http.Get(fmt.Sprintf("%sv1/tasks", u.agentURL))
-	if err != nil {
-		return resp, err
-	}
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&resp); err != nil {
-		return resp, err
-	}
-	return resp, nil
-}
-
-// GetClusterName returns the cluster name provided by the local ECS agent
-func (u *Util) GetClusterName() (string, error) {
-	var resp MetadataV1Response
-	r, err := http.Get(fmt.Sprintf("%sv1/metadata", u.agentURL))
-	if err != nil {
-		return "", err
-	}
-	defer r.Body.Close()
-
-	if err := json.NewDecoder(r.Body).Decode(&resp); err != nil {
-		return "", err
-	}
-	return resp.Cluster, nil
-}
-
-// detectAgentURL finds a hostname for the ECS-agent either via Docker, if
-// running inside of a container, or just defaulting to localhost.
-func detectAgentURL() (string, error) {
-	urls := make([]string, 0, 3)
-
-	if len(config.Datadog.GetString("ecs_agent_url")) > 0 {
-		urls = append(urls, config.Datadog.GetString("ecs_agent_url"))
-	}
-
-	if config.IsContainerized() {
-		// List all interfaces for the ecs-agent container
-		agentURLS, err := getAgentContainerURLS()
-		if err != nil {
-			log.Debugf("could inspect ecs-agent container: %s", err)
-		} else {
-			urls = append(urls, agentURLS...)
-		}
-		// Try the default gateway
-		gw, err := docker.DefaultGateway()
-		if err != nil {
-			log.Debugf("could not get docker default gateway: %s", err)
-		}
-		if gw != nil {
-			urls = append(urls, fmt.Sprintf("http://%s:%d/", gw.String(), DefaultAgentPort))
-		}
-	}
-
-	// Always try the localhost URL.
-	urls = append(urls, fmt.Sprintf("http://localhost:%d/", DefaultAgentPort))
-
-	detected := testURLs(urls, 1*time.Second)
-	if detected != "" {
-		return detected, nil
-	}
-	return "", fmt.Errorf("could not detect ECS agent, tried URLs: %s", urls)
-}
-
-// testURLs trys a set of URLs and returns the first one that succeeds.
-func testURLs(urls []string, timeout time.Duration) string {
-	client := &http.Client{Timeout: timeout}
-	for _, url := range urls {
-		r, err := client.Get(url)
-		if err != nil {
-			continue
-		}
-		if r.StatusCode != http.StatusOK {
-			continue
-		}
-		var resp CommandsV1Response
-		if err := json.NewDecoder(r.Body).Decode(&resp); err != nil {
-			fmt.Printf("decode err: %s\n", err)
-			continue
-		}
-		if len(resp.AvailableCommands) > 0 {
-			return url
-		}
-	}
-	return ""
-}
-
-func getAgentContainerURLS() ([]string, error) {
-	var urls []string
-
-	du, err := docker.GetDockerUtil()
-	if err != nil {
-		return nil, err
-	}
-	ecsConfig, err := du.Inspect(config.Datadog.GetString("ecs_agent_container_name"), false)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, network := range ecsConfig.NetworkSettings.Networks {
-		ip := network.IPAddress
-		if ip != "" {
-			urls = append(urls, fmt.Sprintf("http://%s:%d/", ip, DefaultAgentPort))
-		}
-	}
-
-	// Add the container hostname, as it holds the instance's private IP when ecs-agent
-	// runs in the (default) host network mode. This allows us to connect back to it
-	// from an agent container running in awsvpc mode.
-	if ecsConfig.Config != nil && ecsConfig.Config.Hostname != "" {
-		urls = append(urls, fmt.Sprintf("http://%s:%d/", ecsConfig.Config.Hostname, DefaultAgentPort))
-	}
-
-	return urls, nil
+	return v, cache.NoExpiration
 }

@@ -1,14 +1,12 @@
 // Unless explicitly stated otherwise all files in this repository are licensed
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
-// Copyright 2017 Datadog, Inc.
+// Copyright 2017 Datadog, Inc
 
-package ecs
+package v2
 
-import "github.com/DataDog/datadog-agent/pkg/util/retry"
-
-// TaskMetadata is the info returned by the ECS task metadata API
-type TaskMetadata struct {
+// Task represents a task as returned by the ECS metadata API v2.
+type Task struct {
 	ClusterName           string             `json:"Cluster"`
 	Containers            []Container        `json:"Containers"`
 	KnownStatus           string             `json:"KnownStatus"`
@@ -17,11 +15,11 @@ type TaskMetadata struct {
 	Version               string             `json:"Revision"`
 	Limits                map[string]float64 `json:"Limits"`
 	DesiredStatus         string             `json:"DesiredStatus"`
-	ContainerInstanceTags map[string]string  `json:"ContainerInstanceTags,omitempty"`
-	TaskTags              map[string]string  `json:"TaskTags,omitempty"`
+	ContainerInstanceTags map[string]string  `json:"ContainerInstanceTags,omitempty"` // undocumented
+	TaskTags              map[string]string  `json:"TaskTags,omitempty"`              // undocumented
 }
 
-// Container is the representation of a container as exposed by the ECS metadata API
+// Container represents a container within a task.
 type Container struct {
 	Name          string            `json:"Name"`
 	Limits        map[string]uint64 `json:"Limits"`
@@ -52,8 +50,8 @@ type Port struct {
 	HostPort      uint16 `json:"HostPort,omitempty"`
 }
 
-// ContainerStats represents the stats payload for a container
-// reported by the ecs stats api.
+// ContainerStats represents the statistics of a container as returned by the
+// ECS metadata API v2.
 type ContainerStats struct {
 	CPU     CPUStats `json:"cpu_stats"`
 	Memory  MemStats `json:"memory_stats"`
@@ -112,11 +110,4 @@ type NetStats struct {
 	RxPackets uint64 `json:"rx_packets"`
 	TxBytes   uint64 `json:"tx_bytes"`
 	TxPackets uint64 `json:"tx_packets"`
-}
-
-// Util wraps interactions with the ECS agent
-type Util struct {
-	// used to setup the ECSUtil
-	initRetry retry.Retrier
-	agentURL  string
 }

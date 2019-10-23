@@ -12,13 +12,13 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
-	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
+	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
 )
 
-func (c *ECSCollector) parseTasks(tasks_list ecsutil.TasksV1Response, targetDockerID string) ([]*TagInfo, error) {
+func (c *ECSCollector) parseTasks(tasks []v1.Task, targetDockerID string) ([]*TagInfo, error) {
 	var output []*TagInfo
 	now := time.Now()
-	for _, task := range tasks_list.Tasks {
+	for _, task := range tasks {
 		// We only want to collect tasks without a STOPPED status.
 		if task.KnownStatus == "STOPPED" {
 			continue

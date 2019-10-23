@@ -25,6 +25,7 @@ const (
 // ECSFargateCollector polls the ecs metadata api.
 type ECSFargateCollector struct {
 	infoOut      chan<- []*TagInfo
+	ecsutil      *ecsutil
 	expire       *taggerutil.Expire
 	lastExpire   time.Time
 	expireFreq   time.Duration
@@ -55,7 +56,7 @@ func (c *ECSFargateCollector) Detect(out chan<- []*TagInfo) (CollectionMode, err
 
 // Pull looks for new containers and computes deletions
 func (c *ECSFargateCollector) Pull() error {
-	meta, err := ecsutil.GetTaskMetadata(c.retrieveTags)
+	meta, err := ecsutil.MetaV2.GetTask()
 	if err != nil {
 		return err
 	}
