@@ -10,6 +10,8 @@ package ecs
 import (
 	"github.com/DataDog/datadog-agent/pkg/diagnose/diagnosis"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+
+	"github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 )
 
 func init() {
@@ -21,7 +23,7 @@ func init() {
 
 // diagnose the ECS metadata API availability
 func diagnoseECS() error {
-	client, err := MetaV1()
+	client, err := metadata.V1()
 	if err != nil {
 		log.Error(err)
 	}
@@ -31,7 +33,7 @@ func diagnoseECS() error {
 
 // diagnose the ECS metadata with tags API availability
 func diagnoseECSTags() error {
-	client, err := MetaV3InCurrentTask()
+	client, err := metadata.V3FromCurrentTask()
 	if err != nil {
 		log.Error(err)
 	}
@@ -41,7 +43,7 @@ func diagnoseECSTags() error {
 
 // diagnose the ECS Fargate metadata API availability
 func diagnoseFargate() error {
-	_, err := MetaV2().GetTask()
+	_, err := metadata.V2().GetTask()
 	if err != nil {
 		log.Error(err)
 	}
@@ -50,7 +52,7 @@ func diagnoseFargate() error {
 
 // diagnose the ECS Fargate metadata with tags API availability
 func diagnoseFargateTags() error {
-	_, err := MetaV2().GetTaskWithTags()
+	_, err := metadata.V2().GetTaskWithTags()
 	if err != nil {
 		log.Error(err)
 	}

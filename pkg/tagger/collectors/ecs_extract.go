@@ -8,11 +8,16 @@
 package collectors
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
+	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
+	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
+	v3 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v3"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 func (c *ECSCollector) parseTasks(tasks []v1.Task, targetDockerID string) ([]*TagInfo, error) {
@@ -36,6 +41,15 @@ func (c *ECSCollector) parseTasks(tasks []v1.Task, targetDockerID string) ([]*Ta
 					tags.AddLow("cluster_name", c.clusterName)
 				}
 
+				if ecsutil.HasECSResourceTags() {
+					if task, err := fetchTaskWithTagsV3(container.DockerID); err != nil {
+						log.Warnf("Unable to get resource tags for container %s: %s", container.DockerID, err)
+					} else {
+						addResourceTags(tags, task.ContainerInstanceTags)
+						addResourceTags(tags, task.TaskTags)
+					}
+				}
+
 				tags.AddOrchestrator("task_arn", task.Arn)
 
 				low, orch, high := tags.Compute()
@@ -52,4 +66,16 @@ func (c *ECSCollector) parseTasks(tasks []v1.Task, targetDockerID string) ([]*Ta
 		}
 	}
 	return output, nil
+}
+
+func fetchTaskWithTagsV3(containerID string) (*v3.Task, error) {
+	metaV3, err := ecsmeta.V3(containerID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize client for metadata v3 API: %s", err)
+	}
+	task, err := metaV3.GetTaskWithTags()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task with tags from metadata v3 API: %s", err)
+	}
+	return task, nil
 }

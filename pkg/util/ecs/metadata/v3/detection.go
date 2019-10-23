@@ -3,6 +3,8 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2019 Datadog, Inc.
 
+// +build docker
+
 package v3
 
 import (
@@ -21,7 +23,7 @@ const (
 func getAgentURLFromEnv() (string, error) {
 	agentURL, found := os.LookupEnv("ECS_CONTAINER_METADATA_URI")
 	if !found {
-		return nil, fmt.Errorf("Could not initialize client: missing metadata v3 URL")
+		return "", fmt.Errorf("Could not initialize client: missing metadata v3 URL")
 	}
 	return agentURL, nil
 }

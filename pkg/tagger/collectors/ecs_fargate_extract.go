@@ -16,13 +16,13 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
-	"github.com/DataDog/datadog-agent/pkg/util/ecs"
+	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // parseMetadata parses the task metadata and its container list, and returns a list of TagInfo for the new ones.
 // It also updates the lastSeen cache of the ECSFargateCollector and return the list of dead containers to be expired.
-func (c *ECSFargateCollector) parseMetadata(meta ecs.TaskMetadata, parseAll bool) ([]*TagInfo, error) {
+func (c *ECSFargateCollector) parseMetadata(meta *v2.Task, parseAll bool) ([]*TagInfo, error) {
 	var output []*TagInfo
 	now := time.Now()
 
@@ -53,7 +53,6 @@ func (c *ECSFargateCollector) parseMetadata(meta ecs.TaskMetadata, parseAll bool
 			}
 
 			// aws resource tags
-			addResourceTags(tags, meta.ContainerInstanceTags)
 			addResourceTags(tags, meta.TaskTags)
 
 			// task
@@ -101,11 +100,7 @@ func (c *ECSFargateCollector) parseMetadata(meta ecs.TaskMetadata, parseAll bool
 	return output, nil
 }
 
-func addResourceTags(t *utils.TagList, m map[string]string) {
-	for k, v := range m {
-		t.AddLow(k, v)
-	}
-}
+
 
 // parseECSClusterName allows to handle user-friendly values and arn values
 func parseECSClusterName(value string) string {

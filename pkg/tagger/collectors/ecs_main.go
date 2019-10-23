@@ -13,8 +13,10 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/errors"
 	taggerutil "github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
-	"github.com/DataDog/datadog-agent/pkg/util/ecs"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+
+	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
+	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
 )
 
 const (
@@ -29,13 +31,13 @@ type ECSCollector struct {
 	expire      *taggerutil.Expire
 	lastExpire  time.Time
 	expireFreq  time.Duration
-	metaV1 *v1.Client
+	metaV1      *v1.Client
 	clusterName string
 }
 
 // Detect tries to connect to the ECS agent
 func (c *ECSCollector) Detect(out chan<- []*TagInfo) (CollectionMode, error) {
-	metaV1, err := ecs.MetaV1()
+	metaV1, err := ecsmeta.V1()
 	if err != nil {
 		return NoCollection, err
 	}
@@ -49,10 +51,13 @@ func (c *ECSCollector) Detect(out chan<- []*TagInfo) (CollectionMode, error) {
 		return NoCollection, err
 	}
 
-	c.clusterName, err = c.metaV1.GetClusterName()
+	instanceMeta, err := c.metaV1.GetInstanceMetadata()
 	if err != nil {
 		log.Warnf("Cannot determine ECS cluster name: %s", err)
 	}
+
+	c.clusterName = instanceMeta.Cluster
+
 	return FetchOnlyCollection, nil
 }
 

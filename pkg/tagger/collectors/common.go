@@ -9,11 +9,18 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/tmplvar"
 )
 
 var templateVariables = map[string]struct{}{
 	"label": {},
+}
+
+func addResourceTags(t *utils.TagList, m map[string]string) {
+	for k, v := range m {
+		t.AddLow(k, v)
+	}
 }
 
 // retrieveMappingFromConfig gets a stringmapstring config key and

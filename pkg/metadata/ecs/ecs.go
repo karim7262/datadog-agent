@@ -10,8 +10,8 @@ package ecs
 import (
 	payload "github.com/DataDog/agent-payload/gogen"
 	"github.com/DataDog/datadog-agent/pkg/metadata"
-	"github.com/DataDog/datadog-agent/pkg/util/ecs"
 
+	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
 )
 
@@ -19,7 +19,7 @@ import (
 // of the local ECS containers running on this node. This data is provided via
 // the local ECS agent.
 func GetPayload() (metadata.Payload, error) {
-	metaV1, err := ecs.MetaV1()
+	metaV1, err := ecsmeta.V1()
 	if err != nil {
 		return nil, err
 	}

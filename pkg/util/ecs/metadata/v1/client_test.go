@@ -5,7 +5,7 @@
 
 // +build docker
 
-package ecs
+package v1
 
 import (
 	"errors"
@@ -13,15 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/util/cache"
-	"github.com/DataDog/datadog-agent/pkg/util/docker"
 	"github.com/DataDog/datadog-agent/pkg/util/ecs/testutil"
 )
 
@@ -35,7 +30,7 @@ func TestLocateECSHTTP(t *testing.T) {
 
 	config.Datadog.SetDefault("ecs_agent_url", fmt.Sprintf("http://localhost:%d/", ecs_agent_port))
 
-	util, err := GetUtil()
+	client, err := NewAutodetectedClient()
 	assert.Nil(err)
 	select {
 	case r := <-ecsinterface.Requests:
@@ -46,12 +41,12 @@ func TestLocateECSHTTP(t *testing.T) {
 	}
 	for nb, tc := range []struct {
 		input    string
-		expected TasksV1Response
+		expected []Task
 		err      error
 	}{
 		{
 			input:    "",
-			expected: TasksV1Response{},
+			expected: []Task{},
 			err:      errors.New("EOF"),
 		},
 		{
@@ -78,25 +73,23 @@ func TestLocateECSHTTP(t *testing.T) {
                 }
               ]
             }`,
-			expected: TasksV1Response{
-				Tasks: []TaskV1{
-					{
-						Arn:           "arn:aws:ecs:us-east-1:<aws_account_id>:task/example5-58ff-46c9-ae05-543f8example",
-						DesiredStatus: "RUNNING",
-						KnownStatus:   "RUNNING",
-						Family:        "hello_world",
-						Version:       "8",
-						Containers: []ContainerV1{
-							{
-								DockerID:   "9581a69a761a557fbfce1d0f6745e4af5b9dbfb86b6b2c5c4df156f1a5932ff1",
-								DockerName: "ecs-hello_world-8-mysql-fcae8ac8f9f1d89d8301",
-								Name:       "mysql",
-							},
-							{
-								DockerID:   "bf25c5c5b2d4dba68846c7236e75b6915e1e778d31611e3c6a06831e39814a15",
-								DockerName: "ecs-hello_world-8-wordpress-e8bfddf9b488dff36c00",
-								Name:       "wordpress",
-							},
+			expected: []Task{
+				{
+					Arn:           "arn:aws:ecs:us-east-1:<aws_account_id>:task/example5-58ff-46c9-ae05-543f8example",
+					DesiredStatus: "RUNNING",
+					KnownStatus:   "RUNNING",
+					Family:        "hello_world",
+					Version:       "8",
+					Containers: []Container{
+						{
+							DockerID:   "9581a69a761a557fbfce1d0f6745e4af5b9dbfb86b6b2c5c4df156f1a5932ff1",
+							DockerName: "ecs-hello_world-8-mysql-fcae8ac8f9f1d89d8301",
+							Name:       "mysql",
+						},
+						{
+							DockerID:   "bf25c5c5b2d4dba68846c7236e75b6915e1e778d31611e3c6a06831e39814a15",
+							DockerName: "ecs-hello_world-8-wordpress-e8bfddf9b488dff36c00",
+							Name:       "wordpress",
 						},
 					},
 				},
@@ -106,7 +99,7 @@ func TestLocateECSHTTP(t *testing.T) {
 	} {
 		t.Logf("test case %d", nb)
 		ecsinterface.TaskListJSON = tc.input
-		tasks, err := util.GetTasks()
+		tasks, err := client.GetTasks()
 		assert.Equal(tc.expected, tasks)
 		if tc.err == nil {
 			assert.Nil(err)
@@ -122,34 +115,4 @@ func TestLocateECSHTTP(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		assert.FailNow("Timeout on receive channel")
 	}
-}
-
-func TestGetAgentContainerURLS(t *testing.T) {
-	config.Datadog.SetDefault("ecs_agent_container_name", "ecs-agent-custom")
-	defer config.Datadog.SetDefault("ecs_agent_container_name", "ecs-agent")
-
-	// Setting mocked data in cache
-	nets := make(map[string]*network.EndpointSettings)
-	nets["bridge"] = &network.EndpointSettings{IPAddress: "172.17.0.2"}
-	nets["foo"] = &network.EndpointSettings{IPAddress: "172.17.0.3"}
-
-	co := types.ContainerJSON{
-		Config: &container.Config{
-			Hostname: "ip-172-29-167-5",
-		},
-		ContainerJSONBase: &types.ContainerJSONBase{},
-		NetworkSettings: &types.NetworkSettings{
-			Networks: nets,
-		},
-	}
-	docker.EnableTestingMode()
-	cacheKey := docker.GetInspectCacheKey("ecs-agent-custom", false)
-	cache.Cache.Set(cacheKey, co, 10*time.Second)
-
-	agentURLS, err := getAgentContainerURLS()
-	assert.NoError(t, err)
-	require.Len(t, agentURLS, 3)
-	assert.Contains(t, agentURLS, "http://172.17.0.2:51678/")
-	assert.Contains(t, agentURLS, "http://172.17.0.3:51678/")
-	assert.Equal(t, "http://ip-172-29-167-5:51678/", agentURLS[2])
 }
