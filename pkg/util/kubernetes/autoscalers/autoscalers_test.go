@@ -5,7 +5,7 @@
 
 // +build kubeapiserver
 
-package hpa
+package autoscalers
 
 import (
 	"testing"
@@ -351,7 +351,7 @@ func TestInspect(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			got := Inspect(testCase.hpa)
+			got := InspectHPA(testCase.hpa)
 			assert.ElementsMatch(t, testCase.expected, got)
 		})
 	}
@@ -372,11 +372,12 @@ func makeSpec(metricName string, labels map[string]string) autoscalingv2.Horizon
 		},
 	}
 }
+
 func TestDiffExternalMetrics(t *testing.T) {
 	testCases := map[string]struct {
-		lhs      []*autoscalingv2.HorizontalPodAutoscaler
-		rhs      []custommetrics.ExternalMetricValue
-		expected []custommetrics.ExternalMetricValue
+		informerHPAs  []*autoscalingv2.HorizontalPodAutoscaler
+		storedMetrics []custommetrics.ExternalMetricValue
+		expected      []custommetrics.ExternalMetricValue
 	}{
 		"delete invalid metric": {
 
@@ -403,7 +404,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_one",
 					Labels:     map[string]string{"foo": "tagbar"},
 					Valid:      true,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(5),
 						Name:      "foo",
 						Namespace: "nsbar",
@@ -413,7 +414,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_two",
 					Labels:     map[string]string{"foo": "dre"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(6),
 						Name:      "foo",
 						Namespace: "baz",
@@ -423,8 +424,18 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_three",
 					Labels:     map[string]string{"foo": "tu"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(7),
+						Name:      "bar",
+						Namespace: "zanzi",
+					},
+				},
+				{
+					MetricName: "requests_per_s_three",
+					Labels:     map[string]string{"foo": "tu"},
+					Valid:      false,
+					Ref: custommetrics.ObjectReference{
+						UID:       string(9),
 						Name:      "bar",
 						Namespace: "zanzi",
 					},
@@ -435,10 +446,20 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_two",
 					Labels:     map[string]string{"foo": "dre"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(6),
 						Name:      "foo",
 						Namespace: "baz",
+					},
+				},
+				{
+					MetricName: "requests_per_s_three",
+					Labels:     map[string]string{"foo": "tu"},
+					Valid:      false,
+					Ref: custommetrics.ObjectReference{
+						UID:       string(9),
+						Name:      "bar",
+						Namespace: "zanzi",
 					},
 				},
 			},
@@ -467,7 +488,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_one",
 					Labels:     map[string]string{"foo": "bar"},
 					Valid:      true,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(5),
 						Namespace: "bar",
 						Name:      "foo",
@@ -477,7 +498,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_old",
 					Labels:     map[string]string{"foo": "bar"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(7),
 						Namespace: "baz",
 						Name:      "foo",
@@ -489,7 +510,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_old",
 					Labels:     map[string]string{"foo": "bar"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(7),
 						Name:      "foo",
 						Namespace: "baz",
@@ -521,7 +542,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_one",
 					Labels:     map[string]string{"foo": "bar"},
 					Valid:      true,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(5),
 						Namespace: "bar",
 						Name:      "foo",
@@ -531,7 +552,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_two",
 					Labels:     map[string]string{"foo": "bar"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
 						UID:       string(7),
 						Namespace: "baz",
 						Name:      "foo",
@@ -543,7 +564,60 @@ func TestDiffExternalMetrics(t *testing.T) {
 					MetricName: "requests_per_s_two",
 					Labels:     map[string]string{"foo": "bar"},
 					Valid:      false,
-					HPA: custommetrics.ObjectReference{
+					Ref: custommetrics.ObjectReference{
+						UID:       string(7),
+						Name:      "foo",
+						Namespace: "baz",
+					},
+				},
+			},
+		},
+		"upgrade from old template": {[]*autoscalingv2.HorizontalPodAutoscaler{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:       types.UID(5),
+					Namespace: "bar",
+					Name:      "foo",
+				},
+				Spec: makeSpec("requests_per_s_one", map[string]string{"foo": "bar"}),
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:       types.UID(7),
+					Namespace: "baz",
+					Name:      "foo",
+				},
+				Spec: makeSpec("requests_per_s_two", map[string]string{"foo": "foobar"}),
+			},
+		},
+			[]custommetrics.ExternalMetricValue{
+				{
+					MetricName: "requests_per_s_one",
+					Labels:     map[string]string{"foo": "bar"},
+					Valid:      true,
+					Ref: custommetrics.ObjectReference{
+						UID:       string(5),
+						Namespace: "bar",
+						Name:      "foo",
+					},
+				},
+				{
+					MetricName: "requests_per_s_two",
+					Labels:     map[string]string{"foo": "bar"},
+					Valid:      false,
+					Ref: custommetrics.ObjectReference{
+						UID:       string(7),
+						Namespace: "baz",
+						Name:      "foo",
+					},
+				},
+			},
+			[]custommetrics.ExternalMetricValue{
+				{
+					MetricName: "requests_per_s_two",
+					Labels:     map[string]string{"foo": "bar"},
+					Valid:      false,
+					Ref: custommetrics.ObjectReference{
 						UID:       string(7),
 						Name:      "foo",
 						Namespace: "baz",
@@ -555,7 +629,7 @@ func TestDiffExternalMetrics(t *testing.T) {
 
 	for name, testCase := range testCases {
 		t.Run(name, func(t *testing.T) {
-			got := DiffExternalMetrics(testCase.lhs, testCase.rhs)
+			got := DiffExternalMetrics(testCase.informerHPAs, testCase.storedMetrics)
 			assert.ElementsMatch(t, testCase.expected, got)
 		})
 	}

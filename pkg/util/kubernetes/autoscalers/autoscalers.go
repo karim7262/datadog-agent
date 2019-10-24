@@ -5,7 +5,7 @@
 
 // +build kubeapiserver
 
-package hpa
+package autoscalers
 
 import (
 	"reflect"
@@ -16,19 +16,19 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
-// Inspect returns the list of external metrics from the hpa to use for autoscaling.
-func Inspect(hpa *autoscalingv2.HorizontalPodAutoscaler) (emList []custommetrics.ExternalMetricValue) {
+// InspectHPA returns the list of external metrics from the hpa to use for autoscaling.
+func InspectHPA(hpa *autoscalingv2.HorizontalPodAutoscaler) (emList []custommetrics.ExternalMetricValue) {
 	for _, metricSpec := range hpa.Spec.Metrics {
 		switch metricSpec.Type {
 		case autoscalingv2.ExternalMetricSourceType:
 			if metricSpec.External == nil {
-				log.Errorf("Missing required \"external\" section in the %s/%s HPA, skipping processing", hpa.Namespace, hpa.Name)
+				log.Errorf("Missing required \"external\" section in the %s/%s Ref, skipping processing", hpa.Namespace, hpa.Name)
 				continue
 			}
 
 			em := custommetrics.ExternalMetricValue{
 				MetricName: metricSpec.External.MetricName,
-				HPA: custommetrics.ObjectReference{
+				Ref: custommetrics.ObjectReference{
 					Name:      hpa.Name,
 					Namespace: hpa.Namespace,
 					UID:       string(hpa.UID),
@@ -47,22 +47,26 @@ func Inspect(hpa *autoscalingv2.HorizontalPodAutoscaler) (emList []custommetrics
 
 // DiffExternalMetrics returns the list of external metrics that reference hpas that are not in the given list of hpas.
 func DiffExternalMetrics(informerList []*autoscalingv2.HorizontalPodAutoscaler, storedMetricsList []custommetrics.ExternalMetricValue) (toDelete []custommetrics.ExternalMetricValue) {
-	hpaMetrics := map[string][]custommetrics.ExternalMetricValue{}
+	autoscalerMetrics := map[string][]custommetrics.ExternalMetricValue{}
 
 	for _, hpa := range informerList {
-		hpaMetrics[string(hpa.UID)] = Inspect(hpa)
+		autoscalerMetrics[string(hpa.UID)] = InspectHPA(hpa)
 	}
 
 	for _, em := range storedMetricsList {
+		log.Infof("Evaluating DiffExternalM %v", em)
 		var found bool
-		emList := hpaMetrics[em.HPA.UID]
+		emList := autoscalerMetrics[em.Ref.UID]
+		log.Infof("Evaluating enList  DiffExternalM %v", emList)
+
 		if emList == nil {
 			toDelete = append(toDelete, em)
 			continue
 		}
 		for _, m := range emList {
-			// We have previously processed an external metric from this HPA.
+			// We have previously processed an external metric from this Ref.
 			// Check that it's still the same. If not, remove the entry from the Global Store.
+			// Use the Ref Type to get rid of the old template in the Store
 			if em.MetricName == m.MetricName && reflect.DeepEqual(em.Labels, m.Labels) {
 				found = true
 				break
