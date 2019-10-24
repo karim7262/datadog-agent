@@ -5,7 +5,7 @@
 
 // +build kubeapiserver
 
-package hpa
+package autoscalers
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	datadog "gopkg.in/zorkian/go-datadog-api.v2"
+	"gopkg.in/zorkian/go-datadog-api.v2"
 	autoscalingv2 "k8s.io/api/autoscaling/v2beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -30,10 +30,11 @@ type DatadogClient interface {
 // ProcessorInterface is used to easily mock the interface for testing
 type ProcessorInterface interface {
 	UpdateExternalMetrics(emList map[string]custommetrics.ExternalMetricValue) (updated map[string]custommetrics.ExternalMetricValue)
-	ProcessHPAs(hpa *autoscalingv2.HorizontalPodAutoscaler) map[string]custommetrics.ExternalMetricValue
+
+	ProcessEMList(emList []custommetrics.ExternalMetricValue) map[string]custommetrics.ExternalMetricValue
 }
 
-// Processor embeds the configuration to refresh metrics from Datadog and process HPA structs to ExternalMetrics.
+// Processor embeds the configuration to refresh metrics from Datadog and process Ref structs to ExternalMetrics.
 type Processor struct {
 	externalMaxAge time.Duration
 	datadogClient  DatadogClient
@@ -79,21 +80,35 @@ func (p *Processor) UpdateExternalMetrics(emList map[string]custommetrics.Extern
 		em.Valid = true
 		em.Value = metric.value
 		em.Timestamp = metric.timestamp
-		log.Debugf("Updated the external metric %#v", em)
+		log.Debugf("Updated the external metric %s{%v} for %s %s/%s", em.MetricName, em.Labels, em.Ref.Type, em.Ref.Namespace, em.Ref.Name)
 		updated[id] = em
 	}
 	return updated
 }
 
 // ProcessHPAs processes the HorizontalPodAutoscalers into a list of ExternalMetricValues.
-func (p *Processor) ProcessHPAs(hpa *autoscalingv2.HorizontalPodAutoscaler) map[string]custommetrics.ExternalMetricValue {
+func (p *Processor) ProcessEMList(emList []custommetrics.ExternalMetricValue) map[string]custommetrics.ExternalMetricValue {
 	externalMetrics := make(map[string]custommetrics.ExternalMetricValue)
-	emList := Inspect(hpa)
 	for _, em := range emList {
 		em.Value = 0
 		em.Timestamp = time.Now().Unix()
 		em.Valid = false
-		log.Tracef("Created a boilerplate for the external metrics %#v", em)
+		log.Tracef("Created a boilerplate for the external metrics %s{%v} for %s %s/%s", em.MetricName, em.Labels, em.Ref.Type, em.Ref.Namespace, em.Ref.Name)
+		id := custommetrics.ExternalMetricValueKeyFunc(em)
+		externalMetrics[id] = em
+	}
+	return externalMetrics
+}
+
+// ProcessHPAs processes the HorizontalPodAutoscalers into a list of ExternalMetricValues.
+func (p *Processor) ProcessHPAs(hpa *autoscalingv2.HorizontalPodAutoscaler) map[string]custommetrics.ExternalMetricValue {
+	externalMetrics := make(map[string]custommetrics.ExternalMetricValue)
+	emList := InspectHPA(hpa)
+	for _, em := range emList {
+		em.Value = 0
+		em.Timestamp = time.Now().Unix()
+		em.Valid = false
+		log.Tracef("Created a boilerplate for the external metrics %s{%v} for %s %s/%s", em.MetricName, em.Labels, em.Ref.Type, em.Ref.Namespace, em.Ref.Name)
 		id := custommetrics.ExternalMetricValueKeyFunc(em)
 		externalMetrics[id] = em
 	}
