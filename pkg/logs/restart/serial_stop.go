@@ -5,6 +5,12 @@
 
 package restart
 
+import (
+	"reflect"
+
+	"github.com/DataDog/datadog-agent/pkg/util/log"
+)
+
 // serialStopper implements the logic to stop different components from a data pipeline in series
 type serialStopper struct {
 	components []Stoppable
@@ -25,6 +31,8 @@ func (g *serialStopper) Add(components ...Stoppable) {
 // Stop stops all components one after another
 func (g *serialStopper) Stop() {
 	for _, stopper := range g.components {
+		log.Info("serialStopper in", reflect.TypeOf(stopper))
 		stopper.Stop()
+		log.Info("serialStopper out", reflect.TypeOf(stopper))
 	}
 }
