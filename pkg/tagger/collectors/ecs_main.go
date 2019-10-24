@@ -8,15 +8,20 @@
 package collectors
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/errors"
+	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	taggerutil "github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
+	"k8s.io/kubernetes/pkg/kubelet/container"
 
+	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
 	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
+	v3 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v3"
 )
 
 const (
@@ -72,10 +77,18 @@ func (c *ECSCollector) Fetch(entity string) ([]string, []string, []string, error
 	if err != nil {
 		return []string{}, []string{}, []string{}, err
 	}
-	updates, err := c.parseTasks(tasks, cID)
+
+	var updates []*TagInfo
+
+	if ecsutil.HasECSResourceTags() {
+		updates, err = c.parseTasks(tasks, cID, addTagsForContainer)
+	} else {
+		updates, err = c.parseTasks(tasks, cID)
+	}
 	if err != nil {
 		return []string{}, []string{}, []string{}, err
 	}
+
 	c.infoOut <- updates
 
 	// Only run the expire process with the most up to date tasks parsed.
@@ -93,6 +106,28 @@ func (c *ECSCollector) Fetch(entity string) ([]string, []string, []string, error
 	}
 	// container not found in updates
 	return []string{}, []string{}, []string{}, errors.NewNotFound(entity)
+}
+
+func addTagsForContainer(containerID string, tags *utils.TagList) {
+	task, err := fetchContainerTaskWithTagsV3(containerID)
+	if err != nil {
+		log.Warnf("Unable to get resource tags for container %s: %s", container.DockerID, err)
+		return
+	}
+	addResourceTags(tags, task.ContainerInstanceTags)
+	addResourceTags(tags, task.TaskTags)
+}
+
+func fetchContainerTaskWithTagsV3(containerID string) (*v3.Task, error) {
+	metaV3, err := ecsmeta.V3(containerID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to initialize client for metadata v3 API: %s", err)
+	}
+	task, err := metaV3.GetTaskWithTags()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task with tags from metadata v3 API: %s", err)
+	}
+	return task, nil
 }
 
 func ecsFactory() Collector {

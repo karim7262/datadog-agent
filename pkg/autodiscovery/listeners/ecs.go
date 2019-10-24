@@ -15,9 +15,9 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
-	"github.com/DataDog/datadog-agent/pkg/util/ecs"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
+	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
 )
 
@@ -98,7 +98,7 @@ func (l *ECSListener) Stop() {
 // compares the container list to the local cache and sends new/dead services
 // over newService and delService accordingly
 func (l *ECSListener) refreshServices(firstRun bool) {
-	meta, err := ecs.MetaV2().GetTask()
+	meta, err := ecsmeta.V2().GetTask()
 	if err != nil {
 		log.Errorf("failed to get task metadata, not refreshing services - %s", err)
 		return
