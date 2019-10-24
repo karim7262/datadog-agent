@@ -59,8 +59,10 @@ func (s *Scanner) Start() {
 // Stop stops the Scanner and its tailers in parallel,
 // this call returns only when all the tailers are stopped
 func (s *Scanner) Stop() {
+	log.Info("file.Scanner.Stop() in")
 	s.stop <- struct{}{}
 	s.cleanup()
+	log.Info("file.Scanner.Stop() out")
 }
 
 // run checks periodically if there are new files to tail and the state of its tailers until stop
@@ -85,12 +87,15 @@ func (s *Scanner) run() {
 
 // cleanup all tailers
 func (s *Scanner) cleanup() {
+	log.Info("file.Scanner.cleanup() in")
 	stopper := restart.NewParallelStopper()
 	for _, tailer := range s.tailers {
 		stopper.Add(tailer)
 		delete(s.tailers, tailer.path)
 	}
+	log.Info("file.Scanner.cleanup() before stop")
 	stopper.Stop()
+	log.Info("file.Scanner.cleanup() out")
 }
 
 // scan checks all the files we're expected to tail,

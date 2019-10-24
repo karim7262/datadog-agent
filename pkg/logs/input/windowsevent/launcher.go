@@ -66,13 +66,16 @@ func (l *Launcher) run() {
 
 // Stop stops all active tailers
 func (l *Launcher) Stop() {
+	log.Info("windowsevent.Stop(): in")
 	l.stop <- struct{}{}
 	stopper := restart.NewParallelStopper()
 	for _, tailer := range l.tailers {
 		stopper.Add(tailer)
 		delete(l.tailers, tailer.Identifier())
 	}
+	log.Info("windowsevent.Stop(): before stopper")
 	stopper.Stop()
+	log.Info("windowsevent.Stop(): out")
 }
 
 // sanitizedConfig sets default values for the config

@@ -9,6 +9,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/logs/config"
 	"github.com/DataDog/datadog-agent/pkg/logs/pipeline"
 	"github.com/DataDog/datadog-agent/pkg/logs/restart"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // Launcher summons different protocol specific listeners based on configuration
@@ -57,10 +58,13 @@ func (l *Launcher) run() {
 
 // Stop stops all listeners
 func (l *Launcher) Stop() {
+	log.Info("listener.Stop() in")
 	l.stop <- struct{}{}
 	stopper := restart.NewParallelStopper()
 	for _, l := range l.listeners {
 		stopper.Add(l)
 	}
+	log.Info("listener.Stop() before stopper")
 	stopper.Stop()
+	log.Info("listener.Stop() out")
 }

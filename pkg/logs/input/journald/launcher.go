@@ -64,13 +64,16 @@ func (l *Launcher) run() {
 
 // Stop stops all active tailers
 func (l *Launcher) Stop() {
+	log.Info("systemd.Stop(): in")
 	l.stop <- struct{}{}
 	stopper := restart.NewParallelStopper()
 	for identifier, tailer := range l.tailers {
 		stopper.Add(tailer)
 		delete(l.tailers, identifier)
 	}
+	log.Info("systemd.Stop(): before stopper")
 	stopper.Stop()
+	log.Info("systemd.Stop(): out")
 }
 
 // setupTailer configures and starts a new tailer,
