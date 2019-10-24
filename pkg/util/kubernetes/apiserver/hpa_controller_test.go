@@ -26,7 +26,7 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/clusteragent/custommetrics"
 	"github.com/DataDog/datadog-agent/pkg/errors"
-	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/hpa"
+	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/autoscalers"
 )
 
 func newFakeConfigMapStore(t *testing.T, ns, name string, metrics map[string]custommetrics.ExternalMetricValue) (custommetrics.Store, kubernetes.Interface) {
@@ -61,15 +61,15 @@ func newFakeHorizontalPodAutoscaler(name, ns string, uid string, metricName stri
 	}
 }
 
-func newFakeAutoscalerController(client kubernetes.Interface, itf LeaderElectorInterface, dcl hpa.DatadogClient) (*AutoscalersController, informers.SharedInformerFactory) {
+func newFakeAutoscalerController(client kubernetes.Interface, itf LeaderElectorInterface, dcl autoscalers.DatadogClient) (*AutoscalersController, informers.SharedInformerFactory) {
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 
 	autoscalerController, _ := NewAutoscalersController(
 		client,
 		itf,
 		dcl,
-		informerFactory.Autoscaling().V2beta1().HorizontalPodAutoscalers(),
 	)
+	ExtendToHPAController(autoscalerController, informerFactory.Autoscaling().V2beta1().HorizontalPodAutoscalers())
 
 	autoscalerController.autoscalersListerSynced = func() bool { return true }
 	autoscalerController.overFlowingHPAs = make(map[types.UID]int)
@@ -91,7 +91,7 @@ type fakeDatadogClient struct {
 
 type fakeProcessor struct {
 	updateMetricFunc func(emList map[string]custommetrics.ExternalMetricValue) (updated map[string]custommetrics.ExternalMetricValue)
-	processFunc      func(hpa *autoscalingv2.HorizontalPodAutoscaler) map[string]custommetrics.ExternalMetricValue
+	processFunc      func(metrics []custommetrics.ExternalMetricValue) map[string]custommetrics.ExternalMetricValue
 }
 
 func (h *fakeProcessor) UpdateExternalMetrics(emList map[string]custommetrics.ExternalMetricValue) (updated map[string]custommetrics.ExternalMetricValue) {
@@ -100,9 +100,9 @@ func (h *fakeProcessor) UpdateExternalMetrics(emList map[string]custommetrics.Ex
 	}
 	return nil
 }
-func (h *fakeProcessor) ProcessHPAs(hpa *autoscalingv2.HorizontalPodAutoscaler) map[string]custommetrics.ExternalMetricValue {
+func (h *fakeProcessor) ProcessEMList(metrics []custommetrics.ExternalMetricValue) map[string]custommetrics.ExternalMetricValue {
 	if h.processFunc != nil {
-		return h.processFunc(hpa)
+		return h.processFunc(metrics)
 	}
 	return nil
 }
@@ -167,11 +167,11 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	hctrl, _ := newFakeAutoscalerController(client, alwaysLeader, hpa.DatadogClient(d))
+	hctrl, _ := newFakeAutoscalerController(client, alwaysLeader, autoscalers.DatadogClient(d))
 	hctrl.poller.refreshPeriod = 600
 	hctrl.poller.gcPeriodSeconds = 600
 	hctrl.autoscalers = make(chan interface{}, 1)
-	foo := hpa.ProcessorInterface(p)
+	foo := autoscalers.ProcessorInterface(p)
 	hctrl.hpaProc = foo
 
 	// Fresh start with no activity. Both the local cache and the Global Store are empty.
@@ -290,7 +290,7 @@ func TestAutoscalerController(t *testing.T) {
 			return ddSeries, nil
 		},
 	}
-	hctrl, inf := newFakeAutoscalerController(client, alwaysLeader, hpa.DatadogClient(d))
+	hctrl, inf := newFakeAutoscalerController(client, alwaysLeader, autoscalers.DatadogClient(d))
 	hctrl.poller.refreshPeriod = 600
 	hctrl.poller.gcPeriodSeconds = 600
 	hctrl.autoscalers = make(chan interface{}, 1)
@@ -298,7 +298,7 @@ func TestAutoscalerController(t *testing.T) {
 	stop := make(chan struct{})
 	defer close(stop)
 	inf.Start(stop)
-	go hctrl.Run(stop)
+	go hctrl.RunHPA(stop)
 
 	c := client.AutoscalingV2beta1()
 	require.NotNil(t, c)
@@ -380,7 +380,7 @@ func TestAutoscalerController(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, storedHPA, mockedHPA)
 	// Checking the local cache holds the correct Data.
-	ExtVal := hpa.Inspect(storedHPA)
+	ExtVal := autoscalers.InspectHPA(storedHPA)
 	key := custommetrics.ExternalMetricValueKeyFunc(ExtVal[0])
 
 	// Process and submit to the Global Store
@@ -494,11 +494,11 @@ func TestAutoscalerSync(t *testing.T) {
 	err := inf.Autoscaling().V2beta1().HorizontalPodAutoscalers().Informer().GetStore().Add(obj)
 	require.NoError(t, err)
 	key := "default/hpa_1"
-	err = hctrl.syncAutoscalers(key)
+	err = hctrl.syncHPA(key)
 	require.NoError(t, err)
 
 	fakeKey := "default/prometheus"
-	err = hctrl.syncAutoscalers(fakeKey)
+	err = hctrl.syncHPA(fakeKey)
 	require.Error(t, err, errors.IsNotFound)
 
 	require.Empty(t, hctrl.overFlowingHPAs)
@@ -524,7 +524,7 @@ func TestAutoscalerSync(t *testing.T) {
 	err = inf.Autoscaling().V2beta1().HorizontalPodAutoscalers().Informer().GetStore().Add(ignoredHPA)
 	require.NoError(t, err)
 	keyToIgnore := "default/hpa_2"
-	err = hctrl.syncAutoscalers(keyToIgnore)
+	err = hctrl.syncHPA(keyToIgnore)
 	require.Nil(t, err)
 	require.NotEmpty(t, hctrl.overFlowingHPAs)
 	require.Equal(t, hctrl.overFlowingHPAs["123"], 2)
@@ -552,7 +552,7 @@ func TestRemoveIgnoredHPAs(t *testing.T) {
 		},
 	}
 
-	e := removeIgnoredHPAs(listToIgnore, cachedHPAs)
+	e := removeIgnoredAutoscaler(listToIgnore, cachedHPAs)
 	require.Equal(t, len(e), 1)
 	require.Equal(t, e[0].UID, types.UID("ccc"))
 
