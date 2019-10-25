@@ -16,7 +16,6 @@ import (
 	taggerutil "github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
-	"k8s.io/kubernetes/pkg/kubelet/container"
 
 	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
 	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
@@ -111,7 +110,7 @@ func (c *ECSCollector) Fetch(entity string) ([]string, []string, []string, error
 func addTagsForContainer(containerID string, tags *utils.TagList) {
 	task, err := fetchContainerTaskWithTagsV3(containerID)
 	if err != nil {
-		log.Warnf("Unable to get resource tags for container %s: %s", container.DockerID, err)
+		log.Warnf("Unable to get resource tags for container %s: %s", containerID, err)
 		return
 	}
 	addResourceTags(tags, task.ContainerInstanceTags)

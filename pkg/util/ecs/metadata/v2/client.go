@@ -29,10 +29,12 @@ const (
 	endpointTimeout = 500 * time.Millisecond
 )
 
+// Client represents a client for a metadata v2 API endpoint.
 type Client struct {
 	agentURL string
 }
 
+// NewClient creates a new client for the specified metadata v2 API endpoint.
 func NewClient(agentURL string) *Client {
 	if !strings.HasSuffix(agentURL, "/") {
 		agentURL += "/"
@@ -42,10 +44,12 @@ func NewClient(agentURL string) *Client {
 	}
 }
 
+// NewDefaultClient creates a new client for the default metadata v2 API endpoint.
 func NewDefaultClient() *Client {
 	return NewClient(defaultAgentURL)
 }
 
+// GetInstanceMetadata returns stastics for a container.
 func (c *Client) GetContainerStats(id string) (*ContainerStats, error) {
 	var s ContainerStats
 	if err := c.get(containerStatsPath+id, &s); err != nil {
@@ -54,10 +58,12 @@ func (c *Client) GetContainerStats(id string) (*ContainerStats, error) {
 	return &s, nil
 }
 
+// GetTask returns the current task.
 func (c *Client) GetTask() (*Task, error) {
 	return c.getTaskMetadataAtPath(taskMetadataPath)
 }
 
+// GetTaskWithTags returns the current task, including propagated resource tags.
 func (c *Client) GetTaskWithTags() (*Task, error) {
 	return c.getTaskMetadataAtPath(taskMetadataWithTagsPath)
 }

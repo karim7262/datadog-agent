@@ -57,7 +57,7 @@ type ContainerStats struct {
 	Memory  MemStats `json:"memory_stats"`
 	IO      IOStats  `json:"blkio_stats"`
 	Network NetStats `json:"network"`
-	// Pids    []int32  `json:"pids_stats"` // seems to be always empty
+	//Pids    []int32  `json:"pids_stats"` // seems to be always empty
 }
 
 // CPUStats represents an ECS container CPU usage
@@ -75,17 +75,17 @@ type CPUUsage struct {
 
 // MemStats represents an ECS container memory usage
 type MemStats struct {
-	Details DetailedMem `json:"stats"`
+	Details  DetailedMem `json:"stats"`
+	Limit    uint64      `json:"limit"`
+	MaxUsage uint64      `json:"max_usage"`
+	Usage    uint64      `json:"usage"`
 }
 
 // DetailedMem stores detailed stats about memory usage
 type DetailedMem struct {
-	RSS      uint64 `json:"rss"`
-	Cache    uint64 `json:"cache"`
-	Usage    uint64 `json:"usage"`
-	MaxUsage uint64 `json:"max_usage"`
-	Limit    uint64 `json:"hierarchical_memory_limit"`
-	PgFault  uint64 `json:"pgfault"`
+	RSS     uint64 `json:"rss"`
+	Cache   uint64 `json:"cache"`
+	PgFault uint64 `json:"pgfault"`
 }
 
 // IOStats represents an ECS container IO throughput

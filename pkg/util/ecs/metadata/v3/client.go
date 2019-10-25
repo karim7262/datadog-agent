@@ -29,10 +29,12 @@ const (
 	endpointTimeout = 500 * time.Millisecond
 )
 
+// Client represents a client for a metadata v3 API endpoint.
 type Client struct {
 	agentURL string
 }
 
+// NewClient creates a new client for the specified metadata v3 API endpoint.
 func NewClient(agentURL string) *Client {
 	if !strings.HasSuffix(agentURL, "/") {
 		agentURL += "/"
@@ -42,6 +44,8 @@ func NewClient(agentURL string) *Client {
 	}
 }
 
+// NewClientForCurrentTask detects the metadata API v3 endpoint from the current
+// task and creates a new client for it.
 func NewClientForCurrentTask() (*Client, error) {
 	agentURL, err := getAgentURLFromEnv()
 	if err != nil {
@@ -50,6 +54,8 @@ func NewClientForCurrentTask() (*Client, error) {
 	return NewClient(agentURL), nil
 }
 
+// NewClientForContainer detects the metadata API v3 endpoint for the specified
+// container and creates a new client for it.
 func NewClientForContainer(id string) (*Client, error) {
 	agentURL, err := getAgentURLFromDocker(id)
 	if err != nil {
@@ -58,10 +64,12 @@ func NewClientForContainer(id string) (*Client, error) {
 	return NewClient(agentURL), nil
 }
 
+// GetTask returns the current task.
 func (c *Client) GetTask() (*Task, error) {
 	return c.getTaskMetadataAtPath(taskMetadataPath)
 }
 
+// GetTaskWithTags returns the current task, including propagated resource tags.
 func (c *Client) GetTaskWithTags() (*Task, error) {
 	return c.getTaskMetadataAtPath(taskMetadataWithTagsPath)
 }

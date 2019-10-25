@@ -196,7 +196,7 @@ func TestParseMetadata(t *testing.T) {
 	}
 
 	// Diff parsing should show 2 containers
-	updates, err := collector.parseMetadata(meta, false)
+	updates, err := collector.parseMetadata(&meta, false)
 	assert.NoError(t, err)
 	assertTagInfoListEqual(t, expectedUpdates, updates)
 
@@ -206,7 +206,7 @@ func TestParseMetadata(t *testing.T) {
 	assert.Equal(t, []string{"unknownID"}, expires)
 
 	// Diff parsing should show 0 containers
-	updates, err = collector.parseMetadata(meta, false)
+	updates, err = collector.parseMetadata(&meta, false)
 	assert.NoError(t, err)
 	assert.Len(t, updates, 0)
 
@@ -216,7 +216,7 @@ func TestParseMetadata(t *testing.T) {
 	defer mockConfig.Set("tags", nil)
 
 	// Full parsing should show 3 containers
-	updates, err = collector.parseMetadata(meta, true)
+	updates, err = collector.parseMetadata(&meta, true)
 	assert.NoError(t, err)
 	assert.Len(t, updates, 3)
 	assertTagInfoListEqual(t, expectedUpdatesParseAll, updates)
@@ -303,7 +303,7 @@ func TestParseMetadataV10(t *testing.T) {
 		},
 	}
 
-	updates, err := collector.parseMetadata(meta, false)
+	updates, err := collector.parseMetadata(&meta, false)
 	assert.NoError(t, err)
 	assertTagInfoListEqual(t, expectedUpdates, updates)
 }

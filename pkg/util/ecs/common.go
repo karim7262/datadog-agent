@@ -107,7 +107,7 @@ func convertMetaV2Container(c v2.Container) *containers.Container {
 
 // convertMetaV2Container returns internal metrics representations from an ECS
 // metadata v2 container stats object.
-func convertMetaV2ContainerStats(s v2.ContainerStats) (cpu metrics.CgroupTimesStat, mem metrics.CgroupMemStat, io metrics.CgroupIOStat, memLimit uint64) {
+func convertMetaV2ContainerStats(s *v2.ContainerStats) (cpu metrics.CgroupTimesStat, mem metrics.CgroupMemStat, io metrics.CgroupIOStat, memLimit uint64) {
 	// CPU
 	cpu.User = s.CPU.Usage.Usermode
 	cpu.System = s.CPU.Usage.Kernelmode
@@ -115,10 +115,10 @@ func convertMetaV2ContainerStats(s v2.ContainerStats) (cpu metrics.CgroupTimesSt
 
 	// Memory
 	mem.Cache = s.Memory.Details.Cache
-	mem.MemUsageInBytes = s.Memory.Details.Usage
+	mem.MemUsageInBytes = s.Memory.Usage
 	mem.Pgfault = s.Memory.Details.PgFault
 	mem.RSS = s.Memory.Details.RSS
-	memLimit = s.Memory.Details.Limit
+	memLimit = s.Memory.Limit
 
 	// IO
 	io.ReadBytes = s.IO.ReadBytes

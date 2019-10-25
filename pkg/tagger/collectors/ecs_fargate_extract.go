@@ -100,8 +100,6 @@ func (c *ECSFargateCollector) parseMetadata(meta *v2.Task, parseAll bool) ([]*Ta
 	return output, nil
 }
 
-
-
 // parseECSClusterName allows to handle user-friendly values and arn values
 func parseECSClusterName(value string) string {
 	if strings.Contains(value, "/") {

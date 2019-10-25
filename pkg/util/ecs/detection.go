@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/util/cache"
-	"github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
+	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -27,7 +27,7 @@ const (
 
 // IsECSInstance returns whether the agent is running in ECS.
 func IsECSInstance() bool {
-	_, err := MetaV1()
+	_, err := ecsmeta.V1()
 	return err == nil
 }
 
@@ -45,7 +45,7 @@ func IsFargateInstance() bool {
 			return newBoolEntry(false)
 		}
 
-		_, err := metadata.V2().GetTask()
+		_, err := ecsmeta.V2().GetTask()
 		if err != nil {
 			log.Debug(err)
 			return newBoolEntry(false)
@@ -64,7 +64,7 @@ func IsRunningOn() bool {
 // resource tags.
 func HasECSResourceTags() bool {
 	return queryCacheBool(hasECSResourceTagsCacheKey, func() (bool, time.Duration) {
-		client, err := metadata.V3FromCurrentTask()
+		client, err := ecsmeta.V3FromCurrentTask()
 		if err != nil {
 			return newBoolEntry(false)
 		}
@@ -77,7 +77,7 @@ func HasECSResourceTags() bool {
 // exposes resource tags.
 func HasFargateResourceTags() bool {
 	return queryCacheBool(hasFargateResourceTagsCacheKey, func() (bool, time.Duration) {
-		_, err := metadata.V2().GetTaskWithTags()
+		_, err := ecsmeta.V2().GetTaskWithTags()
 		return newBoolEntry(err == nil)
 	})
 }

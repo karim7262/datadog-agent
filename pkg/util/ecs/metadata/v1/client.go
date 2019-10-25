@@ -11,11 +11,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"reflect"
+	"strings"
 	"time"
-
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 const (
@@ -28,13 +26,14 @@ const (
 	endpointTimeout = 500 * time.Millisecond
 )
 
+// Client represents a client for a metadata v1 API endpoint.
 type Client struct {
-	host   string
-	scheme string
+	agentURL string
 }
 
+// NewClient creates a new client for the specified metadata v1 API endpoint.
 func NewClient(agentURL string) *Client {
-	if !strings.hasSuffix(agentURL, "/") {
+	if !strings.HasSuffix(agentURL, "/") {
 		agentURL += "/"
 	}
 	return &Client{
@@ -42,15 +41,17 @@ func NewClient(agentURL string) *Client {
 	}
 }
 
+// NewAutodetectedClient detects the metadata v1 API endpoint and creates a new
+// client for it. Returns an error if it was not possible to find the endpoint.
 func NewAutodetectedClient() (*Client, error) {
 	agentURL, err := detectAgentURL()
 	if err != nil {
 		return nil, err
 	}
-
 	return NewClient(agentURL), nil
 }
 
+// GetInstanceMetadata returns metadata for the current container instance.
 func (c *Client) GetInstanceMetadata() (*Metadata, error) {
 	var m Metadata
 	if err := c.get(metadataPath, &m); err != nil {
@@ -59,6 +60,7 @@ func (c *Client) GetInstanceMetadata() (*Metadata, error) {
 	return &m, nil
 }
 
+// GetTasks returns the list of task on the current container instance.
 func (c *Client) GetTasks() ([]Task, error) {
 	var t Tasks
 	if err := c.get(taskMetadataPath, t); err != nil {
@@ -84,7 +86,7 @@ func (c *Client) get(path string, v interface{}) error {
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected HTTP status code in metadata v1 reply: %d", resp.StatusCode)
-
+	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
 		return fmt.Errorf("Failed decoding metadata v1 json object to type %s - %s", reflect.TypeOf(v), err)

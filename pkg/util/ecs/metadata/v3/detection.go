@@ -53,5 +53,5 @@ func getAgentURLFromDocker(containerID string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("metadata v3 URL not found in container %s")
+	return "", fmt.Errorf("metadata v3 URL not found in container %s", containerID)
 }

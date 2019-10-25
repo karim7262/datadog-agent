@@ -15,7 +15,8 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
-	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/metadata"
+	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
+	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 

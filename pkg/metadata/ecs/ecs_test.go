@@ -32,7 +32,7 @@ func TestBuildPayload(t *testing.T) {
 		},
 		{
 			input: []v1.Task{
-				v1.Task{
+				{
 					Arn:           "arn:aws:ecs:us-east-1:<aws_account_id>:task/example5-58ff-46c9-ae05-543f8example",
 					DesiredStatus: "RUNNING",
 					KnownStatus:   "RUNNING",

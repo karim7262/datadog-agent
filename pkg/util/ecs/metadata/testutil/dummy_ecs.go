@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// DummyECS allows tests to mock a ECS's responses
+// DummyECS allows tests to mock ECS metadata server responses
 type DummyECS struct {
 	mux          *http.ServeMux
 	fileHandlers map[string]string
@@ -17,22 +17,28 @@ type DummyECS struct {
 	Requests     chan *http.Request
 }
 
-type option func(*DummyECS)
+// Option represents an option used to create a new mock of the ECS metadata
+// server.
+type Option func(*DummyECS)
 
-func FileHandlerOption(pattern, testDataFile string) option {
+// FileHandlerOption allows returning the content of a file to requests matching
+// a pattern.
+func FileHandlerOption(pattern, testDataFile string) Option {
 	return func(d *DummyECS) {
 		d.fileHandlers[pattern] = testDataFile
 	}
 }
 
-func RawHandlerOption(pattern, rawResponse string) option {
+// RawHandlerOption allows returning the specified string to requests matching a
+// pattern.
+func RawHandlerOption(pattern, rawResponse string) Option {
 	return func(d *DummyECS) {
 		d.rawHandlers[pattern] = rawResponse
 	}
 }
 
-// NewDummyECS create a mock of the ECS api
-func NewDummyECS(ops ...option) (*DummyECS, error) {
+// NewDummyECS create a mock of the ECS metadata API.
+func NewDummyECS(ops ...Option) (*DummyECS, error) {
 	d := &DummyECS{
 		mux:          http.NewServeMux(),
 		fileHandlers: make(map[string]string),
@@ -59,6 +65,7 @@ func NewDummyECS(ops ...option) (*DummyECS, error) {
 	return d, nil
 }
 
+// ServeHTTP is used to handle HTTP requests.
 func (d *DummyECS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("dummyECS received %s on %s", r.Method, r.URL.Path)
 	d.Requests <- r

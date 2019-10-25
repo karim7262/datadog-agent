@@ -33,6 +33,9 @@ type util struct {
 	v3          *v3.Client
 }
 
+// V1 returns a client for the ECS metadata API v1, also called introspection
+// endpoint, by detecting the endpoint address. Returns an error if it was not
+// possible to detect the endpoint address.
 func V1() (*v1.Client, error) {
 	globalUtil.initV1.Do(func() {
 		globalUtil.initRetryV1.SetupRetrier(&retry.Config{
@@ -50,6 +53,8 @@ func V1() (*v1.Client, error) {
 	return globalUtil.v1, nil
 }
 
+// V2 returns a client for the ECS metadata API v2 that uses the default
+// endpoint address.
 func V2() *v2.Client {
 	globalUtil.initV2.Do(func() {
 		globalUtil.v2 = v2.NewDefaultClient()
@@ -57,10 +62,16 @@ func V2() *v2.Client {
 	return globalUtil.v2
 }
 
+// V3 returns a client for the ECS metadata API v3 by detecting the endpoint
+// address for the specified container. Returns an error if it was not possible
+// to detect the endpoint address.
 func V3(containerID string) (*v3.Client, error) {
 	return v3.NewClientForContainer(containerID)
 }
 
+// V3FromCurrentTask returns a client for the ECS metadata API v3 by detedting
+// the endpoint address from the task the executable is running in. Returns an
+// error if it was not possible to detect the endpoint address.
 func V3FromCurrentTask() (*v3.Client, error) {
 	globalUtil.initV3.Do(func() {
 		globalUtil.initRetryV3.SetupRetrier(&retry.Config{
