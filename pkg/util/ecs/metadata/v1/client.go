@@ -63,7 +63,7 @@ func (c *Client) GetInstanceMetadata() (*Metadata, error) {
 // GetTasks returns the list of task on the current container instance.
 func (c *Client) GetTasks() ([]Task, error) {
 	var t Tasks
-	if err := c.get(taskMetadataPath, t); err != nil {
+	if err := c.get(taskMetadataPath, &t); err != nil {
 		return nil, err
 	}
 	return t.Tasks, nil
@@ -89,7 +89,7 @@ func (c *Client) get(path string, v interface{}) error {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
-		return fmt.Errorf("Failed decoding metadata v1 json object to type %s - %s", reflect.TypeOf(v), err)
+		return fmt.Errorf("Failed to decode metadata v1 JSON payload to type %s: %s", reflect.TypeOf(v), err)
 	}
 
 	return nil

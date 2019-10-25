@@ -82,7 +82,7 @@ func TestGetInstanceMetadata(t *testing.T) {
 	defer ts.Close()
 	require.Nil(t, err)
 
-	expected := Metadata{
+	expected := &Metadata{
 		Cluster: "ecs_cluster",
 	}
 
@@ -94,7 +94,7 @@ func TestGetInstanceMetadata(t *testing.T) {
 	select {
 	case r := <-ecsinterface.Requests:
 		assert.Equal("GET", r.Method)
-		assert.Equal("/v1/tasks", r.URL.Path)
+		assert.Equal("/v1/metadata", r.URL.Path)
 	case <-time.After(2 * time.Second):
 		assert.FailNow("Timeout on receive channel")
 	}
@@ -160,8 +160,8 @@ func TestGetTasksFail(t *testing.T) {
 	defer ts.Close()
 	require.Nil(t, err)
 
-	expected := []Task{}
-	expectedErr := errors.New("EOF")
+	var expected []Task
+	expectedErr := errors.New("Failed to decode metadata v1 JSON payload to type *v1.Tasks: EOF")
 
 	client := NewClient(ts.URL)
 	tasks, err := client.GetTasks()

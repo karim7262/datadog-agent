@@ -27,7 +27,7 @@ func TestGetTask(t *testing.T) {
 	defer ts.Close()
 	require.Nil(t, err)
 
-	expected := Task{
+	expected := &Task{
 		ClusterName: "default",
 		Containers: []Container{
 			{
@@ -126,7 +126,7 @@ func TestGetTaskWithTags(t *testing.T) {
 	defer ts.Close()
 	require.Nil(t, err)
 
-	expected := Task{
+	expected := &Task{
 		ClusterName: "ecs-cluster",
 		Containers: []Container{
 			{
@@ -166,7 +166,7 @@ func TestGetTaskWithTags(t *testing.T) {
 				},
 				ImageID:    "sha256:de25a81a5a0b6ff26c82bab404fff5de5bf4bbbc48c833412fb3706077d31134",
 				StartedAt:  "2019-10-25T09:36:32.652702457Z",
-				DockerName: "ecs-nginx-5-nginx-curl-ccccb9f49db0dfe0d901",
+				DockerName: "ecs-ecs-cluster_redis-awsvpc-12-redis-86fe99b5ffeabffeed01",
 				Type:       "NORMAL",
 				Image:      "redis",
 				Labels: map[string]string{
@@ -235,7 +235,7 @@ func TestGetContainerStats(t *testing.T) {
 	defer ts.Close()
 	require.Nil(t, err)
 
-	expected := ContainerStats{
+	expected := &ContainerStats{
 		CPU: CPUStats{
 			System: 3951680000000,
 			Usage: CPUUsage{

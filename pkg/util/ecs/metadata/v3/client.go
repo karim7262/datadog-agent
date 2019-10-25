@@ -90,7 +90,7 @@ func (c *Client) get(path string, v interface{}) error {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(v); err != nil {
-		return fmt.Errorf("Failed decoding metadata v3 JSON object to type %s - %s", reflect.TypeOf(v), err)
+		return fmt.Errorf("Failed to decode metadata v3 JSON payload to type %s: %s", reflect.TypeOf(v), err)
 	}
 
 	return nil

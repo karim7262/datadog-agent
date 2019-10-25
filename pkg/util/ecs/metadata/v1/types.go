@@ -19,7 +19,7 @@ type Metadata struct {
 // Tasks represents the list of task exposed by the ECS introspection endpoint.
 // See http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-agent-introspection.html
 type Tasks struct {
-	Tasks []Task `json:"tasks"`
+	Tasks []Task `json:"Tasks"`
 }
 
 // Task represents a task in the ECS introspection endpoint response.

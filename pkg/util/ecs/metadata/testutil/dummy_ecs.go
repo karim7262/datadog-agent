@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2019 Datadog, Inc.
+
 package testutil
 
 import (
@@ -67,7 +72,7 @@ func NewDummyECS(ops ...Option) (*DummyECS, error) {
 
 // ServeHTTP is used to handle HTTP requests.
 func (d *DummyECS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("dummyECS received %s on %s", r.Method, r.URL.Path)
+	fmt.Printf("dummyECS received %s on %s\n", r.Method, r.URL.Path)
 	d.Requests <- r
 	d.mux.ServeHTTP(w, r)
 }

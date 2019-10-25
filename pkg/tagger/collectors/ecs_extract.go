@@ -37,7 +37,9 @@ func (c *ECSCollector) parseTasks(tasks []v1.Task, targetDockerID string, contai
 				}
 
 				for _, fn := range containerHandlers {
-					fn(container.DockerID, tags)
+					if fn != nil {
+						fn(container.DockerID, tags)
+					}
 				}
 
 				tags.AddOrchestrator("task_arn", task.Arn)
