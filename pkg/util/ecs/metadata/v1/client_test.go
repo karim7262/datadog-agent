@@ -83,7 +83,7 @@ func TestGetInstanceMetadata(t *testing.T) {
 	require.Nil(t, err)
 
 	expected := Metadata{
-		Cluster: "cluster_name",
+		Cluster: "ecs_cluster",
 	}
 
 	client := NewClient(ts.URL)

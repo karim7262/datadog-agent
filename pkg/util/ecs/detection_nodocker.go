@@ -25,11 +25,5 @@ func IsFargateInstance() bool {
 
 // IsRunningOn returns true if the agent is running on ECS/Fargate
 func IsRunningOn() bool {
-	return IsECSInstance() || IsFargateInstance()
+	return false
 }
-
-// GetTaskMetadata extracts the metadata payload for the task the agent is in.
-//func GetTaskMetadata() (TaskMetadata, error) {
-//	var meta TaskMetadata
-//	return meta, nil
-//}
