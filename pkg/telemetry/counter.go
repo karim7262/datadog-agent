@@ -5,10 +5,10 @@
 
 package telemetry
 
-// Counter TODO(remy): doc
+// Counter tracks how many times something is happening.
 type Counter interface {
-	// TODO(remy): doc
+	// Inc increments the counter for the given tags.
 	Inc(tags ...string)
-	// TODO(remy): doc
+	// Add adds the given value to the counter for the given tags.
 	Add(value float64, tags ...string)
 }

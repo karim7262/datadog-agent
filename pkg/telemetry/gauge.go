@@ -5,8 +5,8 @@
 
 package telemetry
 
-// Gauge TODO(remy): doc
+// Gauge tracks the value of one health metric of the Agent
 type Gauge interface {
-	// TODO(remy): doc
+	// Set stores the value for the given tags.
 	Set(value float64, tags ...string)
 }

@@ -6,8 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// NewGauge creates a gauge telemetry Gauge.
-// TODO(remy): doc
+// NewGauge creates a Gauge for telemetry purpose.
 func NewGauge(subsystem, name string, tags []string, help string) Gauge {
 	g := &promGauge{
 		pg: prometheus.NewGaugeVec(
@@ -24,13 +23,13 @@ func NewGauge(subsystem, name string, tags []string, help string) Gauge {
 	return g
 }
 
-// promGauge is TODO(remy):
+// Gauge implementation using Prometheus.
 type promGauge struct {
 	pg   *prometheus.GaugeVec
 	once sync.Once
 }
 
-// Set sets the gauge with the given value.
+// Set stores the value for the given tags.
 func (g *promGauge) Set(value float64, tags ...string) {
 	g.pg.WithLabelValues(tags...).Set(value)
 }
