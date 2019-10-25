@@ -28,8 +28,15 @@ func diagnoseECS() error {
 		log.Error(err)
 		return err
 	}
-	_, err = client.GetTasks()
-	return err
+	log.Info("successfully detected ECS metadata server endpoint")
+
+	if _, err = client.GetTasks(); err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Info("successfully retrieved task list from ECS metadata server")
+
+	return nil
 }
 
 // diagnose the ECS metadata with tags API availability
@@ -39,24 +46,35 @@ func diagnoseECSTags() error {
 		log.Error(err)
 		return err
 	}
-	_, err = client.GetTaskWithTags()
-	return err
+	log.Info("successfully detected ECS metadata server endpoint for resource tags")
+
+	if _, err = client.GetTaskWithTags(); err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Info("successfully retrieved task with potential tags from ECS metadata server")
+
+	return nil
 }
 
 // diagnose the ECS Fargate metadata API availability
 func diagnoseFargate() error {
-	_, err := ecsmeta.V2().GetTask()
-	if err != nil {
+	if _, err := ecsmeta.V2().GetTask(); err != nil {
 		log.Error(err)
+		return err
 	}
-	return err
+	log.Info("successfully retrieved task from Fargate metadata endpoint")
+
+	return nil
 }
 
 // diagnose the ECS Fargate metadata with tags API availability
 func diagnoseFargateTags() error {
-	_, err := ecsmeta.V2().GetTaskWithTags()
-	if err != nil {
+	if _, err := ecsmeta.V2().GetTaskWithTags(); err != nil {
 		log.Error(err)
+		return err
 	}
-	return err
+	log.Info("successfully retrieved task with potential tags from Fargate metadata endpoint")
+
+	return nil
 }

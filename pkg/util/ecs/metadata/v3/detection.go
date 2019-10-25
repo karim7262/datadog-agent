@@ -21,7 +21,7 @@ const (
 )
 
 func getAgentURLFromEnv() (string, error) {
-	agentURL, found := os.LookupEnv("ECS_CONTAINER_METADATA_URI")
+	agentURL, found := os.LookupEnv(defaultMetadataURIEnvVariable)
 	if !found {
 		return "", fmt.Errorf("Could not initialize client: missing metadata v3 URL")
 	}

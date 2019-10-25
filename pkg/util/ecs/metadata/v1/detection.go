@@ -34,7 +34,7 @@ func detectAgentURL() (string, error) {
 		// List all interfaces for the ecs-agent container
 		agentURLS, err := getAgentContainerURLS()
 		if err != nil {
-			log.Debugf("could inspect ecs-agent container: %s", err)
+			log.Debugf("could not inspect ecs-agent container: %s", err)
 		} else {
 			urls = append(urls, agentURLS...)
 		}
