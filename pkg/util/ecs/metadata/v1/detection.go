@@ -46,10 +46,14 @@ func detectAgentURL() (string, error) {
 		if gw != nil {
 			urls = append(urls, fmt.Sprintf("http://%s:%d/", gw.String(), defaultAgentPort))
 		}
+
 	}
 
 	// Always try the localhost URL.
 	urls = append(urls, fmt.Sprintf("http://localhost:%d/", defaultAgentPort))
+
+	// Try the default IP for awsvpc mode
+	urls = append(urls, fmt.Sprintf("http://169.254.172.1:%d/", defaultAgentPort))
 
 	detected := testURLs(urls, 1*time.Second)
 	if detected != "" {
