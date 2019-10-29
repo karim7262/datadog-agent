@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/errors"
 	taggerutil "github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
@@ -42,7 +43,7 @@ func (c *ECSFargateCollector) Detect(out chan<- []*TagInfo) (CollectionMode, err
 		return NoCollection, fmt.Errorf("Failed to connect to task metadata API, ECS tagging will not work")
 	}
 
-	if ecsutil.HasFargateResourceTags() {
+	if config.Datadog.GetBool("ecs_collect_resource_tags_fargate") && ecsutil.HasFargateResourceTags() {
 		c.taskMetadataGetter = ecsmeta.V2().GetTaskWithTags
 	} else {
 		c.taskMetadataGetter = ecsmeta.V2().GetTask

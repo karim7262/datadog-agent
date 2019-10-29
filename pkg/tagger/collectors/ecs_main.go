@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/errors"
 	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	taggerutil "github.com/DataDog/datadog-agent/pkg/tagger/utils"
@@ -79,7 +80,7 @@ func (c *ECSCollector) Fetch(entity string) ([]string, []string, []string, error
 
 	var updates []*TagInfo
 
-	if ecsutil.HasECSResourceTags() {
+	if config.Datadog.GetBool("ecs_collect_resource_tags_ec2") && ecsutil.HasEC2ResourceTags() {
 		updates, err = c.parseTasks(tasks, cID, addTagsForContainer)
 	} else {
 		updates, err = c.parseTasks(tasks, cID)

@@ -19,7 +19,7 @@ import (
 const (
 	isFargateInstanceCacheKey      = "IsFargateInstanceCacheKey"
 	hasFargateResourceTagsCacheKey = "HasFargateResourceTagsCacheKey"
-	hasECSResourceTagsCacheKey     = "HasECSResourceTagsCacheKey"
+	hasEC2ResourceTagsCacheKey     = "HasEC2ResourceTagsCacheKey"
 
 	// CloudProviderName contains the inventory name of for ECS
 	CloudProviderName = "AWS"
@@ -60,10 +60,10 @@ func IsRunningOn() bool {
 	return IsECSInstance() || IsFargateInstance()
 }
 
-// HasECSResourceTags returns whether the metadata endpoint in ECS exposes
+// HasEC2ResourceTags returns whether the metadata endpoint in ECS exposes
 // resource tags.
-func HasECSResourceTags() bool {
-	return queryCacheBool(hasECSResourceTagsCacheKey, func() (bool, time.Duration) {
+func HasEC2ResourceTags() bool {
+	return queryCacheBool(hasEC2ResourceTagsCacheKey, func() (bool, time.Duration) {
 		client, err := ecsmeta.V3FromCurrentTask()
 		if err != nil {
 			return newBoolEntry(false)
