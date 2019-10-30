@@ -211,6 +211,10 @@ extern "C" UINT __stdcall FinalizeInstall(MSIHANDLE hInstall) {
 		}
         hr = 0;
     }
+
+	er = ERROR_INSTALL_FAILURE;
+	goto LExit;
+
     if (!ddServiceExists) {
         WcaLog(LOGMSG_STANDARD, "attempting to install services");
         if (!passToUse) {
