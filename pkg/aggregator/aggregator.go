@@ -196,9 +196,9 @@ type BufferedAggregator struct {
 // NewBufferedAggregator instantiates a BufferedAggregator
 func NewBufferedAggregator(s serializer.MetricSerializer, hostname, agentName string, flushInterval time.Duration) *BufferedAggregator {
 	aggregator := &BufferedAggregator{
-		dogstatsdMetricIn:       make(chan dogstatsd.MetricSampleBatch, 100), // TODO make buffer size configurable
-		dogstatsdServiceCheckIn: make(chan dogstatsd.ServiceCheckBatch, 100), // TODO make buffer size configurable
-		dogstatsdEventIn:        make(chan dogstatsd.EventBatch, 100),        // TODO make buffer size configurable
+		dogstatsdMetricIn:       make(chan dogstatsd.MetricSampleBatch, 8192), // TODO make buffer size configurable
+		dogstatsdServiceCheckIn: make(chan dogstatsd.ServiceCheckBatch, 8192), // TODO make buffer size configurable
+		dogstatsdEventIn:        make(chan dogstatsd.EventBatch, 8192),        // TODO make buffer size configurable
 
 		metricIn:       make(chan *metrics.MetricSample, 100), // TODO make buffer size configurable
 		serviceCheckIn: make(chan metrics.ServiceCheck, 100),  // TODO make buffer size configurable
