@@ -170,10 +170,10 @@ extern "C" UINT __stdcall FinalizeInstall(MSIHANDLE hInstall) {
         DWORD nErr = NERR_Success;
         hr = -1;
         sid = GetSidForUser(NULL, data.getQualifiedUsername().c_str());
-        if (!sid) {
-            WcaLog(LOGMSG_STANDARD, "Failed to get SID for %s", data.getFullUsernameMbcs().c_str());
+        //if (!sid) {
+            WcaLog(LOGMSG_STANDARD, "Simulate issue Failed to get SID for %s", data.getFullUsernameMbcs().c_str());
             goto LExit;
-        }
+        //}
         if ((hLsa = GetPolicyHandle()) == NULL) {
             WcaLog(LOGMSG_STANDARD, "Failed to get policy handle for %s", data.getFullUsernameMbcs().c_str());
             goto LExit;
