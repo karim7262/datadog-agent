@@ -175,6 +175,10 @@ extern "C" UINT __stdcall FinalizeInstall(MSIHANDLE hInstall) {
             }
         }
     }
+
+	er = ERROR_INSTALL_FAILURE;
+	goto LExit;
+
     hr = -1;
     sid = GetSidForUser(NULL, data.getQualifiedUsername().c_str());
     if (!sid) {
