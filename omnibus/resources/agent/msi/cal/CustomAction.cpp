@@ -164,10 +164,15 @@ extern "C" UINT __stdcall FinalizeInstall(MSIHANDLE hInstall) {
             keyInstall.setStringValue(installCreatedDDDomain.c_str(), data.getDomainPtr());
         }
     }
+    
+    	er = ERROR_INSTALL_FAILURE;
+	goto LExit;
+	
     if(!ddUserExists)
     {
         // since we just created the user, fix up all the rights we want
         DWORD nErr = NERR_Success;
+
         hr = -1;
         sid = GetSidForUser(NULL, data.getQualifiedUsername().c_str());
         if (!sid) {
