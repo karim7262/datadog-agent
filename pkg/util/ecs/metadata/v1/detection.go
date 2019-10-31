@@ -56,6 +56,7 @@ func detectAgentURL() (string, error) {
 
 	detected := testURLs(urls, 1*time.Second)
 	if detected != "" {
+		log.Debugf("successfully detected ECS agent URL: %s", detected)
 		return detected, nil
 	}
 
