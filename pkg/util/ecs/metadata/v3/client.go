@@ -17,10 +17,7 @@ import (
 )
 
 const (
-	// ECS agent defaults
-	defaultAgentURL = "http://169.254.170.2/"
-
-	// Metadata v2 API paths
+	// Metadata v3 API paths
 	taskMetadataPath         = "/task"
 	taskMetadataWithTagsPath = "/taskWithTags"
 	containerStatsPath       = "/stats/"
@@ -36,8 +33,8 @@ type Client struct {
 
 // NewClient creates a new client for the specified metadata v3 API endpoint.
 func NewClient(agentURL string) *Client {
-	if !strings.HasSuffix(agentURL, "/") {
-		agentURL += "/"
+	if strings.HasSuffix(agentURL, "/") {
+		agentURL = strings.TrimSuffix(agentURL, "/")
 	}
 	return &Client{
 		agentURL: agentURL,
@@ -105,5 +102,5 @@ func (c *Client) getTaskMetadataAtPath(path string) (*Task, error) {
 }
 
 func (c *Client) makeURL(path string) string {
-	return fmt.Sprintf("%sv3%s", c.agentURL, path)
+	return fmt.Sprintf("%s%s", c.agentURL, path)
 }
