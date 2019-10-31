@@ -305,6 +305,7 @@ build_dogstatsd_static-deb_x64:
   stage: binary_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:large" ]
+  needs: ["run_tests_deb-x64-py2", "run_tests_deb-x64-py3"]
   before_script:
     - source /root/.bashrc && conda activate ddpy3
     - inv deps --verbose --dep-vendor-only
@@ -340,6 +341,7 @@ build_dogstatsd-deb_x64:
   stage: binary_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:large" ]
+  needs: ["run_tests_deb-x64-py2", "run_tests_deb-x64-py3"]
   before_script:
     - source /root/.bashrc && conda activate ddpy3
     - inv deps --verbose --dep-vendor-only
@@ -406,6 +408,7 @@ run_dogstatsd_size_test:
   stage: integration_test
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:large" ]
+  needs: ["build_dogstatsd-deb_x64", "build_dogstatsd_static-deb_x64"]
   before_script:
     - source /root/.bashrc && conda activate ddpy3
     # Disable global before_script
@@ -728,6 +731,7 @@ dogstatsd_deb-x64:
   stage: package_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:large" ]
+  needs: ["run_dogstatsd_size_test"]
   <<: *skip_when_unwanted_on_6
   variables:
     AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
@@ -760,6 +764,7 @@ dogstatsd_rpm-x64:
   stage: package_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/rpm_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:large" ]
+  needs: ["run_dogstatsd_size_test"]
   <<: *skip_when_unwanted_on_6
   variables:
     AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
@@ -798,6 +803,7 @@ dogstatsd_suse-x64:
   stage: package_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/suse_x64:$DATADOG_AGENT_BUILDERS
   tags: [ "runner:main", "size:large" ]
+  needs: ["run_dogstatsd_size_test"]
   <<: *skip_when_unwanted_on_6
   variables:
     AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
@@ -1573,6 +1579,7 @@ build_cluster_agent:
 # build the dogstatsd image
 build_dogstatsd:
   <<: *docker_build_job_definition
+  needs: ["dogstatsd_deb-x64"]
   variables:
     IMAGE: &dogstatsd_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/dogstatsd
     BUILD_CONTEXT: Dockerfiles/dogstatsd/alpine
@@ -1588,6 +1595,7 @@ twistlock_scan-6:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/twistlock-cli:2.5.121
   dependencies: [] # Don't download Gitlab artefacts
   allow_failure: true # Don't block the pipeline
+  needs: ["build_dogstatsd"]
   variables:
     SRC_AGENT: *agent_ecr
     SRC_DSD: *dogstatsd_ecr
@@ -1598,12 +1606,7 @@ twistlock_scan-6:
     - TWISTLOCK_PASS=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.twistlock_password --with-decryption --query "Parameter.Value" --out text)
     - scan () { echo -e "\n==== Scanning $1 ====\n"; docker pull $1 > /dev/null; /twistcli images scan --address="$TWISTLOCK_URL" --user="$TWISTLOCK_USER" --password="$TWISTLOCK_PASS" --vulnerability-threshold=$THRESHOLD --details $1; }
   script:
-    - scan ${SRC_AGENT}:${SRC_TAG}-py2
-    - scan ${SRC_AGENT}:${SRC_TAG}-py3
-    - scan ${SRC_AGENT}:${SRC_TAG}-py2-jmx
-    - scan ${SRC_AGENT}:${SRC_TAG}-py3-jmx
     - scan ${SRC_DSD}:${SRC_TAG}
-    - scan ${SRC_DCA}:${SRC_TAG}
 
 twistlock_scan-7:
   <<: *skip_when_unwanted_on_7
