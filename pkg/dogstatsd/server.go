@@ -187,7 +187,9 @@ func (s *Server) handleMessages(metricOut chan<- MetricSampleBatch, eventOut cha
 	}
 
 	for _, l := range s.listeners {
-		go l.Listen()
+		for i := 0; i < 8; i++ {
+			go l.Listen()
+		}
 	}
 
 	// Run min(2, GoMaxProcs-2) workers, we dedicate a core to the
