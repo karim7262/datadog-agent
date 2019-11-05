@@ -6,10 +6,13 @@
 package dogstatsd
 
 import (
+	"context"
 	"expvar"
 	"fmt"
 	"net"
 	"strings"
+
+	"runtime/trace"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
@@ -78,9 +81,15 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 func (l *UDPListener) Listen() {
 	log.Infof("dogstatsd-udp: starting to listen on %s", l.conn.LocalAddr())
 	for {
+		poolT := startTracing("pool")
 		packet := l.packetPool.Get()
+		poolT()
+		expvarT := startTracing("expvar")
 		udpPackets.Add(1)
+		expvarT()
+		readT := startTracing("read")
 		n, _, err := l.conn.ReadFrom(packet.buffer)
+		readT()
 		if err != nil {
 			// connection has been closed
 			if strings.HasSuffix(err.Error(), " use of closed network connection") {
@@ -91,12 +100,24 @@ func (l *UDPListener) Listen() {
 			udpPacketReadingErrors.Add(1)
 			continue
 		}
+		expvar2T := startTracing("expvar2")
 		udpBytes.Add(int64(n))
+		expvar2T()
 		packet.Contents = packet.buffer[:n]
 
+		bufferT := startTracing("buffer")
 		// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
 		l.packetBuffer.append(packet)
+		bufferT()
 	}
+}
+
+func startTracing(name string) func() {
+	if trace.IsEnabled() {
+		region := trace.StartRegion(context.Background(), name)
+		return region.End
+	}
+	return func() {}
 }
 
 // Stop closes the UDP connection and stops listening

@@ -29,7 +29,7 @@ func newPacketBuffer(bufferSize uint, flushTimer time.Duration, outputChannel ch
 		packets:       make(Packets, 0, bufferSize),
 		closeChannel:  make(chan struct{}),
 	}
-	go pb.flushLoop()
+	//go pb.flushLoop()
 	return pb
 }
 
@@ -47,8 +47,6 @@ func (pb *packetBuffer) flushLoop() {
 }
 
 func (pb *packetBuffer) append(packet *Packet) {
-	pb.m.Lock()
-	defer pb.m.Unlock()
 	pb.packets = append(pb.packets, packet)
 	if uint(len(pb.packets)) == pb.bufferSize {
 		pb.flush()
