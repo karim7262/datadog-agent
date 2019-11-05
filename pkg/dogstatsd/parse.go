@@ -21,7 +21,7 @@ var (
 	commaSeparator = []byte(",")
 )
 
-const maxTags = 256
+const maxTags = 128
 
 type parsedTags struct {
 	tags      [maxTags][]byte
@@ -62,7 +62,7 @@ func parseTags(rawTags []byte) parsedTags {
 
 	var tag []byte
 	remainder := rawTags
-	for {
+	for tags.tagsCount < maxTags {
 		tag, remainder = nextFieldSeparator(remainder, commaSeparator)
 		tags.tags[tags.tagsCount] = tag
 		tags.tagsCount++
