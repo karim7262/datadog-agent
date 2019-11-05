@@ -44,15 +44,16 @@ func parseServiceCheckMessage(message []byte, defaultHostname string) (*metrics.
 	return convertServiceCheck(sample, defaultHostname), nil
 }
 
-func convertTags(tags [][]byte, defaultHostname string) ([]string, string) {
-	if len(tags) == 0 {
+func convertTags(tags parsedTags, defaultHostname string) ([]string, string) {
+	if tags.tagsCount == 0 {
 		return nil, defaultHostname
 	}
 
-	tagsList := make([]string, 0, len(tags))
+	tagsList := make([]string, 0, tags.tagsCount)
 	host := defaultHostname
 
-	for _, tag := range tags {
+	for i := 0; i < tags.tagsCount; i++ {
+		tag := tags.tags[i]
 		if bytes.HasPrefix(tag, hostTagPrefix) {
 			host = string(tag[len(hostTagPrefix):])
 		} else if bytes.HasPrefix(tag, entityIDTagPrefix) {

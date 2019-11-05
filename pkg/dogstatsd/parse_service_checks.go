@@ -23,7 +23,7 @@ type dogstatsdServiceCheck struct {
 	timestamp int64
 	hostname  []byte
 	message   []byte
-	tags      [][]byte
+	tags      parsedTags
 }
 
 var (

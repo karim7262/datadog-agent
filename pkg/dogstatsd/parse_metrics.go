@@ -35,7 +35,7 @@ type dogstatsdMetricSample struct {
 	setValue   []byte
 	metricType metricType
 	sampleRate float64
-	tags       [][]byte
+	tags       parsedTags
 }
 
 // sanity checks a given message against the metric sample format
@@ -117,7 +117,7 @@ func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
 	}
 
 	sampleRate := 1.0
-	var tags [][]byte
+	var tags parsedTags
 	var optionalField []byte
 	for message != nil {
 		optionalField, message = nextField(message)

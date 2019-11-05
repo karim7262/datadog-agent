@@ -33,7 +33,7 @@ type dogstatsdEvent struct {
 	priority       eventPriority
 	sourceType     []byte
 	alertType      alertType
-	tags           [][]byte
+	tags           parsedTags
 }
 
 type eventHeader struct {

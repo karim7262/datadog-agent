@@ -15,7 +15,7 @@ func TestServiceCheckMinimal(t *testing.T) {
 	assert.Equal(t, int64(0), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte(nil), sc.message)
-	assert.Equal(t, [][]byte(nil), sc.tags)
+	assert.Equal(t, 0, sc.tags.tagsCount)
 }
 
 func TestServiceCheckError(t *testing.T) {
@@ -56,7 +56,7 @@ func TestServiceCheckMetadataTimestamp(t *testing.T) {
 	assert.Equal(t, int64(21), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte(nil), sc.message)
-	assert.Equal(t, [][]byte(nil), sc.tags)
+	assert.Equal(t, 0, sc.tags.tagsCount)
 }
 
 func TestServiceCheckMetadataHostname(t *testing.T) {
@@ -68,7 +68,7 @@ func TestServiceCheckMetadataHostname(t *testing.T) {
 	assert.Equal(t, int64(0), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte(nil), sc.message)
-	assert.Equal(t, [][]byte(nil), sc.tags)
+	assert.Equal(t, 0, sc.tags.tagsCount)
 }
 
 func TestServiceCheckMetadataTags(t *testing.T) {
@@ -79,7 +79,10 @@ func TestServiceCheckMetadataTags(t *testing.T) {
 	assert.Equal(t, int64(0), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte(nil), sc.message)
-	assert.Equal(t, [][]byte{[]byte("tag1"), []byte("tag2:test"), []byte("tag3")}, sc.tags)
+	assert.Equal(t, 3, sc.tags.tagsCount)
+	assert.Equal(t, []byte("tag1"), sc.tags.tags[0])
+	assert.Equal(t, []byte("tag2:test"), sc.tags.tags[1])
+	assert.Equal(t, []byte("tag3"), sc.tags.tags[2])
 }
 
 func TestServiceCheckMetadataMessage(t *testing.T) {
@@ -90,7 +93,7 @@ func TestServiceCheckMetadataMessage(t *testing.T) {
 	assert.Equal(t, int64(0), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte("this is fine"), sc.message)
-	assert.Equal(t, [][]byte(nil), sc.tags)
+	assert.Equal(t, 0, sc.tags.tagsCount)
 }
 
 func TestServiceCheckMetadataMultiple(t *testing.T) {
@@ -102,7 +105,9 @@ func TestServiceCheckMetadataMultiple(t *testing.T) {
 	assert.Equal(t, int64(21), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte("this is fine"), sc.message)
-	assert.Equal(t, [][]byte{[]byte("tag1:test"), []byte("tag2")}, sc.tags)
+	assert.Equal(t, 2, sc.tags.tagsCount)
+	assert.Equal(t, []byte("tag1:test"), sc.tags.tags[0])
+	assert.Equal(t, []byte("tag2"), sc.tags.tags[1])
 
 	// multiple time the same tag
 	sc, err = parseServiceCheck([]byte("_sc|agent.up|0|d:21|h:localhost|h:localhost2|d:22"))
@@ -112,5 +117,5 @@ func TestServiceCheckMetadataMultiple(t *testing.T) {
 	assert.Equal(t, int64(22), sc.timestamp)
 	assert.Equal(t, serviceCheckStatusOk, sc.status)
 	assert.Equal(t, []byte(nil), sc.message)
-	assert.Equal(t, [][]byte(nil), sc.tags)
+	assert.Equal(t, 0, sc.tags.tagsCount)
 }

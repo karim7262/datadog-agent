@@ -21,6 +21,13 @@ var (
 	commaSeparator = []byte(",")
 )
 
+const maxTags = 256
+
+type parsedTags struct {
+	tags      [maxTags][]byte
+	tagsCount int
+}
+
 func findMessageType(message []byte) messageType {
 	if bytes.HasPrefix(message, eventPrefix) {
 		return eventType
@@ -36,16 +43,32 @@ func findMessageType(message []byte) messageType {
 // the remainder, as a no-heap alternative to bytes.Split.
 // If the separator is not found, the remainder is nil.
 func nextField(message []byte) ([]byte, []byte) {
-	sepIndex := bytes.Index(message, fieldSeparator)
+	return nextFieldSeparator(message, fieldSeparator)
+}
+
+func nextFieldSeparator(message, separator []byte) ([]byte, []byte) {
+	sepIndex := bytes.Index(message, separator)
 	if sepIndex == -1 {
 		return message, nil
 	}
 	return message[:sepIndex], message[sepIndex+1:]
 }
 
-func parseTags(rawTags []byte) [][]byte {
+func parseTags(rawTags []byte) parsedTags {
 	if len(rawTags) == 0 {
-		return nil
+		return parsedTags{}
 	}
-	return bytes.Split(rawTags, commaSeparator)
+	tags := parsedTags{}
+
+	var tag []byte
+	remainder := rawTags
+	for {
+		tag, remainder = nextFieldSeparator(remainder, commaSeparator)
+		tags.tags[tags.tagsCount] = tag
+		tags.tagsCount++
+		if remainder == nil {
+			break
+		}
+	}
+	return tags
 }
