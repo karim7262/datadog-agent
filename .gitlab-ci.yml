@@ -65,6 +65,7 @@ variables:
   DATADOG_AGENT_BUILDIMAGES: v1709713-2adac2a
   DATADOG_AGENT_BUILDERS: v1793959-4e4c346
   DATADOG_AGENT_WINBUILDIMAGES: v1782031-7bc5447
+  DATADOG_AGENT_ARMBUILDIMAGES: v1861894-5abe936
 
 
 # Default before_script for all the jobs. If you create a new job and don't want this to execute
@@ -477,6 +478,23 @@ agent_deb-x64-a7:
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_7
   <<: *skip_when_unwanted_on_7
+  <<: *agent_build_common_deb
+
+agent_deb-arm-a6:
+  stage: package_build
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deb_arm_x64:$DATADOG_AGENT_ARMBUILDIMAGES
+  tags: ["runner:docker-arm", "platform:arm64"]
+  variables:
+    AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
+    CONDA_ENV: ddpy3
+    PYTHON_RUNTIMES: '2,3'
+    DESTINATION_DEB: 'datadog-agent_6_arm64.deb'
+    DESTINATION_DBG_DEB: 'datadog-agent-dbg_6_arm64.deb'
+  before_script:
+    - source /root/.bashrc
+    - inv -e deps --verbose --dep-vendor-only
+    - export RELEASE_VERSION=$RELEASE_VERSION_6
+  <<: *skip_when_unwanted_on_6
   <<: *agent_build_common_deb
 
 # build Agent package for deb-x64
