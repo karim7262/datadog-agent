@@ -43,6 +43,8 @@ func (c *ECSFargateCollector) parseMetadata(meta *v2.Task, parseAll bool) ([]*Ta
 				}
 			}
 
+			log.Debugf("Parsing metadata for container %s", ctr.Name)
+
 			// cluster
 			tags.AddLow("cluster_name", parseECSClusterName(meta.ClusterName))
 

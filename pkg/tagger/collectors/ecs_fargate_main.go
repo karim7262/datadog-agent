@@ -18,6 +18,7 @@ import (
 	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
 	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	v2 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v2"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 const (
@@ -68,11 +69,15 @@ func (c *ECSFargateCollector) Pull() error {
 	if err != nil {
 		return err
 	}
+	log.Debugf("Pulled task metadata")
+
 	// Only parse new containers
 	updates, err := c.parseMetadata(taskMeta, false)
 	if err != nil {
 		return err
 	}
+
+	log.Debugf("Update list: %+v", updates)
 	c.infoOut <- updates
 
 	// Throttle deletions
