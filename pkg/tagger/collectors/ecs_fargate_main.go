@@ -77,7 +77,11 @@ func (c *ECSFargateCollector) Pull() error {
 		return err
 	}
 
-	log.Debugf("Update list: %+v", updates)
+	log.Debugf("Update list content:")
+	for _, item := range updates {
+		log.Debugf("- %+v", item)
+	}
+
 	c.infoOut <- updates
 
 	// Throttle deletions
