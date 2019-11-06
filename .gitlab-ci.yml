@@ -1,7 +1,7 @@
 stages:
+  - binary_build
   - package_build
   - source_test
-  - binary_build
   - integration_test
   - internal_deploy
   - check_deploy
