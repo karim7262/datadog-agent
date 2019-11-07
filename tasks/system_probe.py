@@ -52,8 +52,13 @@ def build(ctx, race=False, go_version=None, incremental_build=False):
     ldflags, gcflags, env = get_build_flags(ctx)
 
     # extend PATH from gimme with the one from get_build_flags
-    if "PATH" in os.environ and "PATH" in goenv:
+    if "PATH" in goenv:
+        goenv["PATH"] += ":" + os.environ["GOPATH"]+"/bin"
+    else:
+        goenv["PATH"] = os.environ["GOPATH"]+"/bin"
+    if "PATH" in os.environ:
         goenv["PATH"] += ":" + os.environ["PATH"]
+
     env.update(goenv)
 
     # Add custom ld flags
