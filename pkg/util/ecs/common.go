@@ -73,7 +73,7 @@ func convertMetaV2Container(c v2.Container) *containers.Container {
 	container := &containers.Container{
 		Type:        "ECS",
 		ID:          c.DockerID,
-		EntityID:    docker.ContainerIDToEntityName(c.DockerID),
+		EntityID:    docker.ContainerIDToTaggerEntityName(c.DockerID),
 		Name:        c.DockerName,
 		Image:       c.Image,
 		ImageID:     c.ImageID,
