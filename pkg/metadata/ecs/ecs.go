@@ -8,9 +8,12 @@
 package ecs
 
 import (
+	"fmt"
+
 	payload "github.com/DataDog/agent-payload/gogen"
 	"github.com/DataDog/datadog-agent/pkg/metadata"
 
+	ecsutil "github.com/DataDog/datadog-agent/pkg/util/ecs"
 	ecsmeta "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata"
 	v1 "github.com/DataDog/datadog-agent/pkg/util/ecs/metadata/v1"
 )
@@ -19,6 +22,10 @@ import (
 // of the local ECS containers running on this node. This data is provided via
 // the local ECS agent.
 func GetPayload() (metadata.Payload, error) {
+	if ecsutil.IsFargateInstance() {
+		return nil, fmt.Errorf("ECS metadata disabled on Fargate")
+	}
+
 	metaV1, err := ecsmeta.V1()
 	if err != nil {
 		return nil, err
