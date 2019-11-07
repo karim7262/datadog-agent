@@ -9,15 +9,12 @@ import (
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/tagger/utils"
 	"github.com/DataDog/datadog-agent/pkg/util/tmplvar"
 )
 
 var templateVariables = map[string]struct{}{
 	"label": {},
 }
-
-
 
 // retrieveMappingFromConfig gets a stringmapstring config key and
 // lowercases all map keys to make envvar and yaml sources consistent
