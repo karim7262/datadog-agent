@@ -17,11 +17,7 @@ var templateVariables = map[string]struct{}{
 	"label": {},
 }
 
-func addResourceTags(t *utils.TagList, m map[string]string) {
-	for k, v := range m {
-		t.AddLow(k, v)
-	}
-}
+
 
 // retrieveMappingFromConfig gets a stringmapstring config key and
 // lowercases all map keys to make envvar and yaml sources consistent
