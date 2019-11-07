@@ -229,6 +229,7 @@ func (t *Tagger) Tag(entity string, cardinality collectors.TagCardinality) ([]st
 
 	if len(sources) == len(t.fetchers) {
 		// All sources sent data to cache
+		log.Tracef("Returning tags from cache for entity %s: %+v", entity, cachedTags)
 		return copyArray(cachedTags), nil
 	}
 	// Else, partial cache miss, query missing data
@@ -270,6 +271,7 @@ IterCollectors:
 			HighCardTags:         high,
 			CacheMiss:            cacheMiss,
 		})
+		log.Debugf("Caching tags for entity %s: %+v", entity, tagArrays)
 	}
 	t.RUnlock()
 
