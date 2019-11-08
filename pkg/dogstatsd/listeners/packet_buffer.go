@@ -58,7 +58,7 @@ func (pb *packetBuffer) append(packet *Packet) {
 
 func (pb *packetBuffer) flush() {
 	if len(pb.packets) > 0 {
-		pb.outputChannel[pb.i%len(pb.packets)] <- pb.packets
+		pb.outputChannel[pb.i%len(pb.outputChannel)] <- pb.packets
 		pb.i++
 		pb.packets = make(Packets, 0, pb.bufferSize)
 	}
