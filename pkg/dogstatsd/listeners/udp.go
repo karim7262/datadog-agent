@@ -93,9 +93,10 @@ func (l *UDPListener) Listen() {
 		}
 		udpBytes.Add(int64(n))
 		packet.Contents = packet.buffer[:n]
+		l.packetPool.Put(packet)
 
 		// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
-		l.packetBuffer.append(packet)
+		//l.packetBuffer.append(packet)
 	}
 }
 
