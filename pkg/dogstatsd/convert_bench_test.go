@@ -20,7 +20,7 @@ func buildRawSample(tagCount int) []byte {
 var sample *metrics.MetricSample
 
 func BenchmarkParseMetric(b *testing.B) {
-	for i := 1; i < 1000; i *= 4 {
+	for i := 1; i < 2; i *= 4 {
 		b.Run(fmt.Sprintf("%d-tags", i), func(sb *testing.B) {
 			rawSample := buildRawSample(i)
 			sb.ResetTimer()

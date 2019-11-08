@@ -46,7 +46,7 @@ type UDSListener struct {
 }
 
 // NewUDSListener returns an idle UDS Statsd listener
-func NewUDSListener(packetOut chan Packets, packetPool *PacketPool) (*UDSListener, error) {
+func NewUDSListener(packetOut []chan Packets, packetPool *PacketPool) (*UDSListener, error) {
 	socketPath := config.Datadog.GetString("dogstatsd_socket")
 	originDetection := config.Datadog.GetBool("dogstatsd_origin_detection")
 

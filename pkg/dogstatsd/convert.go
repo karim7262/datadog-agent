@@ -90,7 +90,7 @@ func convertMetricType(dogstatsdMetricType metricType) metrics.MetricType {
 	return metrics.GaugeType
 }
 
-func convertMetricSample(metricSample dogstatsdMetricSample, namespace string, namespaceBlacklist []string, defaultHostname string) *metrics.MetricSample {
+func convertMetricSample(metricSample *dogstatsdMetricSample, namespace string, namespaceBlacklist []string, defaultHostname string) *metrics.MetricSample {
 	metricName := string(metricSample.name)
 	if namespace != "" {
 		blacklisted := false

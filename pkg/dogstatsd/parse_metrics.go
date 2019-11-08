@@ -85,24 +85,24 @@ func parseMetricSampleSampleRate(rawSampleRate []byte) (float64, error) {
 	return strconv.ParseFloat(string(rawSampleRate), 64)
 }
 
-func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
+func parseMetricSample(message []byte) (*dogstatsdMetricSample, error) {
 	// fast path to eliminate most of the gibberish
 	// especially important here since all the unidentified garbage gets
 	// identified as metrics
 	if !hasMetricSampleFormat(message) {
-		return dogstatsdMetricSample{}, fmt.Errorf("invalid dogstatsd message format: %q", message)
+		return nil, fmt.Errorf("invalid dogstatsd message format: %q", message)
 	}
 
 	rawNameAndValue, message := nextField(message)
 	name, rawValue, err := parseMetricSampleNameAndRawValue(rawNameAndValue)
 	if err != nil {
-		return dogstatsdMetricSample{}, err
+		return nil, err
 	}
 
 	rawMetricType, message := nextField(message)
 	metricType, err := parseMetricSampleMetricType(rawMetricType)
 	if err != nil {
-		return dogstatsdMetricSample{}, err
+		return nil, err
 	}
 
 	var setValue []byte
@@ -112,7 +112,7 @@ func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
 	} else {
 		value, err = strconv.ParseFloat(string(rawValue), 64)
 		if err != nil {
-			return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd metric value: %v", err)
+			return nil, fmt.Errorf("could not parse dogstatsd metric value: %v", err)
 		}
 	}
 
@@ -126,12 +126,12 @@ func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
 		} else if bytes.HasPrefix(optionalField, sampleRateFieldPrefix) {
 			sampleRate, err = parseMetricSampleSampleRate(optionalField[1:])
 			if err != nil {
-				return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd sample rate %q", optionalField)
+				return nil, fmt.Errorf("could not parse dogstatsd sample rate %q", optionalField)
 			}
 		}
 	}
 
-	return dogstatsdMetricSample{
+	return &dogstatsdMetricSample{
 		name:       name,
 		value:      value,
 		setValue:   setValue,
