@@ -40,7 +40,7 @@ type UDPListener struct {
 }
 
 // NewUDPListener returns an idle UDP Statsd listener
-func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListener, error) {
+func NewUDPListener(packetOut []chan Packets, packetPool *PacketPool) (*UDPListener, error) {
 	var conn net.PacketConn
 	var err error
 	var url string

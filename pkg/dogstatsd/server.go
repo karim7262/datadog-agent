@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"expvar"
 	"fmt"
-	"net"
 	"runtime"
 	"sort"
 	"strings"
@@ -50,7 +49,6 @@ func init() {
 // Server represent a Dogstatsd server
 type Server struct {
 	listeners             []listeners.StatsdListener
-	packetsIn             chan listeners.Packets
 	Statistics            *util.Stats
 	Started               bool
 	packetPool            *listeners.PacketPool
@@ -93,13 +91,22 @@ func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metr
 		metricsStats = true
 	}
 
-	packetsChannel := make(chan listeners.Packets, config.Datadog.GetInt("dogstatsd_queue_size"))
 	packetPool := listeners.NewPacketPool(config.Datadog.GetInt("dogstatsd_buffer_size"))
 	tmpListeners := make([]listeners.StatsdListener, 0, 2)
 
+	workers := runtime.GOMAXPROCS(-1)
+	if workers < 4 {
+		workers = 4
+	}
+
+	workersPacketsIn := make([]chan listeners.Packets, workers)
+	for i := 0; i < workers; i++ {
+		workersPacketsIn[i] = make(chan listeners.Packets, config.Datadog.GetInt("dogstatsd_queue_size"))
+	}
+
 	socketPath := config.Datadog.GetString("dogstatsd_socket")
 	if len(socketPath) > 0 {
-		unixListener, err := listeners.NewUDSListener(packetsChannel, packetPool)
+		unixListener, err := listeners.NewUDSListener(workersPacketsIn, packetPool)
 		if err != nil {
 			log.Errorf(err.Error())
 		} else {
@@ -107,7 +114,7 @@ func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metr
 		}
 	}
 	if config.Datadog.GetInt("dogstatsd_port") > 0 {
-		udpListener, err := listeners.NewUDPListener(packetsChannel, packetPool)
+		udpListener, err := listeners.NewUDPListener(workersPacketsIn, packetPool)
 		if err != nil {
 			log.Errorf(err.Error())
 		} else {
@@ -139,7 +146,6 @@ func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metr
 	s := &Server{
 		Started:               true,
 		Statistics:            stats,
-		packetsIn:             packetsChannel,
 		listeners:             tmpListeners,
 		packetPool:            packetPool,
 		stopChan:              make(chan bool),
@@ -154,21 +160,12 @@ func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metr
 		metricsStats:          make(map[string]metricStat),
 	}
 
-	forwardHost := config.Datadog.GetString("statsd_forward_host")
-	forwardPort := config.Datadog.GetInt("statsd_forward_port")
+	for _, l := range s.listeners {
+		go l.Listen()
+	}
 
-	if forwardHost != "" && forwardPort != 0 {
-
-		forwardAddress := fmt.Sprintf("%s:%d", forwardHost, forwardPort)
-
-		con, err := net.Dial("udp", forwardAddress)
-
-		if err != nil {
-			log.Warnf("Could not connect to statsd forward host : %s", err)
-		} else {
-			s.packetsIn = make(chan listeners.Packets, config.Datadog.GetInt("dogstatsd_queue_size"))
-			go s.forwarder(con, packetsChannel)
-		}
+	for i := 0; i < workers; i++ {
+		go s.worker(workersPacketsIn[i], metricOut, eventOut, serviceCheckOut)
 	}
 
 	s.handleMessages(metricOut, eventOut, serviceCheckOut)
@@ -181,48 +178,15 @@ func (s *Server) handleMessages(metricOut chan<- []*metrics.MetricSample, eventO
 		go s.Statistics.Process()
 		go s.Statistics.Update(&dogstatsdPacketsLastSec)
 	}
-
-	for _, l := range s.listeners {
-		go l.Listen()
-	}
-
-	// Run min(2, GoMaxProcs-2) workers, we dedicate a core to the
-	// listener goroutine and another to aggregator + forwarder
-	workers := runtime.GOMAXPROCS(-1) - 2
-	if workers < 2 {
-		workers = 2
-	}
-
-	for i := 0; i < workers; i++ {
-		go s.worker(metricOut, eventOut, serviceCheckOut)
-	}
 }
 
-func (s *Server) forwarder(fcon net.Conn, packetsChannel chan listeners.Packets) {
-	for {
-		select {
-		case <-s.stopChan:
-			return
-		case packets := <-packetsChannel:
-			for _, packet := range packets {
-				_, err := fcon.Write(packet.Contents)
-
-				if err != nil {
-					log.Warnf("Forwarding packet failed : %s", err)
-				}
-			}
-			s.packetsIn <- packets
-		}
-	}
-}
-
-func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) {
+func (s *Server) worker(packetsIn chan listeners.Packets, metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) {
 	for {
 		select {
 		case <-s.stopChan:
 			return
 		case <-s.health.C:
-		case packets := <-s.packetsIn:
+		case packets := <-packetsIn:
 			events := make([]*metrics.Event, 0, len(packets))
 			serviceChecks := make([]*metrics.ServiceCheck, 0, len(packets))
 			metricSamples := make([]*metrics.MetricSample, 0, len(packets))
