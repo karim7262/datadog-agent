@@ -604,6 +604,7 @@ agent_rpm-arm-a6:
     PKG_TARGET: rpm_arm_x64
     PYTHON_RUNTIMES: '2,3'
   before_script:
+    - source /root/.bashrc
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_6
   <<: *skip_when_unwanted_on_6
@@ -616,6 +617,7 @@ agent_rpm-arm-a7:
     PKG_TARGET: rpm_arm_x64
     PYTHON_RUNTIMES: '3'
   before_script:
+    - source /root/.bashrc
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_7
   <<: *skip_when_unwanted_on_7
