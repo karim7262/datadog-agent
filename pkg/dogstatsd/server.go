@@ -340,6 +340,7 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 					event.ExtraTags = append(event.ExtraTags, extraTags...)
 				}
 				dogstatsdEventPackets.Add(1)
+				packet.borrow()
 				event.packet = packet
 				eventBatch.Add(event)
 				if eventBatch.IsFull() {
@@ -370,6 +371,7 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 					sampleBatch = MetricSampleBatch{}
 				}
 				if s.histToDist && sample.MetricType == metrics.HistogramType {
+					packet.borrow()
 					sampleBatch.Add(cloneHistogramToDistribution(sample, s.histToDistPrefix))
 					if sampleBatch.IsFull() {
 						metricOut <- sampleBatch
