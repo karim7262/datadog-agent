@@ -41,9 +41,7 @@ type MetricSample struct {
 
 // Release removes one from the underlying packet reference counting
 func (s *MetricSample) Release() {
-	if s.packet != nil {
-		s.packet.release()
-	}
+	s.packet.release()
 }
 
 // EventBatch is a batch of events to be sent to the aggregator
@@ -85,9 +83,7 @@ type Event struct {
 
 // Release removes one from the underlying packet reference counting
 func (e *Event) Release() {
-	if e.packet != nil {
-		e.packet.release()
-	}
+	e.packet.release()
 }
 
 // ServiceCheckBatch is a batch of service checks to be sent to the aggregator
@@ -126,7 +122,5 @@ type ServiceCheck struct {
 
 // Release removes one from the underlying packet reference counting
 func (sc *ServiceCheck) Release() {
-	if sc.packet != nil {
-		sc.packet.release()
-	}
+	sc.packet.release()
 }
