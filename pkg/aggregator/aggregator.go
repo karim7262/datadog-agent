@@ -642,8 +642,9 @@ func (agg *BufferedAggregator) run() {
 
 		case metrics := <-agg.bufferedMetricIn:
 			aggregatorDogstatsdMetricSample.Add(int64(len(metrics)))
+			now := timeNowNano()
 			for _, sample := range metrics {
-				agg.addSample(sample, timeNowNano())
+				agg.addSample(sample, now)
 			}
 		case serviceChecks := <-agg.bufferedServiceCheckIn:
 			aggregatorServiceCheck.Add(int64(len(serviceChecks)))
