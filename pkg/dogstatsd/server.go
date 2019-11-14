@@ -291,6 +291,7 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 	var serviceCheckBatch ServiceCheckBatch
 
 	for _, packet := range packets {
+		packet.borrow()
 		log.Tracef("Dogstatsd receive: %s", packet.Contents)
 		if packet.Origin != NoOrigin {
 			originTags, err := tagger.Tag(packet.Origin, tagger.DogstatsdCardinality)
@@ -380,6 +381,7 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 				}
 			}
 		}
+		packet.release()
 	}
 	if sampleBatch.Count != 0 {
 		metricOut <- sampleBatch

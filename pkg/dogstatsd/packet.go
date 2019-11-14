@@ -17,13 +17,14 @@ type Packet struct {
 }
 
 func (p *Packet) release() {
-	p.referenceCount--
 	if p.referenceCount == 0 && p.pool != nil {
 		p.pool.Put(p)
 	}
 	if p.referenceCount < 0 {
 		log.Warnf("a dogstatsd packet was released twice")
+		return
 	}
+	p.referenceCount--
 }
 
 func (p *Packet) borrow() {
