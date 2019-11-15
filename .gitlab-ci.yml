@@ -252,10 +252,10 @@ run_tests_rpm-x64-py3:
 run_tests_ebpf:
   allow_failure: true
   stage: source_test
-  # TODO(processes): change this to use the generic builder image when we use the same version of Go in the 
+  # TODO(processes): change this to use the generic builder image when we use the same version of Go in the
   # system-probe and the agent, or when `system-probe.test` can receive which Go version to use as an argument.
   # Currently this is using the ebpf image so system-probe tests run in the same  Go version used to build it (1.10).
-  # Note that this image isn't used to build the system-probe: when building it, we specify Go version to use 
+  # Note that this image isn't used to build the system-probe: when building it, we specify Go version to use
   # through an argument to the system-probe.build invoke task.
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/ebpf:go1.10.1
   before_script:
@@ -1842,8 +1842,10 @@ twistlock_scan-7:
 .docker_tag_job_definition: &docker_tag_job_definition
   stage: image_deploy
   tags: [ "runner:docker", "size:large" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:18.03.1
   before_script:
+    - apt-get install -y python-pip
+    - pip install awscli
     - export SRC_TAG=v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}
     - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_LOGIN_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
     - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin "$DOCKER_REGISTRY_URL"
@@ -1852,7 +1854,7 @@ twistlock_scan-7:
     - echo "Importing delegation signing key"
     - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_PASS_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
     - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_KEY_SSM_KEY --with-decryption --query "Parameter.Value" --out text > /tmp/docker.key
-    - notary -d ~/.docker/trust key import /tmp/docker.key; rm /tmp/docker.key
+    - docker trust key load /tmp/docker.key; rm /tmp/docker.key
   dependencies: [] # Don't download Gitlab artefacts
 
 .docker_hub_variables: &docker_hub_variables
