@@ -12,39 +12,57 @@
             "golang.org/x/tools/go/gcexportdata"
         ],
         "golang.org/x/tools/go/ast/astutil": {
+            "repo": "https://github.com/golang/tools",
+            "repotarget": "golang.org/x/tools",
             "version": "release-branch.go1.10",
             "type": "go"
         },
         "golang.org/x/tools/go/internal": {
+            "repo": "https://github.com/golang/tools",
+            "repotarget": "golang.org/x/tools",
             "version": "release-branch.go1.10",
             "type": "go",
             "install": false
         },
         "golang.org/x/tools/go/gcexportdata": {
+            "repo": "https://github.com/golang/tools",
+            "repotarget": "golang.org/x/tools",
             "version": "release-branch.go1.10",
             "type": "go"
         },
         "github.com/golang/dep/cmd/dep": {
+            "repo": "https://github.com/golang/dep",
+            "repotarget": "github.com/golang/dep",
             "version": "v0.5.0",
             "type": "go"
         },
         "golang.org/x/lint/golint": {
+            "repo": "https://github.com/golang/lint",
+            "repotarget": "golang.org/x/lint",
             "version": "master",
             "type": "go"
         },
         "github.com/fzipp/gocyclo": {
+            "repo": "https://github.com/fzipp/gocyclo",
+            "repotarget": "github.com/fzipp/gocyclo",
             "version": "master",
             "type": "go"
         },
         "github.com/gordonklaus/ineffassign": {
+            "repo": "https://github.com/gordonklaus/ineffassign",
+            "repotarget": "github.com/gordonklaus/ineffassign",
             "version": "master",
             "type": "go"
         },
         "github.com/client9/misspell/cmd/misspell": {
+            "repo": "https://github.com/client9/misspell",
+            "repotarget": "github.com/client9/misspell",
             "version": "master",
             "type": "go"
         },
         "golang.org/x/mobile/cmd/gomobile": {
+            "repo": "https://go.googlesource.com/mobile",
+            "repotarget": "golang.org/x/mobile",
             "version": "8b05ea26b5669e5f52084ab001b8e49ec8877955",
             "type": "go"
         }
