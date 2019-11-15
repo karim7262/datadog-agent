@@ -1844,6 +1844,7 @@ twistlock_scan-7:
   tags: [ "runner:docker", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:18.03.1
   before_script:
+    - apt -y update
     - apt-get install -y python-pip
     - pip install awscli
     - export SRC_TAG=v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}
