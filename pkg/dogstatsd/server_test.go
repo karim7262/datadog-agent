@@ -24,7 +24,7 @@ func TestNewServer(t *testing.T) {
 	require.NoError(t, err)
 	config.Datadog.SetDefault("dogstatsd_port", port)
 
-	s, err := NewServer(nil, nil, nil)
+	s, err := NewServer(nil)
 	require.NoError(t, err, "cannot start DSD")
 	defer s.Stop()
 	assert.NotNil(t, s)
@@ -36,7 +36,7 @@ func TestStopServer(t *testing.T) {
 	require.NoError(t, err)
 	config.Datadog.SetDefault("dogstatsd_port", port)
 
-	s, err := NewServer(nil, nil, nil)
+	s, err := NewServer(nil)
 	require.NoError(t, err, "cannot start DSD")
 	s.Stop()
 
@@ -60,10 +60,8 @@ func TestUPDReceive(t *testing.T) {
 	require.NoError(t, err)
 	config.Datadog.SetDefault("dogstatsd_port", port)
 
-	metricOut := make(chan MetricSampleBatch)
-	eventOut := make(chan EventBatch)
-	serviceOut := make(chan ServiceCheckBatch)
-	s, err := NewServer(metricOut, eventOut, serviceOut)
+	parsedPacketOut := make(chan ParsedPacket)
+	s, err := NewServer(parsedPacketOut)
 	require.NoError(t, err, "cannot start DSD")
 	defer s.Stop()
 
@@ -75,8 +73,8 @@ func TestUPDReceive(t *testing.T) {
 	// Test metric
 	conn.Write([]byte("daemon:666|g|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 		assert.NotNil(t, sample)
 		assert.Equal(t, sample.Name, []byte("daemon"))
@@ -89,8 +87,8 @@ func TestUPDReceive(t *testing.T) {
 
 	conn.Write([]byte("daemon:666|c|@0.5|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 		assert.NotNil(t, sample)
 		assert.Equal(t, sample.Name, []byte("daemon"))
@@ -103,8 +101,8 @@ func TestUPDReceive(t *testing.T) {
 
 	conn.Write([]byte("daemon:666|h|@0.5|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 		assert.NotNil(t, sample)
 		assert.Equal(t, sample.Name, []byte("daemon"))
@@ -117,8 +115,8 @@ func TestUPDReceive(t *testing.T) {
 
 	conn.Write([]byte("daemon:666|ms|@0.5|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 		assert.NotNil(t, sample)
 		assert.Equal(t, sample.Name, []byte("daemon"))
@@ -131,8 +129,8 @@ func TestUPDReceive(t *testing.T) {
 
 	conn.Write([]byte("daemon_set:abc|s|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 		assert.NotNil(t, sample)
 		assert.Equal(t, sample.Name, []byte("daemon_set"))
@@ -145,8 +143,8 @@ func TestUPDReceive(t *testing.T) {
 	// Test erroneous metric
 	conn.Write([]byte("daemon1:666:777|g\ndaemon2:666|g|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 
 		assert.NotNil(t, sample)
@@ -158,7 +156,7 @@ func TestUPDReceive(t *testing.T) {
 	// Test Service Check
 	conn.Write([]byte("_sc|agent.up|0|d:12345|h:localhost|m:this is fine|#sometag1:somevalyyue1,sometag2:somevalue2"))
 	select {
-	case res := <-serviceOut:
+	case res := <-parsedPacketOut:
 		assert.NotNil(t, res)
 	case <-time.After(2 * time.Second):
 		assert.FailNow(t, "Timeout on receive channel")
@@ -167,8 +165,8 @@ func TestUPDReceive(t *testing.T) {
 	// Test erroneous Service Check
 	conn.Write([]byte("_sc|agen.down\n_sc|agent.up|0|d:12345|h:localhost|m:this is fine|#sometag1:somevalyyue1,sometag2:somevalue2"))
 	select {
-	case res := <-serviceOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.ServiceChecks))
 		serviceCheck := res.ServiceChecks[0]
 		assert.NotNil(t, serviceCheck)
 		assert.Equal(t, serviceCheck.Name, []byte("agent.up"))
@@ -179,7 +177,7 @@ func TestUPDReceive(t *testing.T) {
 	// Test Event
 	conn.Write([]byte("_e{10,10}:test title|test\\ntext|t:warning|d:12345|p:low|h:some.host|k:aggKey|s:source test|#tag1,tag2:test"))
 	select {
-	case res := <-eventOut:
+	case res := <-parsedPacketOut:
 		event := res.Events[0]
 		assert.NotNil(t, event)
 		assert.ElementsMatch(t, event.Tags, [][]byte{[]byte("tag1"), []byte("tag2:test")})
@@ -190,8 +188,8 @@ func TestUPDReceive(t *testing.T) {
 	// Test erroneous Event
 	conn.Write([]byte("_e{10,0}:test title|\n_e{11,10}:test title2|test\\ntext|t:warning|d:12345|p:low|h:some.host|k:aggKey|s:source test|#tag1,tag2:test"))
 	select {
-	case res := <-eventOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Events))
 		event := res.Events[0]
 		assert.NotNil(t, event)
 		assert.Equal(t, event.Title, []byte("test title2"))
@@ -219,10 +217,8 @@ func TestUDPForward(t *testing.T) {
 	require.NoError(t, err)
 	config.Datadog.SetDefault("dogstatsd_port", port)
 
-	metricOut := make(chan MetricSampleBatch)
-	eventOut := make(chan EventBatch)
-	serviceOut := make(chan ServiceCheckBatch)
-	s, err := NewServer(metricOut, eventOut, serviceOut)
+	parsedPacketOut := make(chan ParsedPacket)
+	s, err := NewServer(parsedPacketOut)
 	require.NoError(t, err, "cannot start DSD")
 	defer s.Stop()
 
@@ -256,10 +252,8 @@ func TestHistToDist(t *testing.T) {
 	config.Datadog.SetDefault("histogram_copy_to_distribution_prefix", "dist.")
 	defer config.Datadog.SetDefault("histogram_copy_to_distribution_prefix", "")
 
-	metricOut := make(chan MetricSampleBatch)
-	eventOut := make(chan EventBatch)
-	serviceOut := make(chan ServiceCheckBatch)
-	s, err := NewServer(metricOut, eventOut, serviceOut)
+	parsedPacketOut := make(chan ParsedPacket)
+	s, err := NewServer(parsedPacketOut)
 	require.NoError(t, err, "cannot start DSD")
 	defer s.Stop()
 
@@ -271,10 +265,11 @@ func TestHistToDist(t *testing.T) {
 	// Test metric
 	conn.Write([]byte("daemon:666|h|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case histMetrics := <-metricOut:
-		assert.Equal(t, 2, histMetrics.Count)
-		histMetric := histMetrics.Samples[0]
-		distMetric := histMetrics.Samples[1]
+	case parsedPacket := <-parsedPacketOut:
+		histMetrics := parsedPacket.Samples
+		assert.Equal(t, 2, len(histMetrics))
+		histMetric := histMetrics[0]
+		distMetric := histMetrics[1]
 		assert.NotNil(t, histMetric)
 		assert.Equal(t, histMetric.Name, []byte("daemon"))
 		assert.EqualValues(t, histMetric.Value, 666.0)
@@ -296,10 +291,8 @@ func TestExtraTags(t *testing.T) {
 	config.Datadog.SetDefault("dogstatsd_tags", []string{"sometag3:somevalue3"})
 	defer config.Datadog.SetDefault("dogstatsd_tags", []string{})
 
-	metricOut := make(chan MetricSampleBatch)
-	eventOut := make(chan EventBatch)
-	serviceOut := make(chan ServiceCheckBatch)
-	s, err := NewServer(metricOut, eventOut, serviceOut)
+	parsedPacketOut := make(chan ParsedPacket)
+	s, err := NewServer(parsedPacketOut)
 	require.NoError(t, err, "cannot start DSD")
 	defer s.Stop()
 
@@ -311,8 +304,8 @@ func TestExtraTags(t *testing.T) {
 	// Test metric
 	conn.Write([]byte("daemon:666|g|#sometag1:somevalue1,sometag2:somevalue2"))
 	select {
-	case res := <-metricOut:
-		assert.Equal(t, 1, res.Count)
+	case res := <-parsedPacketOut:
+		assert.Equal(t, 1, len(res.Samples))
 		sample := res.Samples[0]
 		assert.NotNil(t, sample)
 		assert.Equal(t, sample.Name, []byte("daemon"))
@@ -325,10 +318,8 @@ func TestExtraTags(t *testing.T) {
 }
 
 func TestDebugStats(t *testing.T) {
-	metricOut := make(chan MetricSampleBatch)
-	eventOut := make(chan EventBatch)
-	serviceOut := make(chan ServiceCheckBatch)
-	s, err := NewServer(metricOut, eventOut, serviceOut)
+	parsedPacketOut := make(chan ParsedPacket)
+	s, err := NewServer(parsedPacketOut)
 	require.NoError(t, err, "cannot start DSD")
 	defer s.Stop()
 

@@ -51,6 +51,7 @@ func init() {
 type Server struct {
 	listeners             []StatsdListener
 	packetsIn             chan Packets
+	parsedPacketsOut      chan<- ParsedPacket
 	Statistics            *util.Stats
 	Started               bool
 	packetPool            *PacketPool
@@ -75,7 +76,7 @@ type metricStat struct {
 }
 
 // NewServer returns a running Dogstatsd server
-func NewServer(metricOut chan<- MetricSampleBatch, eventOut chan<- EventBatch, serviceCheckOut chan<- ServiceCheckBatch) (*Server, error) {
+func NewServer(parsedPacketsOut chan<- ParsedPacket) (*Server, error) {
 	var stats *util.Stats
 	if config.Datadog.GetBool("dogstatsd_stats_enable") == true {
 		buff := config.Datadog.GetInt("dogstatsd_stats_buffer")
@@ -144,6 +145,7 @@ func NewServer(metricOut chan<- MetricSampleBatch, eventOut chan<- EventBatch, s
 		Started:               true,
 		Statistics:            stats,
 		packetsIn:             packetsChannel,
+		parsedPacketsOut:      parsedPacketsOut,
 		listeners:             tmpListeners,
 		packetPool:            packetPool,
 		stopChan:              make(chan bool),
@@ -175,12 +177,12 @@ func NewServer(metricOut chan<- MetricSampleBatch, eventOut chan<- EventBatch, s
 		}
 	}
 
-	s.handleMessages(metricOut, eventOut, serviceCheckOut)
+	s.handleMessages()
 
 	return s, nil
 }
 
-func (s *Server) handleMessages(metricOut chan<- MetricSampleBatch, eventOut chan<- EventBatch, serviceCheckOut chan<- ServiceCheckBatch) {
+func (s *Server) handleMessages() {
 	if s.Statistics != nil {
 		go s.Statistics.Process()
 		go s.Statistics.Update(&dogstatsdPacketsLastSec)
@@ -198,7 +200,7 @@ func (s *Server) handleMessages(metricOut chan<- MetricSampleBatch, eventOut cha
 	}
 
 	for i := 0; i < workers; i++ {
-		go s.worker(metricOut, eventOut, serviceCheckOut)
+		go s.worker()
 	}
 }
 
@@ -220,14 +222,14 @@ func (s *Server) forwarder(fcon net.Conn, packetsChannel chan Packets) {
 	}
 }
 
-func (s *Server) worker(metricOut chan<- MetricSampleBatch, eventOut chan<- EventBatch, serviceCheckOut chan<- ServiceCheckBatch) {
+func (s *Server) worker() {
 	for {
 		select {
 		case <-s.stopChan:
 			return
 		case <-s.health.C:
 		case packets := <-s.packetsIn:
-			s.parsePackets(packets, metricOut, eventOut, serviceCheckOut)
+			s.parsePackets(packets)
 		}
 	}
 }
@@ -281,15 +283,10 @@ func parseServiceCheckMessage(message []byte, defaultHostname []byte) (ServiceCh
 	return enrichServiceCheck(sample, []byte(defaultHostname)), nil
 }
 
-func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBatch, eventOut chan<- EventBatch, serviceCheckOut chan<- ServiceCheckBatch) {
+func (s *Server) parsePackets(packets []*Packet) {
 	extraTags := s.extraTags
-
-	var sampleBatch MetricSampleBatch
-	var eventBatch EventBatch
-	var serviceCheckBatch ServiceCheckBatch
-
 	for _, packet := range packets {
-		packet.borrow()
+		parsedPacket := ParsedPacket{packet: packet}
 		log.Tracef("Dogstatsd receive: %s", packet.Contents)
 		if packet.Origin != NoOrigin {
 			originTags, err := tagger.Tag(packet.Origin, tagger.DogstatsdCardinality)
@@ -321,13 +318,7 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 					serviceCheck.ExtraTags = append(serviceCheck.ExtraTags, extraTags...)
 				}
 				dogstatsdServiceCheckPackets.Add(1)
-				packet.borrow()
-				serviceCheck.packet = packet
-				serviceCheckBatch.Add(serviceCheck)
-				if serviceCheckBatch.IsFull() {
-					serviceCheckOut <- serviceCheckBatch
-					serviceCheckBatch = ServiceCheckBatch{}
-				}
+				parsedPacket.ServiceChecks = append(parsedPacket.ServiceChecks, serviceCheck)
 			} else if bytes.HasPrefix(message, []byte("_e")) {
 				event, err := parseEventMessage(message, s.defaultHostname)
 				if err != nil {
@@ -339,13 +330,7 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 					event.ExtraTags = append(event.ExtraTags, extraTags...)
 				}
 				dogstatsdEventPackets.Add(1)
-				packet.borrow()
-				event.packet = packet
-				eventBatch.Add(event)
-				if eventBatch.IsFull() {
-					eventOut <- eventBatch
-					eventBatch = EventBatch{}
-				}
+				parsedPacket.Events = append(parsedPacket.Events, event)
 			} else {
 				sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 				if err != nil {
@@ -362,33 +347,14 @@ func (s *Server) parsePackets(packets []*Packet, metricOut chan<- MetricSampleBa
 					}
 				}
 				dogstatsdMetricPackets.Add(1)
-				packet.borrow()
-				sample.packet = packet
-				sampleBatch.Add(sample)
-				if sampleBatch.IsFull() {
-					metricOut <- sampleBatch
-					sampleBatch = MetricSampleBatch{}
-				}
+				parsedPacket.Samples = append(parsedPacket.Samples, sample)
 				if s.histToDist && sample.MetricType == metrics.HistogramType {
-					packet.borrow()
-					sampleBatch.Add(cloneHistogramToDistribution(sample, s.histToDistPrefix))
-					if sampleBatch.IsFull() {
-						metricOut <- sampleBatch
-						sampleBatch = MetricSampleBatch{}
-					}
+					clonedSample := cloneHistogramToDistribution(sample, s.histToDistPrefix)
+					parsedPacket.Samples = append(parsedPacket.Samples, clonedSample)
 				}
 			}
 		}
-		packet.release()
-	}
-	if sampleBatch.Count != 0 {
-		metricOut <- sampleBatch
-	}
-	if eventBatch.Count != 0 {
-		eventOut <- eventBatch
-	}
-	if serviceCheckBatch.Count != 0 {
-		serviceCheckOut <- serviceCheckBatch
+		s.parsedPacketsOut <- parsedPacket
 	}
 }
 

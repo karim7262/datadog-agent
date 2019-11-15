@@ -1,7 +1,5 @@
 package dogstatsd
 
-import "github.com/DataDog/datadog-agent/pkg/util/log"
-
 // Packet represents a statsd packet ready to process,
 // with its origin metadata if applicable.
 //
@@ -16,19 +14,8 @@ type Packet struct {
 	pool           *PacketPool
 }
 
-func (p *Packet) release() {
-	p.referenceCount--
-	if p.referenceCount == 0 && p.pool != nil {
-		p.pool.Put(p)
-	}
-	if p.referenceCount < 0 {
-		log.Warnf("a dogstatsd packet was released twice")
-		return
-	}
-}
-
-func (p *Packet) borrow() {
-	p.referenceCount++
+func (p *Packet) release2() {
+	p.pool.Put(p)
 }
 
 // Packets is a slice of packet pointers
