@@ -1675,6 +1675,7 @@ testkitchen_cleanup_azure-a7:
   before_script: [ "# noop" ] # Override top level entry
   dependencies: [] # Don't download Gitlab artifacts
   script:
+    - export DOCKER_CLI_EXPERIMENTAL=enabled
     - aws s3 sync --only-show-errors $S3_ARTIFACTS_URI $BUILD_CONTEXT
     - TAG_SUFFIX=${TAG_SUFFIX:-}
     - BUILD_ARG=${BUILD_ARG:-}
@@ -1688,6 +1689,10 @@ testkitchen_cleanup_azure-a7:
     - docker build $BUILD_ARG --pull --tag $TARGET_TAG $BUILD_CONTEXT
     - docker push $TARGET_TAG
 
+.docker_build_job_definition_arm64: &docker_build_job_definition_arm64
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:v1903032-53399bc-18.09.6-arm64
+  tags: ["runner:docker-arm", "platform:arm64"]
+
 # build agent6 py2 image
 build_agent6:
   <<: *docker_build_job_definition
@@ -1699,6 +1704,19 @@ build_agent6:
     TAG_SUFFIX: -py2
     BUILD_ARG: --target release --build-arg PYTHON_VERSION=2 --build-arg DD_AGENT_ARTIFACT=datadog-agent_6*_amd64.deb
     TESTING_ARG:  --target testing --build-arg PYTHON_VERSION=2 --build-arg DD_AGENT_ARTIFACT=datadog-agent_6*_amd64.deb
+
+build_agent6_arm64:
+  <<: *docker_build_job_definition
+  <<: *docker_build_job_definition_arm64
+  <<: *skip_when_unwanted_on_6
+  needs: ["agent_deb-arm-a6"]
+  tags: ["runner:docker-arm", "platform:arm64"]
+  variables:
+    IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+    BUILD_CONTEXT: Dockerfiles/agent
+    TAG_SUFFIX: -py2-arm64
+    BUILD_ARG: --target release --build-arg PYTHON_VERSION=2 --build-arg DD_AGENT_ARTIFACT=datadog-agent_6*arm64.deb
+    TESTING_ARG:  --target testing --build-arg PYTHON_VERSION=2 --build-arg DD_AGENT_ARTIFACT=datadog-agent_6*arm64.deb
 
 # build agent6 py2 jmx image
 build_agent6_jmx:
