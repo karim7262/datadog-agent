@@ -87,7 +87,7 @@ func applyServiceCheckOptionalField(serviceCheck dogstatsdServiceCheck, optional
 	case bytes.HasPrefix(optionalField, serviceCheckHostnamePrefix):
 		newServiceCheck.hostname = optionalField[len(serviceCheckHostnamePrefix):]
 	case bytes.HasPrefix(optionalField, serviceCheckTagsPrefix):
-		newServiceCheck.tags = parseTags(optionalField[len(serviceCheckTagsPrefix):])
+		newServiceCheck.tags = appendTags(newServiceCheck.tags, optionalField[len(serviceCheckTagsPrefix):])
 	case bytes.HasPrefix(optionalField, serviceCheckMessagePrefix):
 		newServiceCheck.message = optionalField[len(serviceCheckMessagePrefix):]
 	}

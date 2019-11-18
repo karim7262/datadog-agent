@@ -55,7 +55,7 @@ func (s *TimeSampler) isBucketStillOpen(bucketStartTimestamp, timestamp int64) b
 	return bucketStartTimestamp+s.interval > timestamp
 }
 
-func (s *TimeSampler) addDogstatsdSample(metricSample dogstatsd.MetricSample, timestamp float64) {
+func (s *TimeSampler) addDogstatsdSample(metricSample *dogstatsd.MetricSample, timestamp float64) {
 	// Keep track of the context
 	contextKey := s.contextResolver.trackContextBytes(metricSample.Name, metricSample.Tags, metricSample.Hostname, timestamp)
 	bucketStart := s.calculateBucketStart(timestamp)

@@ -12,17 +12,6 @@ const (
 	eventType
 )
 
-type metricType int
-
-const (
-	gaugeType metricType = iota
-	countType
-	distributionType
-	histogramType
-	setType
-	timingType
-)
-
 var (
 	eventPrefix        = []byte("_e{")
 	serviceCheckPrefix = []byte("_sc")
@@ -54,9 +43,17 @@ func nextField(message []byte) ([]byte, []byte) {
 	return message[:sepIndex], message[sepIndex+1:]
 }
 
-func parseTags(rawTags []byte) [][]byte {
+func appendTags(tags [][]byte, rawTags []byte) [][]byte {
 	if len(rawTags) == 0 {
 		return nil
 	}
-	return bytes.Split(rawTags, commaSeparator)
+
+	sepIndex := bytes.Index(rawTags, commaSeparator)
+	for sepIndex != -1 {
+		tags = append(tags, rawTags[:sepIndex])
+		rawTags = rawTags[sepIndex+1:]
+		sepIndex = bytes.Index(rawTags, commaSeparator)
+	}
+	tags = append(tags, rawTags)
+	return tags
 }

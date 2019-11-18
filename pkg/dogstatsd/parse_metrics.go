@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+
+	"github.com/DataDog/datadog-agent/pkg/metrics"
 )
 
 var (
@@ -17,15 +19,6 @@ var (
 	tagsFieldPrefix       = []byte("#")
 	sampleRateFieldPrefix = []byte("@")
 )
-
-type dogstatsdMetricSample struct {
-	name       []byte
-	value      float64
-	setValue   []byte
-	metricType metricType
-	sampleRate float64
-	tags       [][]byte
-}
 
 // sanity checks a given message against the metric sample format
 func hasMetricSampleFormat(message []byte) bool {
@@ -52,20 +45,20 @@ func parseMetricSampleNameAndRawValue(rawNameAndValue []byte) ([]byte, []byte, e
 	return rawName, rawValue, nil
 }
 
-func parseMetricSampleMetricType(rawMetricType []byte) (metricType, error) {
+func parseMetricSampleMetricType(rawMetricType []byte) (metrics.MetricType, error) {
 	switch {
 	case bytes.Equal(rawMetricType, gaugeSymbol):
-		return gaugeType, nil
+		return metrics.GaugeType, nil
 	case bytes.Equal(rawMetricType, countSymbol):
-		return countType, nil
+		return metrics.CounterType, nil
 	case bytes.Equal(rawMetricType, histogramSymbol):
-		return histogramType, nil
+		return metrics.HistogramType, nil
 	case bytes.Equal(rawMetricType, distributionSymbol):
-		return distributionType, nil
+		return metrics.DistributionType, nil
 	case bytes.Equal(rawMetricType, setSymbol):
-		return setType, nil
+		return metrics.SetType, nil
 	case bytes.Equal(rawMetricType, timingSymbol):
-		return timingType, nil
+		return metrics.HistogramType, nil
 	}
 	return 0, fmt.Errorf("invalid metric type: %q", rawMetricType)
 }
@@ -74,58 +67,56 @@ func parseMetricSampleSampleRate(rawSampleRate []byte) (float64, error) {
 	return strconv.ParseFloat(string(rawSampleRate), 64)
 }
 
-func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
+func parseMetricSample(pool *metricSamplePool, message []byte) (*MetricSample, error) {
 	// fast path to eliminate most of the gibberish
 	// especially important here since all the unidentified garbage gets
 	// identified as metrics
 	if !hasMetricSampleFormat(message) {
-		return dogstatsdMetricSample{}, fmt.Errorf("invalid dogstatsd message format: %q", message)
+		return nil, fmt.Errorf("invalid dogstatsd message format: %q", message)
 	}
 
 	rawNameAndValue, message := nextField(message)
 	name, rawValue, err := parseMetricSampleNameAndRawValue(rawNameAndValue)
 	if err != nil {
-		return dogstatsdMetricSample{}, err
+		return nil, err
 	}
 
 	rawMetricType, message := nextField(message)
 	metricType, err := parseMetricSampleMetricType(rawMetricType)
 	if err != nil {
-		return dogstatsdMetricSample{}, err
+		return nil, err
 	}
 
 	var setValue []byte
 	var value float64
-	if metricType == setType {
+	if metricType == metrics.SetType {
 		setValue = rawValue
 	} else {
 		value, err = strconv.ParseFloat(string(rawValue), 64)
 		if err != nil {
-			return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd metric value: %v", err)
+			return nil, fmt.Errorf("could not parse dogstatsd metric value: %v", err)
 		}
 	}
 
-	sampleRate := 1.0
-	var tags [][]byte
+	sample := pool.Get()
+	sample.Name = name
+	sample.Value = value
+	sample.SetValue = setValue
+	sample.MetricType = metricType
+	sample.SampleRate = 1.0
+
 	var optionalField []byte
 	for message != nil {
 		optionalField, message = nextField(message)
 		if bytes.HasPrefix(optionalField, tagsFieldPrefix) {
-			tags = parseTags(optionalField[1:])
+			sample.Tags = appendTags(sample.Tags, optionalField[1:])
 		} else if bytes.HasPrefix(optionalField, sampleRateFieldPrefix) {
-			sampleRate, err = parseMetricSampleSampleRate(optionalField[1:])
+			sample.SampleRate, err = parseMetricSampleSampleRate(optionalField[1:])
 			if err != nil {
-				return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd sample rate %q", optionalField)
+				return nil, fmt.Errorf("could not parse dogstatsd sample rate %q", optionalField)
 			}
 		}
 	}
 
-	return dogstatsdMetricSample{
-		name:       name,
-		value:      value,
-		setValue:   setValue,
-		metricType: metricType,
-		sampleRate: sampleRate,
-		tags:       tags,
-	}, nil
+	return sample, nil
 }

@@ -397,7 +397,7 @@ func (agg *BufferedAggregator) addSample(metricSample *metrics.MetricSample, tim
 }
 
 // addSample adds the metric sample
-func (agg *BufferedAggregator) addDogstatsdSample(metricSample dogstatsd.MetricSample, timestamp float64) {
+func (agg *BufferedAggregator) addDogstatsdSample(metricSample *dogstatsd.MetricSample, timestamp float64) {
 	metricSample.Tags = deduplicateRawTags(metricSample.Tags)
 	agg.statsdSampler.addDogstatsdSample(metricSample, timestamp)
 }

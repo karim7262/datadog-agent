@@ -55,6 +55,7 @@ type Server struct {
 	Statistics            *util.Stats
 	Started               bool
 	packetPool            *PacketPool
+	samplePool            *metricSamplePool
 	stopChan              chan bool
 	health                *health.Handle
 	metricPrefix          []byte
@@ -96,6 +97,7 @@ func NewServer(parsedPacketsOut chan<- ParsedPacket) (*Server, error) {
 
 	packetsChannel := make(chan Packets, config.Datadog.GetInt("dogstatsd_queue_size"))
 	packetPool := NewPacketPool(config.Datadog.GetInt("dogstatsd_buffer_size"))
+	samplePool := newSamplePool()
 	tmpListeners := make([]StatsdListener, 0, 2)
 
 	socketPath := config.Datadog.GetString("dogstatsd_socket")
@@ -148,6 +150,7 @@ func NewServer(parsedPacketsOut chan<- ParsedPacket) (*Server, error) {
 		parsedPacketsOut:      parsedPacketsOut,
 		listeners:             tmpListeners,
 		packetPool:            packetPool,
+		samplePool:            samplePool,
 		stopChan:              make(chan bool),
 		health:                health.Register("dogstatsd-main"),
 		metricPrefix:          []byte(metricPrefixString),
@@ -248,23 +251,24 @@ func nextMessage(packet *[]byte) (message []byte) {
 	return message
 }
 
-func cloneHistogramToDistribution(histogramSample MetricSample, prefix string) MetricSample {
-	distSample := histogramSample
+func cloneHistogramToDistribution(histogramSample *MetricSample, prefix string) *MetricSample {
+	distSample := *histogramSample
 	distSample.Tags = make([][]byte, len(distSample.Tags))
 	copy(distSample.Tags, histogramSample.Tags)
 	distSample.Name = make([]byte, 0, len(histogramSample.Name)+len(prefix))
 	distSample.Name = append(distSample.Name, prefix...)
 	distSample.Name = append(distSample.Name, histogramSample.Name...)
 	distSample.MetricType = metrics.DistributionType
-	return distSample
+	return &distSample
 }
 
-func parseMetricMessage(message []byte, namespace []byte, namespaceBlacklist [][]byte, defaultHostname []byte) (MetricSample, error) {
-	sample, err := parseMetricSample(message)
+func (s *Server) parseMetricMessage(message []byte, namespace []byte, namespaceBlacklist [][]byte, defaultHostname []byte) (*MetricSample, error) {
+	sample, err := parseMetricSample(s.samplePool, message)
 	if err != nil {
-		return MetricSample{}, err
+		return nil, err
 	}
-	return enrichMetricSample(sample, []byte(namespace), namespaceBlacklist, []byte(defaultHostname)), nil
+	enrichMetricSample(sample, []byte(namespace), namespaceBlacklist, []byte(defaultHostname))
+	return sample, nil
 }
 
 func parseEventMessage(message []byte, defaultHostname []byte) (Event, error) {
@@ -332,7 +336,7 @@ func (s *Server) parsePackets(packets []*Packet) {
 				dogstatsdEventPackets.Add(1)
 				parsedPacket.Events = append(parsedPacket.Events, event)
 			} else {
-				sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
+				sample, err := s.parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 				if err != nil {
 					log.Errorf("Dogstatsd: error parsing metrics: %s", err)
 					dogstatsdMetricParseErrors.Add(1)

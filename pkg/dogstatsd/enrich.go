@@ -52,26 +52,8 @@ func enrichTags(tags [][]byte, defaultHostname []byte) ([][]byte, []byte) {
 	return newTags, host
 }
 
-func convertMetricType(dogstatsdMetricType metricType) metrics.MetricType {
-	switch dogstatsdMetricType {
-	case gaugeType:
-		return metrics.GaugeType
-	case countType:
-		return metrics.CounterType
-	case distributionType:
-		return metrics.DistributionType
-	case histogramType:
-		return metrics.HistogramType
-	case setType:
-		return metrics.SetType
-	case timingType:
-		return metrics.HistogramType
-	}
-	return metrics.GaugeType
-}
-
-func enrichMetricSample(metricSample dogstatsdMetricSample, namespace []byte, namespaceBlacklist [][]byte, defaultHostname []byte) MetricSample {
-	metricName := metricSample.name
+func enrichMetricSample(metricSample *MetricSample, namespace []byte, namespaceBlacklist [][]byte, defaultHostname []byte) {
+	metricName := metricSample.Name
 	if len(namespace) != 0 {
 		blacklisted := false
 		for _, prefix := range namespaceBlacklist {
@@ -80,23 +62,13 @@ func enrichMetricSample(metricSample dogstatsdMetricSample, namespace []byte, na
 			}
 		}
 		if !blacklisted {
-			metricName = make([]byte, 0, len(namespace)+len(metricSample.name))
+			metricName = make([]byte, 0, len(namespace)+len(metricSample.Name))
 			metricName = append(metricName, namespace...)
-			metricName = append(metricName, metricSample.name...)
+			metricName = append(metricName, metricSample.Name...)
 		}
 	}
-
-	tags, hostname := enrichTags(metricSample.tags, defaultHostname)
-
-	return MetricSample{
-		Hostname:   hostname,
-		Name:       metricName,
-		Tags:       tags,
-		MetricType: convertMetricType(metricSample.metricType),
-		Value:      metricSample.value,
-		SampleRate: metricSample.sampleRate,
-		SetValue:   metricSample.setValue,
-	}
+	metricSample.Name = metricName
+	metricSample.Tags, metricSample.Hostname = enrichTags(metricSample.Tags, defaultHostname)
 }
 
 func convertEventPriority(priority eventPriority) metrics.EventPriority {

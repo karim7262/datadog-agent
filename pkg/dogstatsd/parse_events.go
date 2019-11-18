@@ -142,7 +142,7 @@ func applyEventOptionalField(event dogstatsdEvent, optionalField []byte) (dogsta
 	case bytes.HasPrefix(optionalField, eventAlertTypePrefix):
 		newEvent.alertType, err = parseEventAlertType(optionalField[len(eventAlertTypePrefix):])
 	case bytes.HasPrefix(optionalField, eventTagsPrefix):
-		newEvent.tags = parseTags(optionalField[len(eventTagsPrefix):])
+		newEvent.tags = appendTags(newEvent.tags, optionalField[len(eventTagsPrefix):])
 	}
 	if err != nil {
 		return event, err
