@@ -46,7 +46,7 @@ func (m *metricSamplePool) Get() *MetricSample {
 
 func (m *metricSamplePool) Put(sample *MetricSample) {
 	sample.Tags = sample.Tags[:]
-	m.Put(sample)
+	m.pool.Put(sample)
 }
 
 // Event is an event originating from DogStatsD
@@ -91,7 +91,7 @@ func (m *eventPool) Get() *Event {
 
 func (m *eventPool) Put(event *Event) {
 	event.Tags = event.Tags[:]
-	m.Put(event)
+	m.pool.Put(event)
 }
 
 // ServiceCheck is a service check originating from DogStatsD
@@ -133,7 +133,7 @@ func (m *serviceCheckPool) Get() *ServiceCheck {
 
 func (m *serviceCheckPool) Put(serviceCheck *ServiceCheck) {
 	serviceCheck.Tags = serviceCheck.Tags[:]
-	m.Put(serviceCheck)
+	m.pool.Put(serviceCheck)
 }
 
 // ParsedPacket is the parsed content of a packet
