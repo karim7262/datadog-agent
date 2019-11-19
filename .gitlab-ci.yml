@@ -354,19 +354,35 @@ build_dogstatsd-deb_x64:
     - inv -e dogstatsd.build
     - $S3_CP_CMD $SRC_PATH/$DOGSTATSD_BINARIES_DIR/dogstatsd $S3_ARTIFACTS_URI/dogstatsd/dogstatsd
 
-# build cluster-agent bin
-cluster_agent-build:
+
+.cluster_agent-build_common: &cluster_agent-build_common
   stage: binary_build
+  script:
+    - inv -e cluster-agent.build
+    - $S3_CP_CMD $SRC_PATH/$CLUSTER_AGENT_BINARIES_DIR/datadog-cluster-agent $S3_ARTIFACTS_URI/datadog-cluster-agent.$ARCH
+    - $S3_CP_CMD $SRC_PATH/Dockerfiles/cluster-agent/datadog-cluster.yaml $S3_ARTIFACTS_URI/datadog-cluster.yaml
+    - $S3_CP_CMD --recursive $SRC_PATH/$CLUSTER_AGENT_BINARIES_DIR/dist/templates $S3_ARTIFACTS_URI/dist/templates
+
+
+# build cluster-agent bin
+cluster_agent-build_amd64:
+  <<: *cluster_agent-build_common
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:large" ]
+  variables:
+    ARCH: amd64
   before_script:
     - source /root/.bashrc && conda activate ddpy3
     - inv deps --verbose --dep-vendor-only
-  script:
-    - inv -e cluster-agent.build
-    - $S3_CP_CMD $SRC_PATH/$CLUSTER_AGENT_BINARIES_DIR/datadog-cluster-agent $S3_ARTIFACTS_URI/datadog-cluster-agent
-    - $S3_CP_CMD $SRC_PATH/Dockerfiles/cluster-agent/datadog-cluster.yaml $S3_ARTIFACTS_URI/datadog-cluster.yaml
-    - $S3_CP_CMD --recursive $SRC_PATH/$CLUSTER_AGENT_BINARIES_DIR/dist/templates $S3_ARTIFACTS_URI/dist/templates
+
+# cluster_agent-build_arm64:
+#   <<: *cluster_agent-build_common
+#   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deb_arm_x64:$DATADOG_AGENT_ARMBUILDIMAGES
+#   tags: ["runner:docker-arm", "platform:arm64"]
+#   variables:
+#     ARCH: arm64
+#   before_script:
+#     - inv deps --verbose --dep-vendor-only
 
 #
 # integration_test
@@ -1670,8 +1686,6 @@ testkitchen_cleanup_azure-a7:
 
 .docker_build_job_definition: &docker_build_job_definition
   stage: image_build
-  tags: [ "runner:docker", "size:large" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
   before_script: [ "# noop" ] # Override top level entry
   dependencies: [] # Don't download Gitlab artifacts
   script:
@@ -1679,23 +1693,32 @@ testkitchen_cleanup_azure-a7:
     - aws s3 sync --only-show-errors $S3_ARTIFACTS_URI $BUILD_CONTEXT
     - TAG_SUFFIX=${TAG_SUFFIX:-}
     - BUILD_ARG=${BUILD_ARG:-}
-    - TARGET_TAG=$IMAGE:v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}$TAG_SUFFIX
+    - TARGET_TAG=$IMAGE:v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}$TAG_SUFFIX-$ARCH
     # Pull base image(s) with content trust enabled
     - pip install -r requirements.txt
-    - inv -e docker.pull-base-images --signed-pull $BUILD_CONTEXT/Dockerfile
+    - inv -e docker.pull-base-images --signed-pull $BUILD_CONTEXT/Dockerfile_$ARCH
     # Build testing stage if provided
-    - test "$TESTING_ARG" && docker build $TESTING_ARG $BUILD_CONTEXT
+    - test "$TESTING_ARG" && docker build --file $BUILD_CONTEXT/Dockerfile_$ARCH $TESTING_ARG $BUILD_CONTEXT
     # Build release stage and push to ECR
-    - docker build $BUILD_ARG --pull --tag $TARGET_TAG $BUILD_CONTEXT
+    - docker build $BUILD_ARG --file $BUILD_CONTEXT/Dockerfile_$ARCH  --pull --tag $TARGET_TAG $BUILD_CONTEXT
     - docker push $TARGET_TAG
+
+.docker_build_job_definition_amd64: &docker_build_job_definition_amd64
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
+  tags: ["runner:docker", "size:large"]
+  variables:
+    ARCH: amd64
 
 .docker_build_job_definition_arm64: &docker_build_job_definition_arm64
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:v1903032-53399bc-18.09.6-arm64
   tags: ["runner:docker-arm", "platform:arm64"]
+  variables:
+    ARCH: arm64
 
 # build agent6 py2 image
 build_agent6:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a6"]
   <<: *skip_when_unwanted_on_6
   variables:
@@ -1707,20 +1730,20 @@ build_agent6:
 
 build_agent6_arm64:
   <<: *docker_build_job_definition
-  <<: *docker_build_job_definition_arm64
-  <<: *skip_when_unwanted_on_6
+  extends: .docker_build_job_definition_arm64
   needs: ["agent_deb-arm-a6"]
-  tags: ["runner:docker-arm", "platform:arm64"]
+  <<: *skip_when_unwanted_on_6
   variables:
     IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
     BUILD_CONTEXT: Dockerfiles/agent
-    TAG_SUFFIX: -py2-arm64
+    TAG_SUFFIX: -py2
     BUILD_ARG: --target release --build-arg PYTHON_VERSION=2 --build-arg DD_AGENT_ARTIFACT=datadog-agent_6*arm64.deb
     TESTING_ARG:  --target testing --build-arg PYTHON_VERSION=2 --build-arg DD_AGENT_ARTIFACT=datadog-agent_6*arm64.deb
 
 # build agent6 py2 jmx image
 build_agent6_jmx:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a6"]
   <<: *skip_when_unwanted_on_6
   variables:
@@ -1734,6 +1757,7 @@ build_agent6_jmx:
 # build agent6 py3 image
 build_agent6_py3:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a6"]
   <<: *skip_when_unwanted_on_6
   variables:
@@ -1746,6 +1770,7 @@ build_agent6_py3:
 # build agent6 py3 jmx image
 build_agent6_py3_jmx:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a6"]
   <<: *skip_when_unwanted_on_6
   variables:
@@ -1760,6 +1785,7 @@ build_agent6_py3_jmx:
 # build agent6 jmx unified image (including python3)
 build_agent6_py2py3_jmx:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a6"]
   <<: *skip_when_unwanted_on_6
   variables:
@@ -1772,6 +1798,7 @@ build_agent6_py2py3_jmx:
 # build agent7 image
 build_agent7:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a7"]
   <<: *skip_when_unwanted_on_7
   variables:
@@ -1781,9 +1808,22 @@ build_agent7:
     BUILD_ARG: --target release --build-arg PYTHON_VERSION=3 --build-arg DD_AGENT_ARTIFACT=datadog-agent_7*_amd64.deb
     TESTING_ARG:  --target testing --build-arg PYTHON_VERSION=3 --build-arg DD_AGENT_ARTIFACT=datadog-agent_7*_amd64.deb
 
+build_agent7_arm64:
+  <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_arm64
+  needs: ["agent_deb-arm-a7"]
+  <<: *skip_when_unwanted_on_7
+  variables:
+    IMAGE: &agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
+    BUILD_CONTEXT: Dockerfiles/agent
+    TAG_SUFFIX: -7-py3
+    BUILD_ARG: --target release --build-arg PYTHON_VERSION=3 --build-arg DD_AGENT_ARTIFACT=datadog-agent_7*_arm64.deb
+    TESTING_ARG:  --target testing --build-arg PYTHON_VERSION=3 --build-arg DD_AGENT_ARTIFACT=datadog-agent_7*_arm64.deb
+
 # build agent7 jmx image
 build_agent7_jmx:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["agent_deb-x64-a7"]
   <<: *skip_when_unwanted_on_7
   variables:
@@ -1794,16 +1834,26 @@ build_agent7_jmx:
     TESTING_ARG:  --target testing --build-arg WITH_JMX=true --build-arg PYTHON_VERSION=3 --build-arg DD_AGENT_ARTIFACT=datadog-agent_7*_amd64.deb
 
 # build the cluster-agent image
-build_cluster_agent:
+build_cluster_agent_amd64:
   <<: *docker_build_job_definition
-  needs: ["cluster_agent-build"]
+  extends: .docker_build_job_definition_amd64
+  needs: ["cluster_agent-build_amd64"]
   variables:
     IMAGE: &cluster-agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/cluster-agent
     BUILD_CONTEXT: Dockerfiles/cluster-agent
 
+# build_cluster_agent_arm64:
+#   <<: *docker_build_job_definition
+#   extends: .docker_build_job_definition_arm64
+#   needs: ["cluster_agent-build_arm64"]
+#   variables:
+#     IMAGE: &cluster-agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/cluster-agent
+#     BUILD_CONTEXT: Dockerfiles/cluster-agent
+
 # build the dogstatsd image
-build_dogstatsd:
+build_dogstatsd_amd64:
   <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_amd64
   needs: ["build_dogstatsd_static-deb_x64"]
   variables:
     IMAGE: &dogstatsd_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/dogstatsd
@@ -1895,7 +1945,7 @@ twistlock_scan-7:
 
 dev_branch_docker_hub:
   <<: *docker_tag_job_definition
-  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd"]
+  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd_amd64"]
   when: manual
   except:
     - master
@@ -1913,7 +1963,7 @@ dev_branch_docker_hub:
 
 dev_master_docker_hub:
   <<: *docker_tag_job_definition
-  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd"]
+  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd_amd64"]
   only:
     - master
   variables:
@@ -1929,30 +1979,32 @@ dev_master_docker_hub:
 
 dca_dev_branch_docker_hub:
   <<: *docker_tag_job_definition
-  needs: ["build_cluster_agent"]
+  needs: ["build_cluster_agent_amd64"]
   when: manual
   except:
     - master
   variables:
     <<: *docker_hub_variables
   script:
-    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG} datadog/cluster-agent-dev:${CI_COMMIT_REF_SLUG}
+    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG}-amd64 datadog/cluster-agent-dev:${CI_COMMIT_REF_SLUG}-amd64
+    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG}-arm64 datadog/cluster-agent-dev:${CI_COMMIT_REF_SLUG}-arm64
 
 dca_dev_master_docker_hub:
   <<: *docker_tag_job_definition
-  needs: ["build_cluster_agent"]
+  needs: ["build_cluster_agent_amd64"]
   only:
     - master
   variables:
     <<: *docker_hub_variables
   script:
-    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG} datadog/cluster-agent-dev:master
+    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG}-amd64 datadog/cluster-agent-dev:master-amd64
+    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG}-arm64 datadog/cluster-agent-dev:master-arm64
 
 # deploys nightlies to agent-dev
 dev_nightly_docker_hub:
   <<: *docker_tag_job_definition
   <<: *run_when_triggered_on_nightly
-  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd"]
+  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd_amd64"]
   variables:
     <<: *docker_hub_variables
   script:
