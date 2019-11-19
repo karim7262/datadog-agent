@@ -45,7 +45,7 @@ func (m *metricSamplePool) Get() *MetricSample {
 }
 
 func (m *metricSamplePool) Put(sample *MetricSample) {
-	sample.Tags = sample.Tags[:]
+	sample.Tags = sample.Tags[:0]
 	m.pool.Put(sample)
 }
 
@@ -90,7 +90,7 @@ func (m *eventPool) Get() *Event {
 }
 
 func (m *eventPool) Put(event *Event) {
-	event.Tags = event.Tags[:]
+	event.Tags = event.Tags[:0]
 	m.pool.Put(event)
 }
 
@@ -132,7 +132,7 @@ func (m *serviceCheckPool) Get() *ServiceCheck {
 }
 
 func (m *serviceCheckPool) Put(serviceCheck *ServiceCheck) {
-	serviceCheck.Tags = serviceCheck.Tags[:]
+	serviceCheck.Tags = serviceCheck.Tags[:0]
 	m.pool.Put(serviceCheck)
 }
 
