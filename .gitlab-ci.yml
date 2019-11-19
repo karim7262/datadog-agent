@@ -206,7 +206,7 @@ run_tests_deb-x64-py2:
     CONDA_ENV: ddpy2
   <<: *run_tests_preparation
   script:
-    - inv -e test --race --profile --cpus 4
+    - exit 1
 
 run_tests_deb-x64-py3:
   stage: source_test
