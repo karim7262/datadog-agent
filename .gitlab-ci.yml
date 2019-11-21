@@ -1,8 +1,8 @@
 stages:
-  - source_test
   - binary_build
-  - integration_test
   - package_build
+  - source_test
+  - integration_test
   - internal_deploy
   - check_deploy
   - testkitchen_deploy
@@ -62,7 +62,7 @@ variables:
   S3_DSD6_URI: s3://dsd6-staging/linux
   RELEASE_VERSION_6: nightly
   RELEASE_VERSION_7: nightly
-  DATADOG_AGENT_BUILDIMAGES: v1709713-2adac2a
+  DATADOG_AGENT_BUILDIMAGES: v1857851-9847b25
   DATADOG_AGENT_BUILDERS: v1793959-4e4c346
   DATADOG_AGENT_WINBUILDIMAGES: v1876043-a759bdd
 
@@ -1129,7 +1129,7 @@ kitchen_windows_upgrade6-a6:
 
 kitchen_windows_upgrade6-a7:
   allow_failure: false
-  <<: *skip_when_unwanted_on_7  
+  <<: *skip_when_unwanted_on_7
   <<: *kitchen_windows_a7_common
   <<: *kitchen_upgrade6_common
 
@@ -1345,7 +1345,7 @@ kitchen_suse_upgrade6-a7:
   <<: *skip_when_unwanted_on_7
   <<: *kitchen_suse_common
   <<: *kitchen_a7_common
-  <<: *kitchen_upgrade6_common 
+  <<: *kitchen_upgrade6_common
 
 # run dd-agent-testing on debian
 # Could fail if we encounter the issue with apt locks/azure agent, but should be investigated if that's the case
