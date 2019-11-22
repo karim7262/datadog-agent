@@ -33,10 +33,10 @@ install:
   - ps: '& 7z -o"c:\tmp\go_$ENV:GOVERSION" x c:\tmp\godl.zip'
   - move "c:\tmp\go_%GOVERSION%\go" %GOROOT%
   - set PATH=%GOROOT%\bin;%PATH%
-cache:
-  - '%GOPATH%\bin'
-  - '%LOCALAPPDATA%\pip\Cache'
-  - '%GOPATH%\src\github.com\DataDog\datadog-agent\vendor'
+# cache:
+#   - '%GOPATH%\bin'
+#   - '%LOCALAPPDATA%\pip\Cache'
+#   - '%GOPATH%\src\github.com\DataDog\datadog-agent\vendor'
 
 build: off
 
