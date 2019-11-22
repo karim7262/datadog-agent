@@ -41,7 +41,8 @@ install:
 build: off
 
 test_script:
-  - inv -e deps --dep-vendor-only --verbose
+  - inv -e deps --no-dep-ensure --verbose
+  - ps: Exit 1
   - inv -e rtloader.build --install-prefix=%APPVEYOR_BUILD_FOLDER%\dev --cmake-options="-G \"MSYS Makefiles\""
   - inv -e rtloader.install
   - inv -e rtloader.format --raise-if-changed
