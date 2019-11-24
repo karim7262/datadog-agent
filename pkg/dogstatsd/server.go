@@ -65,6 +65,7 @@ type Server struct {
 	debugMetricsStats     bool
 	metricsStats          map[string]metricStat
 	statsLock             sync.Mutex
+	metricCache           *metricCache
 }
 
 // metricStat holds how many times a metric has been
@@ -172,6 +173,11 @@ func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metr
 	}
 
 	s.handleMessages(metricOut, eventOut, serviceCheckOut)
+
+	s.metricCache, err = newMetricCache(1000)
+	if err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }
@@ -293,17 +299,28 @@ func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.
 			dogstatsdEventPackets.Add(1)
 			events = append(events, event)
 		} else {
-			sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
+			cacheKey, err := buildMetricCacheKey(message)
 			if err != nil {
-				log.Errorf("Dogstatsd: error parsing metrics: %s", err)
-				dogstatsdMetricParseErrors.Add(1)
+				log.Errorf("Error building cache key: %s", err)
 				continue
 			}
+
+			sample := s.metricCache.get(cacheKey)
+			if sample == nil {
+				sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
+				if err != nil {
+					log.Errorf("Dogstatsd: error parsing metrics: %s", err)
+					dogstatsdMetricParseErrors.Add(1)
+					continue
+				}
+				if len(extraTags) > 0 {
+					sample.Tags = append(sample.Tags, extraTags...)
+				}
+				s.metricCache.add(cacheKey, sample)
+			}
+
 			if s.debugMetricsStats {
 				s.storeMetricStats(sample.Name)
-			}
-			if len(extraTags) > 0 {
-				sample.Tags = append(sample.Tags, extraTags...)
 			}
 			dogstatsdMetricPackets.Add(1)
 			metricSamples = append(metricSamples, sample)
