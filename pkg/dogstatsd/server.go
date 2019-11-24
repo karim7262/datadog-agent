@@ -307,7 +307,7 @@ func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.
 
 			sample := s.metricCache.get(cacheKey)
 			if sample == nil {
-				sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
+				sample, err = parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 				if err != nil {
 					log.Errorf("Dogstatsd: error parsing metrics: %s", err)
 					dogstatsdMetricParseErrors.Add(1)
