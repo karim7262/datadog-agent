@@ -6,7 +6,6 @@
 package dogstatsd
 
 import (
-	"github.com/DataDog/datadog-agent/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -17,13 +16,13 @@ func TestMetricCache(t *testing.T) {
 	assert.Equal(t, 0, c.cache.Len())
 
 	// add to cache
-	metric1 := &metrics.MetricSample{
+	metric1 := &MetricCacheItem{
 		Name: "my.metric.1",
 	}
-	metric2 := &metrics.MetricSample{
+	metric2 := &MetricCacheItem{
 		Name: "my.metric.2",
 	}
-	metric3 := &metrics.MetricSample{
+	metric3 := &MetricCacheItem{
 		Name: "my.metric.3",
 	}
 	c.add("metric1", metric1)
@@ -32,7 +31,7 @@ func TestMetricCache(t *testing.T) {
 	assert.Equal(t, 3, c.cache.Len())
 
 	// adding more metric than max size of the cache will flush the oldest one
-	metric4 := &metrics.MetricSample{
+	metric4 := &MetricCacheItem{
 		Name: "my.metric.4",
 	}
 	c.add("metric4", metric4)
@@ -41,7 +40,7 @@ func TestMetricCache(t *testing.T) {
 	assert.Equal(t, metric2, c.get("metric2"))
 	assert.Equal(t, metric3, c.get("metric3"))
 	assert.Equal(t, metric4, c.get("metric4"))
-	assert.Equal(t, (*metrics.MetricSample)(nil), c.get("metric1")) // metric1, the oldest metric has been removed
+	assert.Equal(t, (*MetricCacheItem)(nil), c.get("metric1")) // metric1, the oldest metric has been removed
 }
 
 func TestBuildMetricCacheKey(t *testing.T) {

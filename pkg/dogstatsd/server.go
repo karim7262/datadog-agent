@@ -299,24 +299,11 @@ func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.
 			dogstatsdEventPackets.Add(1)
 			events = append(events, event)
 		} else {
-			cacheKey, err := buildMetricCacheKey(message)
+			sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, extraTags, s.metricCache)
 			if err != nil {
-				log.Errorf("Error building cache key: %s", err)
+				log.Errorf("Dogstatsd: error parsing metrics: %s", err)
+				dogstatsdMetricParseErrors.Add(1)
 				continue
-			}
-
-			sample := s.metricCache.get(cacheKey)
-			if sample == nil {
-				sample, err = parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
-				if err != nil {
-					log.Errorf("Dogstatsd: error parsing metrics: %s", err)
-					dogstatsdMetricParseErrors.Add(1)
-					continue
-				}
-				if len(extraTags) > 0 {
-					sample.Tags = append(sample.Tags, extraTags...)
-				}
-				s.metricCache.add(cacheKey, sample)
 			}
 
 			if s.debugMetricsStats {
