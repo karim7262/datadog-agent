@@ -23,4 +23,6 @@ func BenchmarkParsePacket(b *testing.B) {
 		}
 		s.parsePacket(&packet, []*metrics.MetricSample{}, []*metrics.Event{}, []*metrics.ServiceCheck{})
 	}
+
+	b.ReportAllocs()
 }
