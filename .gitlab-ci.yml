@@ -373,16 +373,20 @@ cluster_agent-build_amd64:
     ARCH: amd64
   before_script:
     - source /root/.bashrc && conda activate ddpy3
-    - inv deps --verbose --dep-vendor-only
+    - inv -e deps --verbose --dep-vendor-only
 
-# cluster_agent-build_arm64:
-#   <<: *cluster_agent-build_common
-#   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deb_arm_x64:$DATADOG_AGENT_ARMBUILDIMAGES
-#   tags: ["runner:docker-arm", "platform:arm64"]
-#   variables:
-#     ARCH: arm64
-#   before_script:
-#     - inv deps --verbose --dep-vendor-only
+cluster_agent-build_arm64:
+  <<: *cluster_agent-build_common
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deb_arm_x64:$DATADOG_AGENT_ARMBUILDIMAGES
+  tags: ["runner:docker-arm", "platform:arm64"]
+  variables:
+    ARCH: arm64
+  before_script:
+    - source /root/.bashrc
+    - mkdir -p $GOPATH/src/github.com/DataDog
+    - cp -R $GOPATH/src/github.com/*/*/DataDog/datadog-agent $GOPATH/src/github.com/DataDog
+    - cd $SRC_PATH
+    - inv -e deps --verbose --dep-vendor-only
 
 #
 # integration_test
@@ -1893,13 +1897,13 @@ build_cluster_agent_amd64:
     IMAGE: &cluster-agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/cluster-agent
     BUILD_CONTEXT: Dockerfiles/cluster-agent
 
-# build_cluster_agent_arm64:
-#   <<: *docker_build_job_definition
-#   extends: .docker_build_job_definition_arm64
-#   needs: ["cluster_agent-build_arm64"]
-#   variables:
-#     IMAGE: &cluster-agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/cluster-agent
-#     BUILD_CONTEXT: Dockerfiles/cluster-agent
+build_cluster_agent_arm64:
+  <<: *docker_build_job_definition
+  extends: .docker_build_job_definition_arm64
+  needs: ["cluster_agent-build_arm64"]
+  variables:
+    IMAGE: &cluster-agent_ecr 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/cluster-agent
+    BUILD_CONTEXT: Dockerfiles/cluster-agent
 
 # build the dogstatsd image
 build_dogstatsd_amd64:
@@ -2075,7 +2079,7 @@ dev_master_docker_hub:
 
 dca_dev_branch_docker_hub:
   <<: *docker_tag_job_definition
-  needs: ["build_cluster_agent_amd64"]
+  needs: ["build_cluster_agent_amd64", "build_cluster_agent_arm64"]
   when: manual
   except:
     - master
@@ -2083,6 +2087,8 @@ dca_dev_branch_docker_hub:
     <<: *docker_hub_variables
   script:
     - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG}-amd64 datadog/cluster-agent-dev:${CI_COMMIT_REF_SLUG}-amd64
+    - inv -e docker.publish --signed-push ${SRC_DCA}:${SRC_TAG}-arm64 datadog/cluster-agent-dev:${CI_COMMIT_REF_SLUG}-arm64
+    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/cluster-agent-dev --tag ${CI_COMMIT_REF_SLUG} --template datadog/cluster-agent-dev:${CI_COMMIT_REF_SLUG}-ARCH
 
 dca_dev_master_docker_hub:
   <<: *docker_tag_job_definition
