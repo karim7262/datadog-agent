@@ -145,6 +145,25 @@ def publish(ctx, src, dst, signed_pull=False, signed_push=False):
     )
 
 @task(iterable=['platform'])
+def publish_bulk(ctx, platform, src_template, dst_template, signed_push=False):
+    """
+    Publish a group of platform-specific images.
+    """
+    for p in platform:
+        parts = p.split("/")
+
+        if len(parts) != 2:
+            print("Invalid platform format: expected 'OS/ARCH' parameter, got {}".format(p))
+            raise Exit(code=1)
+
+        def evalTemplate(s):
+            s = s.replace("OS", parts[0].lower())
+            s = s.replace("ARCH", parts[1].lower())
+            return s
+
+        publish(ctx, evalTemplate(src_template), evalTemplate(dst_template), signed_push=signed_push)
+
+@task(iterable=['platform'])
 def publish_manifest(ctx, name, tag, template, platform, signed_push=False):
     """
     Publish a manifest referencing image names matching the specified pattern.
