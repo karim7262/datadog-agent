@@ -42,8 +42,10 @@ build: off
 
 test_script:
   - inv -e deps --no-dep-ensure --verbose
-  # - md vendor
-  # - git clone https://github.com/DataDog/watermarkpodautoscaler.git .\vendor\github.com\DataDog\watermarkpodautoscaler
+  - git clone https://github.com/DataDog/watermarkpodautoscaler.git .\vendor\github.com\DataDog\watermarkpodautoscaler
+  - cd .\vendor\github.com\DataDog\watermarkpodautoscaler
+  - git checkout 0efcebe266331b85b12ef5ea734bc0cf5216bcbe
+  - cd ..\..\..\..\
   - dep ensure --no-vendor -v
   - inv -e deps --dep-vendor-only --verbose
   - inv -e rtloader.build --install-prefix=%APPVEYOR_BUILD_FOLDER%\dev --cmake-options="-G \"MSYS Makefiles\""
