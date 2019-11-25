@@ -42,7 +42,6 @@ build: off
 
 test_script:
   - inv -e deps --no-dep-ensure --verbose
-  - MD C:\gopath\pkg
   - MD C:\gopath\pkg\dep
   - MD C:\gopath\pkg\dep\sources
   - git clone https://github.com/DataDog/watermarkpodautoscaler.git C:\gopath\pkg\dep\sources\https---github.com-DataDog-watermarkpodautoscaler
