@@ -158,113 +158,113 @@ before_script:
 # source_test
 #
 #
-
-# run tests for windows-64
-.run_tests_windows_base:
-  stage: source_test
-  before_script:
-    - echo "Running windows source tests"
-  tags: ["runner:windows-docker", "windowsversion:1809"]
-  script:
-    - docker run --rm -m 4096M -v "$(Get-Location):c:\mnt" -e IS_AWS_CONTAINER=true -e SIGN_WINDOWS=true 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/windows_${ARCH}:$Env:DATADOG_AGENT_WINBUILDIMAGES \unittests.bat
-
-# TODO: disabled until slowness issues are solved
-# run_tests_windows-x64:
-#   # temporarily allow failure for tests
-#   extends: .run_tests_windows_base
-#   allow_failure: true
-#   variables:
-#     ARCH: "x64"
-
-# run_tests_windows-x86:
-#   # temporarily allow failure for tests
-#   extends: .run_tests_windows_base
-#   allow_failure: true
-#   variables:
-#     ARCH: "x86"
-
-.run_tests_preparation: &run_tests_preparation
-  before_script:
-    - source /root/.bashrc && conda activate $CONDA_ENV
-    - pip install wheel
-    - pip install -r requirements.txt
-    - go get gopkg.in/yaml.v2
-    - go get github.com/stretchr/testify
-    - inv -e rtloader.build --install-prefix=$SRC_PATH/dev
-    - inv -e rtloader.install
-    - inv -e rtloader.format --raise-if-changed
-    - inv -e rtloader.test
-    - inv deps --verbose --dep-vendor-only
-
-# run tests for deb-x64
-run_tests_deb-x64-py2:
-  stage: source_test
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: [ "runner:main", "size:2xlarge" ]
-  variables:
-    PYTHON_RUNTIMES: '2'
-    CONDA_ENV: ddpy2
-  <<: *run_tests_preparation
-  script:
-    - inv -e test --race --profile --cpus 4
-
-run_tests_deb-x64-py3:
-  stage: source_test
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: [ "runner:main", "size:2xlarge" ]
-  variables:
-    PYTHON_RUNTIMES: '3'
-    CONDA_ENV: ddpy3
-  <<: *run_tests_preparation
-  script:
-    - inv -e test --race --profile --cpus 4
-
-# run tests for rpm-x64
-run_tests_rpm-x64-py2:
-  stage: source_test
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/rpm_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: [ "runner:main", "size:2xlarge" ]
-  variables:
-    PYTHON_RUNTIMES: '2'
-    CONDA_ENV: ddpy2
-  <<: *run_tests_preparation
-  script:
-    # Exclude systemd because it cannot succeed on Centos 6: the image doesn't have the shared object required by
-    # https://github.com/coreos/go-systemd/blob/c8cc474ba8655dfbdb0ac7fcc09b7faf5b643caf/sdjournal/functions.go#L46
-    # This is OK because the test on systemd still runs on the debian image above
-    - inv -e test --race --profile --cpus 4 --build-exclude=systemd
-
-run_tests_rpm-x64-py3:
-  stage: source_test
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/rpm_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: [ "runner:main", "size:2xlarge" ]
-  variables:
-    PYTHON_RUNTIMES: '3'
-    CONDA_ENV: ddpy3
-  <<: *run_tests_preparation
-  script:
-    # Exclude systemd because it cannot succeed on Centos 6: the image doesn't have the shared object required by
-    # https://github.com/coreos/go-systemd/blob/c8cc474ba8655dfbdb0ac7fcc09b7faf5b643caf/sdjournal/functions.go#L46
-    # This is OK because the test on systemd still runs on the debian image above
-    - inv -e test --race --profile --cpus 4 --build-exclude=systemd
-
-# run tests for eBPF code
-run_tests_ebpf:
-  allow_failure: true
-  stage: source_test
-  # TODO(processes): change this to use the generic builder image when we use the same version of Go in the
-  # system-probe and the agent, or when `system-probe.test` can receive which Go version to use as an argument.
-  # Currently this is using the ebpf image so system-probe tests run in the same  Go version used to build it (1.10).
-  # Note that this image isn't used to build the system-probe: when building it, we specify Go version to use
-  # through an argument to the system-probe.build invoke task.
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/ebpf:go1.10.1
-  before_script:
-    - cd $SRC_PATH
-    - inv -e deps --verbose --dep-vendor-only
-  tags: [ "runner:main", "size:large" ]
-  script:
-    # For now only check bpf bytes since we don't have a way to run eBPF tests without mounting a debugfs
-    - inv -e system-probe.test --only-check-bpf-bytes
+#
+## run tests for windows-64
+#.run_tests_windows_base:
+#  stage: source_test
+#  before_script:
+#    - echo "Running windows source tests"
+#  tags: ["runner:windows-docker", "windowsversion:1809"]
+#  script:
+#    - docker run --rm -m 4096M -v "$(Get-Location):c:\mnt" -e IS_AWS_CONTAINER=true -e SIGN_WINDOWS=true 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/windows_${ARCH}:$Env:DATADOG_AGENT_WINBUILDIMAGES \unittests.bat
+#
+## TODO: disabled until slowness issues are solved
+## run_tests_windows-x64:
+##   # temporarily allow failure for tests
+##   extends: .run_tests_windows_base
+##   allow_failure: true
+##   variables:
+##     ARCH: "x64"
+#
+## run_tests_windows-x86:
+##   # temporarily allow failure for tests
+##   extends: .run_tests_windows_base
+##   allow_failure: true
+##   variables:
+##     ARCH: "x86"
+#
+#.run_tests_preparation: &run_tests_preparation
+#  before_script:
+#    - source /root/.bashrc && conda activate $CONDA_ENV
+#    - pip install wheel
+#    - pip install -r requirements.txt
+#    - go get gopkg.in/yaml.v2
+#    - go get github.com/stretchr/testify
+#    - inv -e rtloader.build --install-prefix=$SRC_PATH/dev
+#    - inv -e rtloader.install
+#    - inv -e rtloader.format --raise-if-changed
+#    - inv -e rtloader.test
+#    - inv deps --verbose --dep-vendor-only
+#
+## run tests for deb-x64
+#run_tests_deb-x64-py2:
+#  stage: source_test
+#  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+#  tags: [ "runner:main", "size:2xlarge" ]
+#  variables:
+#    PYTHON_RUNTIMES: '2'
+#    CONDA_ENV: ddpy2
+#  <<: *run_tests_preparation
+#  script:
+#    - inv -e test --race --profile --cpus 4
+#
+#run_tests_deb-x64-py3:
+#  stage: source_test
+#  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+#  tags: [ "runner:main", "size:2xlarge" ]
+#  variables:
+#    PYTHON_RUNTIMES: '3'
+#    CONDA_ENV: ddpy3
+#  <<: *run_tests_preparation
+#  script:
+#    - inv -e test --race --profile --cpus 4
+#
+## run tests for rpm-x64
+#run_tests_rpm-x64-py2:
+#  stage: source_test
+#  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/rpm_x64:$DATADOG_AGENT_BUILDIMAGES
+#  tags: [ "runner:main", "size:2xlarge" ]
+#  variables:
+#    PYTHON_RUNTIMES: '2'
+#    CONDA_ENV: ddpy2
+#  <<: *run_tests_preparation
+#  script:
+#    # Exclude systemd because it cannot succeed on Centos 6: the image doesn't have the shared object required by
+#    # https://github.com/coreos/go-systemd/blob/c8cc474ba8655dfbdb0ac7fcc09b7faf5b643caf/sdjournal/functions.go#L46
+#    # This is OK because the test on systemd still runs on the debian image above
+#    - inv -e test --race --profile --cpus 4 --build-exclude=systemd
+#
+#run_tests_rpm-x64-py3:
+#  stage: source_test
+#  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/rpm_x64:$DATADOG_AGENT_BUILDIMAGES
+#  tags: [ "runner:main", "size:2xlarge" ]
+#  variables:
+#    PYTHON_RUNTIMES: '3'
+#    CONDA_ENV: ddpy3
+#  <<: *run_tests_preparation
+#  script:
+#    # Exclude systemd because it cannot succeed on Centos 6: the image doesn't have the shared object required by
+#    # https://github.com/coreos/go-systemd/blob/c8cc474ba8655dfbdb0ac7fcc09b7faf5b643caf/sdjournal/functions.go#L46
+#    # This is OK because the test on systemd still runs on the debian image above
+#    - inv -e test --race --profile --cpus 4 --build-exclude=systemd
+#
+## run tests for eBPF code
+#run_tests_ebpf:
+#  allow_failure: true
+#  stage: source_test
+#  # TODO(processes): change this to use the generic builder image when we use the same version of Go in the
+#  # system-probe and the agent, or when `system-probe.test` can receive which Go version to use as an argument.
+#  # Currently this is using the ebpf image so system-probe tests run in the same  Go version used to build it (1.10).
+#  # Note that this image isn't used to build the system-probe: when building it, we specify Go version to use
+#  # through an argument to the system-probe.build invoke task.
+#  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/ebpf:go1.10.1
+#  before_script:
+#    - cd $SRC_PATH
+#    - inv -e deps --verbose --dep-vendor-only
+#  tags: [ "runner:main", "size:large" ]
+#  script:
+#    # For now only check bpf bytes since we don't have a way to run eBPF tests without mounting a debugfs
+#    - inv -e system-probe.test --only-check-bpf-bytes
 
 # scan the dependencies for security vulnerabilities with snyk
 run_security_scan_test:
@@ -448,7 +448,7 @@ agent_deb-x64-a6:
   stage: package_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:2xlarge" ]
-  needs: ["run_tests_deb-x64-py2", "run_tests_deb-x64-py3"]
+#  needs: ["run_tests_deb-x64-py2", "run_tests_deb-x64-py3"]
   variables:
     AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
     CONDA_ENV: ddpy3
@@ -467,7 +467,7 @@ agent_deb-x64-a7:
   stage: package_build
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:2xlarge" ]
-  needs: ["run_tests_deb-x64-py3"]
+#  needs: ["run_tests_deb-x64-py3"]
   variables:
     AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: /credentials
     CONDA_ENV: ddpy3
@@ -1874,7 +1874,8 @@ twistlock_scan-7:
 
 dev_branch_docker_hub:
   <<: *docker_tag_job_definition
-  needs: ["build_agent6", "build_agent6_jmx", "build_agent6_py3", "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd"]
+  needs: ["build_agent6", "build_agent6_py3"]
+#  , "build_agent6_py3_jmx", "build_agent6_py2py3_jmx", "build_agent7", "build_agent7_jmx", "build_dogstatsd"]
   when: manual
   except:
     - master
@@ -1884,11 +1885,11 @@ dev_branch_docker_hub:
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2 datadog/agent-dev:${CI_COMMIT_REF_SLUG}
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2 datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py3 datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py3
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-jmx
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2-jmx
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py3-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py3-jmx
-    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2py3-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2py3-jmx
-    - inv -e docker.publish --signed-push ${SRC_DSD}:${SRC_TAG} datadog/dogstatsd-dev:${CI_COMMIT_REF_SLUG}
+#    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-jmx
+#    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2-jmx
+#    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py3-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py3-jmx
+#    - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-py2py3-jmx datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2py3-jmx
+#    - inv -e docker.publish --signed-push ${SRC_DSD}:${SRC_TAG} datadog/dogstatsd-dev:${CI_COMMIT_REF_SLUG}
 
 dev_master_docker_hub:
   <<: *docker_tag_job_definition
