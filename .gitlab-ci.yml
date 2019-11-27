@@ -1,4 +1,5 @@
 stages:
+  - fail_on_tag
   - source_test
   - binary_build
   - integration_test
@@ -195,6 +196,21 @@ before_script:
     - inv -e rtloader.format --raise-if-changed
     - inv -e rtloader.test
     - inv deps --verbose --dep-vendor-only
+
+# Fail if we're running a pipeline on a non-triggered tag build
+fail_on_non_triggered_tag:
+  stage: fail_on_tag
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: [ "runner:main", "size:2xlarge" ]
+  except:
+    - master
+    - branches
+    - triggers
+    - web
+  before_script:
+    - "# noop"
+  script:
+    - exit 1
 
 # run tests for deb-x64
 run_tests_deb-x64-py2:
