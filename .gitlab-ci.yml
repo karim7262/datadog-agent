@@ -71,7 +71,7 @@ variables:
   # Multi-arch images on docker hub
   PUB_REPO: datadog/agent
   # Update this to datadog/agent when publishing the final images
-  DST_REPO: datadog/agent-dev
+  DST_REPO: datadog/agent
   # FROM https://gitlab.ddbuild.io/DataDog/datadog-agent/pipelines/1929084
   ECR_REPO: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
   INTERNAL_TAG: v1929084-ccd4eb6
