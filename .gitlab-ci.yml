@@ -71,7 +71,7 @@ variables:
   # Multi-arch images on docker hub
   PUB_REPO: datadog/agent
   # Update this to datadog/agent when publishing the final images
-  DST_REPO: datadog/agent
+  DST_REPO: datadog/agent-dev
   # FROM https://gitlab.ddbuild.io/DataDog/datadog-agent/pipelines/1929084
   ECR_REPO: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent/agent
   INTERNAL_TAG: v1929084-ccd4eb6
@@ -108,44 +108,9 @@ publish_multiarch_6:
     <<: *docker_hub_variables
     RELEASE_TAG: 6.15.1
   script:
-    #
-    # Images
-    #
-
-    # Note: we can't sign those since content trust has not been set up in -amd64 / -arm64 repositories.
-    # Manifests referencing these will however be signed.
-
-    # Images for amd64
-    - inv -e docker.publish ${PUB_REPO}:${RELEASE_TAG}                   ${DST_REPO}-amd64:${RELEASE_TAG}
-    - inv -e docker.publish ${PUB_REPO}:${RELEASE_TAG}-jmx               ${DST_REPO}-amd64:${RELEASE_TAG}-jmx
-    - inv -e docker.publish ${PUB_REPO}:${RELEASE_TAG}-py3               ${DST_REPO}-amd64:${RELEASE_TAG}-py3
-    - inv -e docker.publish ${PUB_REPO}:${RELEASE_TAG}-py3-jmx           ${DST_REPO}-amd64:${RELEASE_TAG}-py3-jmx
-
-    # Images for arm64
-    - inv -e docker.publish ${ECR_REPO}:${INTERNAL_TAG}-py2-arm64        ${DST_REPO}-arm64:${RELEASE_TAG}
-    - inv -e docker.publish ${ECR_REPO}:${INTERNAL_TAG}-py2-jmx-arm64    ${DST_REPO}-arm64:${RELEASE_TAG}-jmx
-    - inv -e docker.publish ${ECR_REPO}:${INTERNAL_TAG}-py3-arm64        ${DST_REPO}-arm64:${RELEASE_TAG}-py3
-    - inv -e docker.publish ${ECR_REPO}:${INTERNAL_TAG}-py3-jmx-arm64    ${DST_REPO}-arm64:${RELEASE_TAG}-py3-jmx
-
-    #
-    # Manifests
-    #
-
-    # Version tags
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag ${RELEASE_TAG}            --template ${DST_REPO}-ARCH:${RELEASE_TAG}
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag ${RELEASE_TAG}-jmx        --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag ${RELEASE_TAG}-py3        --template ${DST_REPO}-ARCH:${RELEASE_TAG}-py3
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag ${RELEASE_TAG}-py3-jmx    --template ${DST_REPO}-ARCH:${RELEASE_TAG}-py3-jmx
-
     # Aliases
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py2                     --template ${DST_REPO}-ARCH:${RELEASE_TAG}
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py2-jmx                 --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py3                     --template ${DST_REPO}-ARCH:${RELEASE_TAG}-py3
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py3-jmx                 --template ${DST_REPO}-ARCH:${RELEASE_TAG}-py3-jmx
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag latest-py2                --template ${DST_REPO}-ARCH:${RELEASE_TAG}
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag latest-py2-jmx            --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag latest                    --template ${DST_REPO}-ARCH:${RELEASE_TAG}
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag latest-jmx                --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
+    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6                         --template ${DST_REPO}-ARCH:${RELEASE_TAG}
+    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-jmx                     --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
 
 revert_multiarch_6:
   <<: *docker_tag_job_definition
@@ -154,18 +119,6 @@ revert_multiarch_6:
     <<: *docker_hub_variables
     RELEASE_TAG: 6.15.1
   script:
-    # Version tags
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}               ${DST_REPO}:${RELEASE_TAG}
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx           ${DST_REPO}:${RELEASE_TAG}-jmx
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-py3           ${DST_REPO}:${RELEASE_TAG}-py3
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-py3-jmx       ${DST_REPO}:${RELEASE_TAG}-py3-jmx
-
     # Aliases
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}                ${DST_REPO}:6-py2
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx            ${DST_REPO}:6-py2-jmx
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-py3            ${DST_REPO}:6-py3
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-py3-jmx        ${DST_REPO}:6-py3-jmx
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}                ${DST_REPO}:latest-py2
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx            ${DST_REPO}:latest-py2-jmx
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}                ${DST_REPO}:latest
-    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx            ${DST_REPO}:latest-jmx
+    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}                ${DST_REPO}:6
+    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx            ${DST_REPO}:6-jmx
