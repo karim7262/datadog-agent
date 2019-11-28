@@ -138,6 +138,8 @@ publish_multiarch_6:
     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag ${RELEASE_TAG}-py3-jmx    --template ${DST_REPO}-ARCH:${RELEASE_TAG}-py3-jmx
 
     # Aliases
+    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6                         --template ${DST_REPO}-ARCH:${RELEASE_TAG}
+    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-jmx                     --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py2                     --template ${DST_REPO}-ARCH:${RELEASE_TAG}
     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py2-jmx                 --template ${DST_REPO}-ARCH:${RELEASE_TAG}-jmx
     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name ${DST_REPO} --tag 6-py3                     --template ${DST_REPO}-ARCH:${RELEASE_TAG}-py3
@@ -161,6 +163,8 @@ revert_multiarch_6:
     - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-py3-jmx       ${DST_REPO}:${RELEASE_TAG}-py3-jmx
 
     # Aliases
+    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}                ${DST_REPO}:6
+    - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx            ${DST_REPO}:6-jmx
     - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}                ${DST_REPO}:6-py2
     - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-jmx            ${DST_REPO}:6-py2-jmx
     - inv -e docker.publish --signed-push ${DST_REPO}-amd64:${RELEASE_TAG}-py3            ${DST_REPO}:6-py3
