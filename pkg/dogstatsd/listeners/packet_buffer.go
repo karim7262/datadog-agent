@@ -48,11 +48,28 @@ func (pb *packetBuffer) flushLoop() {
 
 func (pb *packetBuffer) append(packet *Packet) {
 	pb.m.Lock()
-	defer pb.m.Unlock()
 	pb.packets = append(pb.packets, packet)
 	if uint(len(pb.packets)) == pb.bufferSize {
 		pb.flush()
 	}
+	pb.m.Unlock()
+}
+
+func (pb *packetBuffer) tryMerge(packet *Packet) bool {
+	pb.m.Lock()
+	packetCount := len(pb.packets)
+	merged := false
+	if packetCount > 0 {
+		lastPacket := pb.packets[packetCount-1]
+		if len(packet.Contents)+1 < len(lastPacket.buffer)-len(lastPacket.Contents) {
+			lastPacket.buffer[len(lastPacket.Contents)] = byte('\n')
+			n := copy(lastPacket.buffer[len(lastPacket.Contents)+1:], packet.Contents)
+			lastPacket.Contents = lastPacket.buffer[:len(lastPacket.Contents)+n+1]
+			merged = true
+		}
+	}
+	pb.m.Unlock()
+	return merged
 }
 
 func (pb *packetBuffer) flush() {

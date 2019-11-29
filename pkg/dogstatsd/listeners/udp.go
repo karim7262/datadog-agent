@@ -77,10 +77,10 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 // Listen runs the intake loop. Should be called in its own goroutine
 func (l *UDPListener) Listen() {
 	log.Infof("dogstatsd-udp: starting to listen on %s", l.conn.LocalAddr())
+	var packet = l.packetPool.Get()
 	for {
-		packet := l.packetPool.Get()
-		udpPackets.Add(1)
 		n, _, err := l.conn.ReadFrom(packet.buffer)
+		udpPackets.Add(1)
 		if err != nil {
 			// connection has been closed
 			if strings.HasSuffix(err.Error(), " use of closed network connection") {
@@ -95,7 +95,10 @@ func (l *UDPListener) Listen() {
 		packet.Contents = packet.buffer[:n]
 
 		// packetBuffer handles the forwarding of the packets to the dogstatsd server intake channel
-		l.packetBuffer.append(packet)
+		if !l.packetBuffer.tryMerge(packet) {
+			l.packetBuffer.append(packet)
+			packet = l.packetPool.Get()
+		}
 	}
 }
 
