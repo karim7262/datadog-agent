@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/trace"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -228,12 +229,16 @@ func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<
 			metricSamples := make([]*metrics.MetricSample, 0, len(packets))
 
 			for _, packet := range packets {
+				parsePacketEnd := trace.NewTask("parsePacket")
 				metricSamples, events, serviceChecks = s.parsePacket(packet, metricSamples, events, serviceChecks)
+				parsePacketEnd()
 				s.packetPool.Put(packet)
 			}
 
 			if len(metricSamples) != 0 {
+				sendMetricSamplesEnd := trace.NewTask("sendMetricSamples")
 				metricOut <- metricSamples
+				sendMetricSamplesEnd()
 			}
 			if len(events) != 0 {
 				eventOut <- events

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/serializer/split"
+	"github.com/DataDog/datadog-agent/pkg/trace"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/version"
 
@@ -612,55 +613,75 @@ func (agg *BufferedAggregator) run() {
 		agg.TickerChan = time.NewTicker(flushPeriod).C
 	}
 	for {
+
 		select {
 		case <-agg.stopChan:
 			log.Info("Stopping aggregator")
 			return
 		case <-agg.health.C:
 		case <-agg.TickerChan:
+			aggFlushEnd := trace.NewTask("aggregatorFlush")
 			start := time.Now()
 			agg.flush(start, false)
 			addFlushTime("MainFlushTime", int64(time.Since(start)))
 			aggregatorNumberOfFlush.Add(1)
-
+			aggFlushEnd()
 		case checkMetric := <-agg.checkMetricIn:
+			aggEnd := trace.NewTask("aggregatorcheckMetric")
 			aggregatorChecksMetricSample.Add(1)
 			agg.handleSenderSample(checkMetric)
+			aggEnd()
 		case checkHistogramBucket := <-agg.checkHistogramBucketIn:
+			aggEnd := trace.NewTask("aggregatorcheckHistogramBucket")
 			aggregatorCheckHistogramBucketMetricSample.Add(1)
 			agg.handleSenderBucket(checkHistogramBucket)
+			aggEnd()
 
 		case metric := <-agg.metricIn:
+			aggEnd := trace.NewTask("aggregatormetric")
 			aggregatorDogstatsdMetricSample.Add(1)
 			agg.addSample(metric, timeNowNano())
+			aggEnd()
 		case event := <-agg.eventIn:
+			aggEnd := trace.NewTask("aggregatorevent")
 			aggregatorEvent.Add(1)
 			agg.addEvent(event)
+			aggEnd()
 		case serviceCheck := <-agg.serviceCheckIn:
+			aggEnd := trace.NewTask("aggregatorserviceCheck")
 			aggregatorServiceCheck.Add(1)
 			agg.addServiceCheck(serviceCheck)
+			aggEnd()
 
 		case metrics := <-agg.bufferedMetricIn:
+			aggEnd := trace.NewTask("aggregatormetrics")
 			aggregatorDogstatsdMetricSample.Add(int64(len(metrics)))
 			for _, sample := range metrics {
 				agg.addSample(sample, timeNowNano())
 			}
+			aggEnd()
 		case serviceChecks := <-agg.bufferedServiceCheckIn:
+			aggEnd := trace.NewTask("aggregatorserviceChecks")
 			aggregatorServiceCheck.Add(int64(len(serviceChecks)))
 			for _, serviceCheck := range serviceChecks {
 				agg.addServiceCheck(*serviceCheck)
 			}
+			aggEnd()
 		case events := <-agg.bufferedEventIn:
+			aggEnd := trace.NewTask("aggregatorevents")
 			aggregatorEvent.Add(int64(len(events)))
 			for _, event := range events {
 				agg.addEvent(*event)
 			}
+			aggEnd()
 
 		case h := <-agg.hostnameUpdate:
+			aggEnd := trace.NewTask("aggregatorhostnameUpdate")
 			aggregatorHostnameUpdate.Add(1)
 			agg.hostname = h
 			changeAllSendersDefaultHostname(h)
 			agg.hostnameUpdateDone <- struct{}{}
+			aggEnd()
 		}
 	}
 }
