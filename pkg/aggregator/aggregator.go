@@ -6,11 +6,14 @@
 package aggregator
 
 import (
+	"context"
 	"expvar"
 	"fmt"
 	"sort"
 	"sync"
 	"time"
+
+	t "runtime/trace"
 
 	"github.com/DataDog/datadog-agent/pkg/serializer/split"
 	"github.com/DataDog/datadog-agent/pkg/trace"
@@ -620,12 +623,14 @@ func (agg *BufferedAggregator) run() {
 			return
 		case <-agg.health.C:
 		case <-agg.TickerChan:
+			t.Log(context.Background(), "flush", "aggregator flushing")
 			aggFlushEnd := trace.NewTask("aggregatorFlush")
 			start := time.Now()
 			agg.flush(start, false)
 			addFlushTime("MainFlushTime", int64(time.Since(start)))
 			aggregatorNumberOfFlush.Add(1)
 			aggFlushEnd()
+			t.Log(context.Background(), "flush", "aggregator done flushing")
 		case checkMetric := <-agg.checkMetricIn:
 			aggEnd := trace.NewTask("aggregatorcheckMetric")
 			aggregatorChecksMetricSample.Add(1)
