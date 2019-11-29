@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -51,7 +50,6 @@ func init() {
 // Server represent a Dogstatsd server
 type Server struct {
 	listeners             []listeners.StatsdListener
-	aggregator            *aggregator.BufferedAggregator
 	packetsIn             chan listeners.Packets
 	Statistics            *util.Stats
 	Started               bool
@@ -77,7 +75,7 @@ type metricStat struct {
 }
 
 // NewServer returns a running Dogstatsd server
-func NewServer(aggregator *aggregator.BufferedAggregator) (*Server, error) {
+func NewServer(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) (*Server, error) {
 	var stats *util.Stats
 	if config.Datadog.GetBool("dogstatsd_stats_enable") == true {
 		buff := config.Datadog.GetInt("dogstatsd_stats_buffer")
@@ -142,7 +140,6 @@ func NewServer(aggregator *aggregator.BufferedAggregator) (*Server, error) {
 		Started:               true,
 		Statistics:            stats,
 		packetsIn:             packetsChannel,
-		aggregator:            aggregator,
 		listeners:             tmpListeners,
 		packetPool:            packetPool,
 		stopChan:              make(chan bool),
@@ -173,11 +170,13 @@ func NewServer(aggregator *aggregator.BufferedAggregator) (*Server, error) {
 			go s.forwarder(con, packetsChannel)
 		}
 	}
-	s.handleMessages()
+
+	s.handleMessages(metricOut, eventOut, serviceCheckOut)
+
 	return s, nil
 }
 
-func (s *Server) handleMessages() {
+func (s *Server) handleMessages(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) {
 	if s.Statistics != nil {
 		go s.Statistics.Process()
 		go s.Statistics.Update(&dogstatsdPacketsLastSec)
@@ -195,7 +194,7 @@ func (s *Server) handleMessages() {
 	}
 
 	for i := 0; i < workers; i++ {
-		go s.worker()
+		go s.worker(metricOut, eventOut, serviceCheckOut)
 	}
 }
 
@@ -217,22 +216,36 @@ func (s *Server) forwarder(fcon net.Conn, packetsChannel chan listeners.Packets)
 	}
 }
 
-func (s *Server) worker() {
+func (s *Server) worker(metricOut chan<- []*metrics.MetricSample, eventOut chan<- []*metrics.Event, serviceCheckOut chan<- []*metrics.ServiceCheck) {
 	for {
 		select {
 		case <-s.stopChan:
 			return
 		case <-s.health.C:
 		case packets := <-s.packetsIn:
+			events := make([]*metrics.Event, 0, len(packets))
+			serviceChecks := make([]*metrics.ServiceCheck, 0, len(packets))
+			metricSamples := make([]*metrics.MetricSample, 0, len(packets))
+
 			for _, packet := range packets {
-				s.processPacket(packet)
+				metricSamples, events, serviceChecks = s.parsePacket(packet, metricSamples, events, serviceChecks)
 				s.packetPool.Put(packet)
+			}
+
+			if len(metricSamples) != 0 {
+				metricOut <- metricSamples
+			}
+			if len(events) != 0 {
+				eventOut <- events
+			}
+			if len(serviceChecks) != 0 {
+				serviceCheckOut <- serviceChecks
 			}
 		}
 	}
 }
 
-func (s *Server) processPacket(packet *listeners.Packet) {
+func (s *Server) parsePacket(packet *listeners.Packet, metricSamples []*metrics.MetricSample, events []*metrics.Event, serviceChecks []*metrics.ServiceCheck) ([]*metrics.MetricSample, []*metrics.Event, []*metrics.ServiceCheck) {
 	extraTags := s.extraTags
 
 	log.Tracef("Dogstatsd receive: %s", packet.Contents)
@@ -266,7 +279,7 @@ func (s *Server) processPacket(packet *listeners.Packet) {
 				serviceCheck.Tags = append(serviceCheck.Tags, extraTags...)
 			}
 			dogstatsdServiceCheckPackets.Add(1)
-			s.aggregator.SubmitServiceCheck(*serviceCheck)
+			serviceChecks = append(serviceChecks, serviceCheck)
 		} else if bytes.HasPrefix(message, []byte("_e")) {
 			event, err := parseEventMessage(message, s.defaultHostname)
 			if err != nil {
@@ -278,7 +291,7 @@ func (s *Server) processPacket(packet *listeners.Packet) {
 				event.Tags = append(event.Tags, extraTags...)
 			}
 			dogstatsdEventPackets.Add(1)
-			s.aggregator.SubmitEvent(*event)
+			events = append(events, event)
 		} else {
 			sample, err := parseMetricMessage(message, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 			if err != nil {
@@ -293,15 +306,16 @@ func (s *Server) processPacket(packet *listeners.Packet) {
 				sample.Tags = append(sample.Tags, extraTags...)
 			}
 			dogstatsdMetricPackets.Add(1)
-			s.aggregator.SubmitStatsdSample(sample)
+			metricSamples = append(metricSamples, sample)
 			if s.histToDist && sample.Mtype == metrics.HistogramType {
 				distSample := sample.Copy()
 				distSample.Name = s.histToDistPrefix + distSample.Name
 				distSample.Mtype = metrics.DistributionType
-				s.aggregator.SubmitStatsdSample(distSample)
+				metricSamples = append(metricSamples, distSample)
 			}
 		}
 	}
+	return metricSamples, events, serviceChecks
 }
 
 // Stop stops a running Dogstatsd server

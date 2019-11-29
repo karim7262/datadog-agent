@@ -5,7 +5,20 @@
 
 package dogstatsd
 
-/*
+import (
+	"encoding/json"
+	"fmt"
+	"net"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
 // getAvailableUDPPort requests a random port number and makes sure it is available
 func getAvailableUDPPort() (int, error) {
 	conn, err := net.ListenPacket("udp", ":0")
@@ -376,4 +389,3 @@ func TestDebugStats(t *testing.T) {
 	require.Equal(t, metric2.Count, uint64(1))
 	require.Equal(t, metric3.Count, uint64(1))
 }
-*/

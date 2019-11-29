@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/pkg/dogstatsd/listeners"
+	"github.com/DataDog/datadog-agent/pkg/metrics"
 )
 
 func BenchmarkParsePacket(b *testing.B) {
-	s, _ := NewServer(nil)
+	s, _ := NewServer(nil, nil, nil)
 	defer s.Stop()
 
 	for n := 0; n < b.N; n++ {
@@ -20,6 +21,6 @@ func BenchmarkParsePacket(b *testing.B) {
 			Contents: []byte("daemon:666|h|@0.5|#sometag1:somevalue1,sometag2:somevalue2"),
 			Origin:   listeners.NoOrigin,
 		}
-		s.processPacket(&packet)
+		s.parsePacket(&packet, []*metrics.MetricSample{}, []*metrics.Event{}, []*metrics.ServiceCheck{})
 	}
 }

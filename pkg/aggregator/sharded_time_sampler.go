@@ -6,6 +6,7 @@ import (
 )
 
 type shardedTimeSampler struct {
+	dispatcher   chan []*metrics.MetricSample
 	timeSamplers []*TimeSampler
 }
 
@@ -14,10 +15,28 @@ func newShardedTimeSampler(shardCount int, interval int64) *shardedTimeSampler {
 	for i := 0; i < shardCount; i++ {
 		samplers = append(samplers, NewTimeSampler(interval))
 	}
-	return &shardedTimeSampler{timeSamplers: samplers}
+	s := &shardedTimeSampler{timeSamplers: samplers}
+	go s.dispatchLoop()
+	return s
 }
 
 func (s *shardedTimeSampler) addSample(sample *metrics.MetricSample) {
-	samplerIndex := fnv1a.HashString32(sample.Name) % uint32(len(s.timeSamplers))
-	s.timeSamplers[samplerIndex].sampleChann <- sample
+	s.dispatcher <- []*metrics.MetricSample{sample}
+}
+
+func (s *shardedTimeSampler) addSamples(samples []*metrics.MetricSample) {
+	s.dispatcher <- samples
+}
+
+func (s *shardedTimeSampler) dispatchLoop() {
+	for samples := range s.dispatcher {
+		dispatchedSamples := make([][]*metrics.MetricSample, len(s.timeSamplers))
+		for _, sample := range samples {
+			samplerIndex := fnv1a.HashString32(sample.Name) % uint32(len(s.timeSamplers))
+			dispatchedSamples[samplerIndex] = append(dispatchedSamples[samplerIndex], sample)
+		}
+		for i := 0; i < len(dispatchedSamples); i++ {
+			s.timeSamplers[i].sampleChann <- dispatchedSamples[i]
+		}
+	}
 }

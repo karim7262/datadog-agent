@@ -27,7 +27,7 @@ type SerieSignature struct {
 // TimeSampler aggregates metrics by buckets of 'interval' seconds
 type TimeSampler struct {
 	interval                    int64
-	sampleChann                 chan *metrics.MetricSample
+	sampleChann                 chan []*metrics.MetricSample
 	stop                        chan struct{}
 	contextResolver             *ContextResolver
 	metricsByTimestamp          map[int64]metrics.ContextMetrics
@@ -44,7 +44,7 @@ func NewTimeSampler(interval int64) *TimeSampler {
 	}
 	sampler := &TimeSampler{
 		interval:                    interval,
-		sampleChann:                 make(chan *metrics.MetricSample, 128),
+		sampleChann:                 make(chan []*metrics.MetricSample, 128),
 		stop:                        make(chan struct{}),
 		contextResolver:             newContextResolver(),
 		metricsByTimestamp:          map[int64]metrics.ContextMetrics{},
@@ -68,10 +68,12 @@ func (s *TimeSampler) processSamples() {
 		select {
 		case <-s.stop:
 			return
-		case sample := <-s.sampleChann:
+		case samples := <-s.sampleChann:
 			time := timeNowNano()
 			s.Lock()
-			s.addMetricSample(sample, time)
+			for _, sample := range samples {
+				s.addMetricSample(sample, time)
+			}
 			s.Unlock()
 		}
 	}
@@ -192,7 +194,7 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 
 // flushSketches flushes the sketches
 // lock must be held
-func (s TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
+func (s *TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
 	pointsByCtx := make(map[ckey.ContextKey][]metrics.SketchPoint)
 	sketches := make(metrics.SketchSeriesList, 0, len(pointsByCtx))
 
