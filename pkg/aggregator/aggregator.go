@@ -614,6 +614,12 @@ func (agg *BufferedAggregator) run() {
 		case checkHistogramBucket := <-agg.checkHistogramBucketIn:
 			aggregatorCheckHistogramBucketMetricSample.Add(1)
 			agg.handleSenderBucket(checkHistogramBucket)
+		case sc := <-agg.serviceCheckIn:
+			aggregatorServiceCheck.Add(1)
+			agg.addServiceCheck(sc)
+		case e := <-agg.eventIn:
+			aggregatorEvent.Add(1)
+			agg.addEvent(e)
 		case h := <-agg.hostnameUpdate:
 			aggregatorHostnameUpdate.Add(1)
 			agg.hostname = h
