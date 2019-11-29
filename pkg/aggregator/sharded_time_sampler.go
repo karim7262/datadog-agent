@@ -19,7 +19,10 @@ func newShardedTimeSampler(shardCount int, interval int64) *shardedTimeSampler {
 	for i := 0; i < shardCount; i++ {
 		samplers = append(samplers, NewTimeSampler(interval))
 	}
-	s := &shardedTimeSampler{timeSamplers: samplers}
+	s := &shardedTimeSampler{
+		timeSamplers: samplers,
+		dispatcher:   make(chan []*metrics.MetricSample, 128),
+	}
 	go s.dispatchLoop()
 	return s
 }
