@@ -6,6 +6,8 @@
 package aggregator
 
 import (
+	"sync"
+
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
@@ -25,11 +27,14 @@ type SerieSignature struct {
 // TimeSampler aggregates metrics by buckets of 'interval' seconds
 type TimeSampler struct {
 	interval                    int64
+	sampleChann                 chan *metrics.MetricSample
+	stop                        chan struct{}
 	contextResolver             *ContextResolver
 	metricsByTimestamp          map[int64]metrics.ContextMetrics
 	counterLastSampledByContext map[ckey.ContextKey]float64
 	lastCutOffTime              int64
 	sketchMap                   sketchMap
+	sync.Mutex
 }
 
 // NewTimeSampler returns a newly initialized TimeSampler
@@ -37,13 +42,17 @@ func NewTimeSampler(interval int64) *TimeSampler {
 	if interval == 0 {
 		interval = bucketSize
 	}
-	return &TimeSampler{
+	sampler := &TimeSampler{
 		interval:                    interval,
+		sampleChann:                 make(chan *metrics.MetricSample, 128),
+		stop:                        make(chan struct{}),
 		contextResolver:             newContextResolver(),
 		metricsByTimestamp:          map[int64]metrics.ContextMetrics{},
 		counterLastSampledByContext: map[ckey.ContextKey]float64{},
 		sketchMap:                   make(sketchMap),
 	}
+	go sampler.processSamples()
+	return sampler
 }
 
 func (s *TimeSampler) calculateBucketStart(timestamp float64) int64 {
@@ -54,8 +63,23 @@ func (s *TimeSampler) isBucketStillOpen(bucketStartTimestamp, timestamp int64) b
 	return bucketStartTimestamp+s.interval > timestamp
 }
 
+func (s *TimeSampler) processSamples() {
+	for {
+		select {
+		case <-s.stop:
+			return
+		case sample := <-s.sampleChann:
+			time := timeNowNano()
+			s.Lock()
+			s.addMetricSample(sample, time)
+			s.Unlock()
+		}
+	}
+}
+
 // Add the metricSample to the correct bucket
-func (s *TimeSampler) addSample(metricSample *metrics.MetricSample, timestamp float64) {
+// lock must be held
+func (s *TimeSampler) addMetricSample(metricSample *metrics.MetricSample, timestamp float64) {
 	// Keep track of the context
 	contextKey := s.contextResolver.trackContext(metricSample, timestamp)
 	bucketStart := s.calculateBucketStart(timestamp)
@@ -82,20 +106,26 @@ func (s *TimeSampler) addSample(metricSample *metrics.MetricSample, timestamp fl
 	}
 }
 
-func (s *TimeSampler) newSketchSeries(ck ckey.ContextKey, points []metrics.SketchPoint) metrics.SketchSeries {
-	ctx := s.contextResolver.contextsByKey[ck]
-	ss := metrics.SketchSeries{
-		Name:       ctx.Name,
-		Tags:       ctx.Tags,
-		Host:       ctx.Host,
-		Interval:   s.interval,
-		Points:     points,
-		ContextKey: ck,
-	}
+// flush flushes all the metrics in the time sampler
+// holds the lock while flushing
+func (s *TimeSampler) flush(timestamp float64) (metrics.Series, metrics.SketchSeriesList) {
+	s.Lock()
+	defer s.Unlock()
+	// Compute a limit timestamp
+	cutoffTime := s.calculateBucketStart(timestamp)
 
-	return ss
+	series := s.flushSeries(cutoffTime)
+	sketches := s.flushSketches(cutoffTime)
+
+	// expiring contexts
+	s.contextResolver.expireContexts(timestamp - defaultExpiry)
+	s.lastCutOffTime = cutoffTime
+
+	return series, sketches
 }
 
+// flushSeries flushes the series
+// lock must be held
 func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 	var series []*metrics.Serie
 	var rawSeries []*metrics.Serie
@@ -160,6 +190,8 @@ func (s *TimeSampler) flushSeries(cutoffTime int64) metrics.Series {
 	return series
 }
 
+// flushSketches flushes the sketches
+// lock must be held
 func (s TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
 	pointsByCtx := make(map[ckey.ContextKey][]metrics.SketchPoint)
 	sketches := make(metrics.SketchSeriesList, 0, len(pointsByCtx))
@@ -177,21 +209,24 @@ func (s TimeSampler) flushSketches(cutoffTime int64) metrics.SketchSeriesList {
 	return sketches
 }
 
-func (s *TimeSampler) flush(timestamp float64) (metrics.Series, metrics.SketchSeriesList) {
-	// Compute a limit timestamp
-	cutoffTime := s.calculateBucketStart(timestamp)
+// newSketchSeries creates a new sketch serie
+// lock must be held
+func (s *TimeSampler) newSketchSeries(ck ckey.ContextKey, points []metrics.SketchPoint) metrics.SketchSeries {
+	ctx := s.contextResolver.contextsByKey[ck]
+	ss := metrics.SketchSeries{
+		Name:       ctx.Name,
+		Tags:       ctx.Tags,
+		Host:       ctx.Host,
+		Interval:   s.interval,
+		Points:     points,
+		ContextKey: ck,
+	}
 
-	series := s.flushSeries(cutoffTime)
-	sketches := s.flushSketches(cutoffTime)
-
-	// expiring contexts
-	s.contextResolver.expireContexts(timestamp - defaultExpiry)
-	s.lastCutOffTime = cutoffTime
-
-	return series, sketches
+	return ss
 }
 
 // flushContextMetrics flushes the passed contextMetrics, handles its errors, and returns its series
+// lock must be held
 func (s *TimeSampler) flushContextMetrics(timestamp int64, contextMetrics metrics.ContextMetrics) []*metrics.Serie {
 	series, errors := contextMetrics.Flush(float64(timestamp))
 	for ckey, err := range errors {
@@ -205,6 +240,8 @@ func (s *TimeSampler) flushContextMetrics(timestamp int64, contextMetrics metric
 	return series
 }
 
+// flushSketches flushes the sketches
+// lock must be held
 func (s *TimeSampler) countersSampleZeroValue(timestamp int64, contextMetrics metrics.ContextMetrics, counterContextsToDelete map[ckey.ContextKey]struct{}) {
 	expirySeconds := config.Datadog.GetFloat64("dogstatsd_expiry_seconds")
 	for counterContext, lastSampled := range s.counterLastSampledByContext {

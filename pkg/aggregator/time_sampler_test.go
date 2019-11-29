@@ -51,9 +51,9 @@ func TestBucketSampling(t *testing.T) {
 		Tags:       []string{"foo", "bar"},
 		SampleRate: 1,
 	}
-	sampler.addSample(&mSample, 12345.0)
-	sampler.addSample(&mSample, 12355.0)
-	sampler.addSample(&mSample, 12365.0)
+	sampler.addMetricSample(&mSample, 12345.0)
+	sampler.addMetricSample(&mSample, 12355.0)
+	sampler.addMetricSample(&mSample, 12365.0)
 
 	series, _ := sampler.flush(12360.0)
 
@@ -98,9 +98,9 @@ func TestContextSampling(t *testing.T) {
 		SampleRate: 1,
 	}
 
-	sampler.addSample(&mSample1, 12346.0)
-	sampler.addSample(&mSample2, 12346.0)
-	sampler.addSample(&mSample3, 12346.0)
+	sampler.addMetricSample(&mSample1, 12346.0)
+	sampler.addMetricSample(&mSample2, 12346.0)
+	sampler.addMetricSample(&mSample3, 12346.0)
 
 	series, _ := sampler.flush(12360.0)
 	orderedSeries := OrderedSeries{series}
@@ -168,9 +168,9 @@ func TestCounterExpirySeconds(t *testing.T) {
 		SampleRate: 1,
 	}
 
-	sampler.addSample(sampleCounter1, 1004.0)
-	sampler.addSample(sampleCounter2, 1002.0)
-	sampler.addSample(sampleGauge3, 1003.0)
+	sampler.addMetricSample(sampleCounter1, 1004.0)
+	sampler.addMetricSample(sampleCounter2, 1002.0)
+	sampler.addMetricSample(sampleGauge3, 1003.0)
 	// counterLastSampledByContext should be populated when a sample is added
 	assert.Equal(t, 2, len(sampler.counterLastSampledByContext))
 
@@ -214,9 +214,9 @@ func TestCounterExpirySeconds(t *testing.T) {
 		SampleRate: 1,
 	}
 
-	sampler.addSample(sampleCounter2, 1034.0)
-	sampler.addSample(sampleCounter1, 1010.0)
-	sampler.addSample(sampleCounter2, 1020.0)
+	sampler.addMetricSample(sampleCounter2, 1034.0)
+	sampler.addMetricSample(sampleCounter1, 1010.0)
+	sampler.addMetricSample(sampleCounter2, 1020.0)
 
 	series, _ = sampler.flush(1040.0)
 	orderedSeries = OrderedSeries{series}
@@ -279,7 +279,7 @@ func TestSketch(t *testing.T) {
 		insert = func(t *testing.T, ts float64, ctx Context, values ...float64) {
 			t.Helper()
 			for _, v := range values {
-				sampler.addSample(&metrics.MetricSample{
+				sampler.addMetricSample(&metrics.MetricSample{
 					Name:       ctx.Name,
 					Tags:       ctx.Tags,
 					Host:       ctx.Host,
@@ -353,11 +353,11 @@ func TestSketchBucketSampling(t *testing.T) {
 		Tags:       []string{"a", "b"},
 		SampleRate: 1,
 	}
-	sampler.addSample(&mSample1, 10001)
-	sampler.addSample(&mSample2, 10002)
-	sampler.addSample(&mSample1, 10011)
-	sampler.addSample(&mSample2, 10012)
-	sampler.addSample(&mSample1, 10021)
+	sampler.addMetricSample(&mSample1, 10001)
+	sampler.addMetricSample(&mSample2, 10002)
+	sampler.addMetricSample(&mSample1, 10011)
+	sampler.addMetricSample(&mSample2, 10012)
+	sampler.addMetricSample(&mSample1, 10021)
 
 	_, flushed := sampler.flush(10020.0)
 	expSketch := &quantile.Sketch{}
@@ -396,8 +396,8 @@ func TestSketchContextSampling(t *testing.T) {
 		Tags:       []string{"a", "c"},
 		SampleRate: 1,
 	}
-	sampler.addSample(&mSample1, 10011)
-	sampler.addSample(&mSample2, 10011)
+	sampler.addMetricSample(&mSample1, 10011)
+	sampler.addMetricSample(&mSample2, 10011)
 
 	_, flushed := sampler.flush(10020)
 	expSketch := &quantile.Sketch{}
@@ -439,9 +439,9 @@ func TestBucketSamplingWithSketchAndSeries(t *testing.T) {
 		Tags:       []string{"a", "b"},
 		SampleRate: 1,
 	}
-	sampler.addSample(&dSample1, 12345.0)
-	sampler.addSample(&dSample1, 12355.0)
-	sampler.addSample(&dSample1, 12365.0)
+	sampler.addMetricSample(&dSample1, 12345.0)
+	sampler.addMetricSample(&dSample1, 12355.0)
+	sampler.addMetricSample(&dSample1, 12365.0)
 
 	mSample := metrics.MetricSample{
 		Name:       "my.metric.name",
@@ -450,9 +450,9 @@ func TestBucketSamplingWithSketchAndSeries(t *testing.T) {
 		Tags:       []string{"foo", "bar"},
 		SampleRate: 1,
 	}
-	sampler.addSample(&mSample, 12345.0)
-	sampler.addSample(&mSample, 12355.0)
-	sampler.addSample(&mSample, 12365.0)
+	sampler.addMetricSample(&mSample, 12345.0)
+	sampler.addMetricSample(&mSample, 12355.0)
+	sampler.addMetricSample(&mSample, 12365.0)
 
 	series, sketches := sampler.flush(12360.0)
 
