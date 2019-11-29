@@ -2,7 +2,11 @@ package aggregator
 
 import (
 	"github.com/DataDog/datadog-agent/pkg/metrics"
-	"github.com/segmentio/fasthash/fnv1a"
+)
+
+const (
+	offset32 = uint32(2166136261)
+	prime32  = uint32(16777619)
 )
 
 type shardedTimeSampler struct {
@@ -32,11 +36,19 @@ func (s *shardedTimeSampler) dispatchLoop() {
 	for samples := range s.dispatcher {
 		dispatchedSamples := make([][]*metrics.MetricSample, len(s.timeSamplers))
 		for _, sample := range samples {
-			samplerIndex := fnv1a.HashString32(sample.Name) % uint32(len(s.timeSamplers))
+			samplerIndex := fnv1a(sample.Name) % uint32(len(s.timeSamplers))
 			dispatchedSamples[samplerIndex] = append(dispatchedSamples[samplerIndex], sample)
 		}
 		for i := 0; i < len(dispatchedSamples); i++ {
 			s.timeSamplers[i].sampleChann <- dispatchedSamples[i]
 		}
 	}
+}
+
+func fnv1a(s string) uint32 {
+	h := offset32
+	for _, c := range s {
+		h = (h ^ uint32(c)) * prime32
+	}
+	return h
 }
