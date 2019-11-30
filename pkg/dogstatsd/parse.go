@@ -21,7 +21,7 @@ var (
 	commaSeparator       = []byte(",")
 	commaSeparatorString = string(",")
 
-	cache = newParserCache()
+	parseCache = newParserCache()
 )
 
 func findMessageType(message []byte) messageType {
@@ -50,5 +50,5 @@ func parseTags(rawTags []byte) []string {
 	if len(rawTags) == 0 {
 		return nil
 	}
-	return cache.GetTags(rawTags)
+	return parseCache.GetTags(rawTags)
 }

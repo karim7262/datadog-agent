@@ -24,10 +24,11 @@ func BenchmarkParseMetric(b *testing.B) {
 		b.Run(fmt.Sprintf("%d-tags", i), func(sb *testing.B) {
 			rawSample := buildRawSample(i)
 			sb.ResetTimer()
-
-			for n := 0; n < sb.N; n++ {
-				sample, _ = parseMetricMessage(rawSample, "", []string{}, "default-hostname")
-			}
+			sb.RunParallel(func(sbp *testing.PB) {
+				for sbp.Next() {
+					sample, _ = parseMetricMessage(rawSample, "", []string{}, "default-hostname")
+				}
+			})
 		})
 	}
 }

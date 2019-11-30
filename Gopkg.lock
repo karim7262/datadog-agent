@@ -176,14 +176,6 @@
   revision = "ec5e00d3c878b2a97bbe0884ef45ffd1b4f669f5"
 
 [[projects]]
-  branch = "master"
-  digest = "1:86f77feb5c10f332513c276fe84cf4c63d477eb6c5130d3d8459b6b1e51bc93a"
-  name = "github.com/arbll/ristretto"
-  packages = ["."]
-  pruneopts = ""
-  revision = "b942c5956a4d4dbea68a221bac91274eb3547ccb"
-
-[[projects]]
   digest = "1:63776251fbaa60062742412a9d2fa1e4b7cd24bcf5527fa9656b314ea8d60913"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -249,14 +241,6 @@
   pruneopts = ""
   revision = "4b4cebaf850ec58f1bb1fec5bdebdf8501c2bc3f"
   version = "v3.0.0"
-
-[[projects]]
-  digest = "1:d25acc7560ed91f825cb9b01a1e945bb1117cdcaba19077137e2d9ffc9cf6d05"
-  name = "github.com/cespare/xxhash"
-  packages = ["."]
-  pruneopts = ""
-  revision = "d7df74196a9e781ede915320c11c378c1b2f3a1f"
-  version = "v2.1.1"
 
 [[projects]]
   digest = "1:9897221091d9b3ca7d1a8d350bd8ce709118b5134d68f6315b2010736d3e9378"
@@ -424,14 +408,6 @@
   pruneopts = ""
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:435c13cc2651635418ecb3e13f7f05863ca260f43da06e185520edacdb041934"
-  name = "github.com/dgraph-io/ristretto"
-  packages = ["z"]
-  pruneopts = ""
-  revision = "99d1bbbf28e64530eb246be0568fc7709a35ebdd"
 
 [[projects]]
   digest = "1:2a77f37da43e38868b05c793da4a0176a4e54de89337cc57796ffc282ea36d04"
@@ -2023,7 +1999,7 @@
   revision = "b3a7cee44a305be0a69e1b9ac03018307287e1b0"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:f27698f7ae7864893ebcfb843e44d821263ac1dcf0ba1d5c2353f9d319a2f28d"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/kubelet/remote/fake",
@@ -2123,7 +2099,6 @@
     "github.com/DataDog/zstd.v1.3",
     "github.com/Microsoft/go-winio",
     "github.com/StackExchange/wmi",
-    "github.com/arbll/ristretto",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",

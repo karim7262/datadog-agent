@@ -3,25 +3,17 @@ package dogstatsd
 import (
 	"strings"
 
-	"github.com/arbll/ristretto"
+	"github.com/DataDog/datadog-agent/pkg/util/cache"
 )
 
 type parserCache struct {
-	tagsCache *ristretto.Cache
-	nameCache *ristretto.Cache
+	tagsCache *cache.LRUCache
+	nameCache *cache.LRUCache
 }
 
 func newParserCache() *parserCache {
-	tagsCache, _ := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 2e6,
-		MaxCost:     8388608, // 8MiB
-		BufferItems: 64,      // number of keys per Get buffer.
-	})
-	nameCache, _ := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 2e6,
-		MaxCost:     8388608, // 8MiB
-		BufferItems: 64,      // number of keys per Get buffer.
-	})
+	tagsCache := cache.NewLRUCache(1024)
+	nameCache := cache.NewLRUCache(1024)
 
 	return &parserCache{
 		tagsCache: tagsCache,
@@ -42,7 +34,7 @@ func (c *parserCache) GetTags(rawTags []byte) []string {
 }
 
 func (c *parserCache) putTags(rawTags []byte, tags []string) {
-	c.tagsCache.Set(rawTags, tags, int64(len(rawTags)))
+	c.tagsCache.Put(string(rawTags), tags)
 }
 
 func (c *parserCache) GetName(rawName []byte) string {
@@ -51,13 +43,13 @@ func (c *parserCache) GetName(rawName []byte) string {
 	var name string
 	if !found {
 		name = string(rawName)
-		c.putName(rawName, name)
+		c.putName(name)
 	} else {
 		name = cachedName.(string)
 	}
 	return name
 }
 
-func (c *parserCache) putName(rawName []byte, name string) {
-	c.nameCache.Set(rawName, name, int64(len(name)))
+func (c *parserCache) putName(name string) {
+	c.nameCache.Put(name, name)
 }

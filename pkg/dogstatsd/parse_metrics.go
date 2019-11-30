@@ -61,7 +61,7 @@ func parseMetricSampleNameAndRawValue(rawNameAndValue []byte) (string, []byte, e
 	if len(rawName) == 0 || len(rawValue) == 0 {
 		return "", nil, fmt.Errorf("invalid name and value: %q", rawNameAndValue)
 	}
-	return cache.GetName(rawName), rawValue, nil
+	return parseCache.GetName(rawName), rawValue, nil
 }
 
 func parseMetricSampleMetricType(rawMetricType []byte) (metricType, error) {
