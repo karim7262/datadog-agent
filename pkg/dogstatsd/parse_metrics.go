@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"unsafe"
 )
 
 type metricType int
@@ -30,12 +31,12 @@ var (
 )
 
 type dogstatsdMetricSample struct {
-	name       []byte
+	name       string
 	value      float64
-	setValue   []byte
+	setValue   string
 	metricType metricType
 	sampleRate float64
-	tags       [][]byte
+	tags       []string
 }
 
 // sanity checks a given message against the metric sample format
@@ -50,17 +51,17 @@ func hasMetricSampleFormat(message []byte) bool {
 	return true
 }
 
-func parseMetricSampleNameAndRawValue(rawNameAndValue []byte) ([]byte, []byte, error) {
+func parseMetricSampleNameAndRawValue(rawNameAndValue []byte) (string, []byte, error) {
 	sepIndex := bytes.Index(rawNameAndValue, colonSeparator)
 	if sepIndex == -1 {
-		return nil, nil, fmt.Errorf("invalid name and value: %q", rawNameAndValue)
+		return "", nil, fmt.Errorf("invalid name and value: %q", rawNameAndValue)
 	}
 	rawName := rawNameAndValue[:sepIndex]
 	rawValue := rawNameAndValue[sepIndex+1:]
 	if len(rawName) == 0 || len(rawValue) == 0 {
-		return nil, nil, fmt.Errorf("invalid name and value: %q", rawNameAndValue)
+		return "", nil, fmt.Errorf("invalid name and value: %q", rawNameAndValue)
 	}
-	return rawName, rawValue, nil
+	return cache.GetName(rawName), rawValue, nil
 }
 
 func parseMetricSampleMetricType(rawMetricType []byte) (metricType, error) {
@@ -82,7 +83,7 @@ func parseMetricSampleMetricType(rawMetricType []byte) (metricType, error) {
 }
 
 func parseMetricSampleSampleRate(rawSampleRate []byte) (float64, error) {
-	return strconv.ParseFloat(string(rawSampleRate), 64)
+	return parseFloatUnsafe(rawSampleRate)
 }
 
 func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
@@ -110,14 +111,14 @@ func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
 	if metricType == setType {
 		setValue = rawValue
 	} else {
-		value, err = strconv.ParseFloat(string(rawValue), 64)
+		value, err = parseFloatUnsafe(rawValue)
 		if err != nil {
 			return dogstatsdMetricSample{}, fmt.Errorf("could not parse dogstatsd metric value: %v", err)
 		}
 	}
 
 	sampleRate := 1.0
-	var tags [][]byte
+	var tags []string
 	var optionalField []byte
 	for message != nil {
 		optionalField, message = nextField(message)
@@ -134,9 +135,13 @@ func parseMetricSample(message []byte) (dogstatsdMetricSample, error) {
 	return dogstatsdMetricSample{
 		name:       name,
 		value:      value,
-		setValue:   setValue,
+		setValue:   string(setValue),
 		metricType: metricType,
 		sampleRate: sampleRate,
 		tags:       tags,
 	}, nil
+}
+
+func parseFloatUnsafe(rawFloat []byte) (float64, error) {
+	return strconv.ParseFloat(*(*string)(unsafe.Pointer(&rawFloat)), 64)
 }

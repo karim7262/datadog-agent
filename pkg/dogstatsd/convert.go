@@ -1,7 +1,6 @@
 package dogstatsd
 
 import (
-	"bytes"
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/metrics"
@@ -14,8 +13,8 @@ import (
 type tagRetriever func(entity string, cardinality collectors.TagCardinality) ([]string, error)
 
 var (
-	hostTagPrefix     = []byte("host:")
-	entityIDTagPrefix = []byte("dd.internal.entity_id:")
+	hostTagPrefix     = "host:"
+	entityIDTagPrefix = "dd.internal.entity_id:"
 
 	getTags tagRetriever = tagger.Tag
 )
@@ -44,18 +43,27 @@ func parseServiceCheckMessage(message []byte, defaultHostname string) (*metrics.
 	return convertServiceCheck(sample, defaultHostname), nil
 }
 
-func convertTags(tags [][]byte, defaultHostname string) ([]string, string) {
+func convertTags(tags []string, defaultHostname string) ([]string, string) {
 	if len(tags) == 0 {
 		return nil, defaultHostname
 	}
 
-	tagsList := make([]string, 0, len(tags))
+	tagsList := tags
 	host := defaultHostname
 
+	// this will be allocated on the stack as long as we don't have more than
+	// eight extra tags
+	extraTags := make([]string, 0, 8)
+	needReslice := false
+
+	// we have to be very careful here not to poison the cache by changing the content of tags
+	// this mostly means we can't do any in-place opperation or assignment
 	for _, tag := range tags {
-		if bytes.HasPrefix(tag, hostTagPrefix) {
+		if strings.HasPrefix(tag, hostTagPrefix) {
+			needReslice = true
 			host = string(tag[len(hostTagPrefix):])
-		} else if bytes.HasPrefix(tag, entityIDTagPrefix) {
+		} else if strings.HasPrefix(tag, entityIDTagPrefix) {
+			needReslice = true
 			// currently only supported for pods
 			entity := kubelet.KubePodTaggerEntityPrefix + string(tag[len(entityIDTagPrefix):])
 			entityTags, err := getTags(entity, tagger.DogstatsdCardinality)
@@ -63,11 +71,24 @@ func convertTags(tags [][]byte, defaultHostname string) ([]string, string) {
 				log.Tracef("Cannot get tags for entity %s: %s", entity, err)
 				continue
 			}
-			tagsList = append(tagsList, entityTags...)
-		} else {
-			tagsList = append(tagsList, string(tag))
+			extraTags = append(extraTags, entityTags...)
 		}
 	}
+
+	// we could do that without a second iteration over tags however this is
+	// a "slow path" as we'll have to allocate a new slice in any case
+	if needReslice {
+		tagsList = make([]string, len(tags)+len(extraTags))
+		tagsCount := 0
+		for _, tag := range tags {
+			if !strings.HasPrefix(tag, hostTagPrefix) && !strings.HasPrefix(tag, entityIDTagPrefix) {
+				tagsList[tagsCount] = tag
+				tagsCount++
+			}
+		}
+		tagsList = tagsList[:tagsCount]
+	}
+	tagsList = append(tagsList, extraTags...)
 	return tagsList, host
 }
 
@@ -90,7 +111,7 @@ func convertMetricType(dogstatsdMetricType metricType) metrics.MetricType {
 }
 
 func convertMetricSample(metricSample dogstatsdMetricSample, namespace string, namespaceBlacklist []string, defaultHostname string) *metrics.MetricSample {
-	metricName := string(metricSample.name)
+	metricName := metricSample.name
 	if namespace != "" {
 		blacklisted := false
 		for _, prefix := range namespaceBlacklist {

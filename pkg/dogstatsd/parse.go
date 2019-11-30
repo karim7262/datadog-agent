@@ -16,9 +16,12 @@ var (
 	eventPrefix        = []byte("_e{")
 	serviceCheckPrefix = []byte("_sc")
 
-	fieldSeparator = []byte("|")
-	colonSeparator = []byte(":")
-	commaSeparator = []byte(",")
+	fieldSeparator       = []byte("|")
+	colonSeparator       = []byte(":")
+	commaSeparator       = []byte(",")
+	commaSeparatorString = string(",")
+
+	cache = newParserCache()
 )
 
 func findMessageType(message []byte) messageType {
@@ -43,9 +46,9 @@ func nextField(message []byte) ([]byte, []byte) {
 	return message[:sepIndex], message[sepIndex+1:]
 }
 
-func parseTags(rawTags []byte) [][]byte {
+func parseTags(rawTags []byte) []string {
 	if len(rawTags) == 0 {
 		return nil
 	}
-	return bytes.Split(rawTags, commaSeparator)
+	return cache.GetTags(rawTags)
 }

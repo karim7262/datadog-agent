@@ -18,12 +18,12 @@ const (
 )
 
 type dogstatsdServiceCheck struct {
-	name      []byte
+	name      string
 	status    serviceCheckStatus
 	timestamp int64
-	hostname  []byte
-	message   []byte
-	tags      [][]byte
+	hostname  string
+	message   string
+	tags      []string
 }
 
 var (
@@ -53,11 +53,11 @@ func hasServiceCheckFormat(message []byte) bool {
 	return true
 }
 
-func parseServiceCheckName(rawName []byte) ([]byte, error) {
+func parseServiceCheckName(rawName []byte) (string, error) {
 	if len(rawName) == 0 {
-		return nil, fmt.Errorf("invalid dogstatsd service check name: empty name")
+		return "", fmt.Errorf("invalid dogstatsd service check name: empty name")
 	}
-	return rawName, nil
+	return string(rawName), nil
 }
 
 func parseServiceCheckStatus(rawStatus []byte) (serviceCheckStatus, error) {
@@ -85,11 +85,11 @@ func applyServiceCheckOptionalField(serviceCheck dogstatsdServiceCheck, optional
 	case bytes.HasPrefix(optionalField, serviceCheckTimestampPrefix):
 		newServiceCheck.timestamp, err = parseServiceCheckTimestamp(optionalField[len(serviceCheckTimestampPrefix):])
 	case bytes.HasPrefix(optionalField, serviceCheckHostnamePrefix):
-		newServiceCheck.hostname = optionalField[len(serviceCheckHostnamePrefix):]
+		newServiceCheck.hostname = string(optionalField[len(serviceCheckHostnamePrefix):])
 	case bytes.HasPrefix(optionalField, serviceCheckTagsPrefix):
 		newServiceCheck.tags = parseTags(optionalField[len(serviceCheckTagsPrefix):])
 	case bytes.HasPrefix(optionalField, serviceCheckMessagePrefix):
-		newServiceCheck.message = optionalField[len(serviceCheckMessagePrefix):]
+		newServiceCheck.message = string(optionalField[len(serviceCheckMessagePrefix):])
 	}
 	if err != nil {
 		return serviceCheck, err
