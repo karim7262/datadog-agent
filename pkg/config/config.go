@@ -137,6 +137,8 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("c_core_dump", false)
 	config.BindEnvAndSetDefault("memtrack_enabled", true)
 	config.BindEnvAndSetDefault("tracemalloc_debug", false)
+	config.BindEnvAndSetDefault("tracemalloc_whitelist", "")
+	config.BindEnvAndSetDefault("tracemalloc_blacklist", "")
 
 	// Python 3 linter timeout, in seconds
 	// NOTE: linter is notoriously slow, in the absence of a better solution we
@@ -200,6 +202,8 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("histogram_percentiles", []string{"0.95"})
 	// Serializer
 	config.BindEnvAndSetDefault("enable_stream_payload_serialization", true)
+	config.BindEnvAndSetDefault("enable_service_checks_stream_payload_serialization", true)
+
 	// Warning: do not change the two following values. Your payloads will get dropped by Datadog's intake.
 	config.BindEnvAndSetDefault("serializer_max_payload_size", 2*megaByte+megaByte/2)
 	config.BindEnvAndSetDefault("serializer_max_uncompressed_payload_size", 4*megaByte)
@@ -306,6 +310,7 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("cluster_agent.auth_token", "")
 	config.BindEnvAndSetDefault("cluster_agent.url", "")
 	config.BindEnvAndSetDefault("cluster_agent.kubernetes_service_name", "datadog-cluster-agent")
+	config.BindEnvAndSetDefault("cluster_agent.tagging_fallback", false)
 	config.BindEnvAndSetDefault("metrics_port", "5000")
 
 	// Metadata endpoints
@@ -727,7 +732,7 @@ func GetMultipleEndpoints() (map[string][]string, error) {
 
 // getDomainPrefix provides the right prefix for agent X.Y.Z
 func getDomainPrefix(app string) string {
-	v, _ := version.New(version.AgentVersion, version.Commit)
+	v, _ := version.Agent()
 	return fmt.Sprintf("%d-%d-%d-%s.agent", v.Major, v.Minor, v.Patch, app)
 }
 
