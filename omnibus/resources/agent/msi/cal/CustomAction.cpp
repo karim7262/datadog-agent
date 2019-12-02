@@ -355,6 +355,11 @@ extern "C" UINT __stdcall PostStartServices(MSIHANDLE hInstall) {
         hr = -1;
     }
 LExit:
+    if(!SUCCEEDED(hr)){
+        WcaLog(LOGMSG_STANDARD, "Ignoring start failure, returning success!");
+        hr = S_OK;
+        er = ERROR_SUCCESS;
+    }
     er = SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
     return WcaFinalize(er);
 
