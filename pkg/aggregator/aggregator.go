@@ -8,9 +8,10 @@ package aggregator
 import (
 	"expvar"
 	"fmt"
-	"sort"
 	"sync"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/util"
 
 	"github.com/DataDog/datadog-agent/pkg/serializer/split"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -220,23 +221,6 @@ func NewBufferedAggregator(s serializer.MetricSerializer, hostname, agentName st
 	return aggregator
 }
 
-func deduplicateTags(tags []string) []string {
-	if len(tags) == 0 {
-		return tags
-	}
-	sort.Strings(tags)
-
-	j := 0
-	for i := 1; i < len(tags); i++ {
-		if tags[j] == tags[i] {
-			continue
-		}
-		j++
-		tags[j] = tags[i]
-	}
-	return tags[:j+1]
-}
-
 // AddRecurrentSeries adds a serie to the series that are sent at every flush
 func AddRecurrentSeries(newSerie *metrics.Serie) {
 	recurrentSeriesLock.Lock()
@@ -317,7 +301,7 @@ func (agg *BufferedAggregator) handleSenderSample(ss senderMetricSample) {
 		if ss.commit {
 			checkSampler.commit(timeNowNano())
 		} else {
-			ss.metricSample.Tags = deduplicateTags(ss.metricSample.Tags)
+			ss.metricSample.Tags = util.SortUniqInPlace(ss.metricSample.Tags)
 			checkSampler.addSample(ss.metricSample)
 		}
 	} else {
@@ -330,7 +314,7 @@ func (agg *BufferedAggregator) handleSenderBucket(checkBucket senderHistogramBuc
 	defer agg.mu.Unlock()
 
 	if checkSampler, ok := agg.checkSamplers[checkBucket.id]; ok {
-		checkBucket.bucket.Tags = deduplicateTags(checkBucket.bucket.Tags)
+		checkBucket.bucket.Tags = util.SortUniqInPlace(checkBucket.bucket.Tags)
 		checkSampler.addBucket(checkBucket.bucket)
 	} else {
 		log.Debugf("CheckSampler with ID '%s' doesn't exist, can't handle histogram bucket", checkBucket.id)
@@ -342,7 +326,7 @@ func (agg *BufferedAggregator) addServiceCheck(sc metrics.ServiceCheck) {
 	if sc.Ts == 0 {
 		sc.Ts = time.Now().Unix()
 	}
-	sc.Tags = deduplicateTags(sc.Tags)
+	sc.Tags = util.SortUniqInPlace(sc.Tags)
 
 	agg.serviceChecks = append(agg.serviceChecks, &sc)
 }
@@ -352,14 +336,13 @@ func (agg *BufferedAggregator) addEvent(e metrics.Event) {
 	if e.Ts == 0 {
 		e.Ts = time.Now().Unix()
 	}
-	e.Tags = deduplicateTags(e.Tags)
+	e.Tags = util.SortUniqInPlace(e.Tags)
 
 	agg.events = append(agg.events, &e)
 }
 
 // addSample adds the metric sample
 func (agg *BufferedAggregator) addSample(metricSample *metrics.MetricSample, timestamp float64) {
-	metricSample.Tags = deduplicateTags(metricSample.Tags)
 	agg.statsdSampler.addSample(metricSample, timestamp)
 }
 

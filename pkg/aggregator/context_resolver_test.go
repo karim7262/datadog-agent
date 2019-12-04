@@ -6,6 +6,7 @@
 package aggregator
 
 import (
+	"github.com/DataDog/datadog-agent/pkg/util"
 	// stdlib
 	"testing"
 
@@ -15,6 +16,10 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator/ckey"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
 )
+
+func generateContextKey(metricSampleContext metrics.MetricSampleContext) ckey.ContextKey {
+	return ckey.Generate(metricSampleContext.GetName(), metricSampleContext.GetHost(), util.SortUniqInPlace(metricSampleContext.GetTags()))
+}
 
 func TestGenerateContextKey(t *testing.T) {
 	mSample := metrics.MetricSample{
@@ -55,15 +60,15 @@ func TestTrackContext(t *testing.T) {
 	}
 	expectedContext1 := Context{
 		Name: mSample1.Name,
-		Tags: mSample1.Tags,
+		Tags: util.SortUniqInPlace(mSample1.Tags),
 	}
 	expectedContext2 := Context{
 		Name: mSample2.Name,
-		Tags: mSample2.Tags,
+		Tags: util.SortUniqInPlace(mSample2.Tags),
 	}
 	expectedContext3 := Context{
 		Name: mSample3.Name,
-		Tags: mSample3.Tags,
+		Tags: util.SortUniqInPlace(mSample3.Tags),
 		Host: mSample3.Host,
 	}
 	contextResolver := newContextResolver()

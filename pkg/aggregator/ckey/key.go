@@ -8,7 +8,6 @@ package ckey
 import (
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"sync"
 
 	"github.com/DataDog/mmh3"
@@ -43,15 +42,6 @@ func Generate(name, hostname string, tags []string) ContextKey {
 	mmh := hashPool.Get().(*mmh3.HashWriter128)
 	mmh.Reset()
 	defer hashPool.Put(mmh)
-
-	// Sort the tags in place. For typical tag slices, we use
-	// the in-place section sort to avoid heap allocations.
-	// We default to stdlib's sort package for longer slices.
-	if len(tags) < 20 {
-		selectionSort(tags)
-	} else {
-		sort.Strings(tags)
-	}
 
 	mmh.WriteString(name)
 	mmh.WriteString(",")
