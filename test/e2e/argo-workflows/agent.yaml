@@ -566,6 +566,26 @@ spec:
             k8s-app: kube-state-metrics
 
   templates:
+  - name: manifest
+    inputs:
+      parameters:
+      - name: action
+      - name: manifest
+    resource:
+      action: "{{inputs.parameters.action}}"
+      manifest: "{{inputs.parameters.manifest}}"
+
+  - name: query-job
+    activeDeadlineSeconds: 120
+    inputs:
+      parameters:
+      - name: manifest
+    resource:
+      action: create
+      successCondition: status.succeeded > 0
+      failureCondition: status.failed > 10
+      manifest: "{{inputs.parameters.manifest}}"
+
   - name: main
     inputs:
       parameters:
@@ -738,17 +758,6 @@ spec:
     - - name: no-more-redis
         template: no-more-metrics-redis
 
-  - name: query-job
-    activeDeadlineSeconds: 120
-    inputs:
-      parameters:
-      - name: manifest
-    resource:
-      action: create
-      successCondition: status.succeeded > 0
-      failureCondition: status.failed > 10
-      manifest: "{{inputs.parameters.manifest}}"
-
   - name: delete
     inputs:
       parameters:
@@ -792,15 +801,6 @@ spec:
         - "{{inputs.parameters.kube-state-metrics-rbac}}"
         - "{{inputs.parameters.kube-state-metrics-deployment}}"
         - "{{inputs.parameters.kube-state-metrics-service}}"
-
-  - name: manifest
-    inputs:
-      parameters:
-      - name: action
-      - name: manifest
-    resource:
-      action: "{{inputs.parameters.action}}"
-      manifest: "{{inputs.parameters.manifest}}"
 
   - name: datadog-agent-health
     activeDeadlineSeconds: 200

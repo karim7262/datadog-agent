@@ -11,12 +11,15 @@ do
     sleep 5
 done
 
+kubectl delete namespace argo
+
 set -e
 
-./argo install --image-pull-policy IfNotPresent
+kubectl create namespace argo
+kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/v2.4.3/manifests/install.yaml
 
 # TODO use a more restrictive SA
-kubectl apply -f - << EOF
+kubectl apply -n argo -f - << EOF
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:

@@ -16,7 +16,6 @@ cd "$(dirname $0)"
 # TODO run all workflows ?
 
 AGENT_DAEMONSET=$(cat << EOF
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -116,7 +115,6 @@ spec:
       - hostPath:
           path: /var/run/dogstatsd
         name: dogstatsd
----
 EOF
 )
 

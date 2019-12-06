@@ -2753,12 +2753,35 @@ deploy_cloudfront_invalidate_on_failure:
   - inv -e e2e-tests --image=datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2
   - inv -e e2e-tests --image=datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py3
 
-pupernetes-dev:
+pupernetes-dev-stable:
   <<: *pupernetes_template
   when: manual
-  except:
+  exclude:
     - master
-    - tags
+  allow_failure: false
+  needs: ["dev_branch_docker_hub"]
+  variables:
+    KUBE_VERSION: "latest"
+
+pupernetes-dev-next:
+  <<: *pupernetes_template
+  when: manual
+  exclude:
+    - master
+  allow_failure: false
+  needs: ["dev_branch_docker_hub"]
+  variables:
+    KUBE_VERSION: "next"
+
+pupernetes-dev-old:
+  <<: *pupernetes_template
+  when: manual
+  exclude:
+    - master
+  allow_failure: false
+  needs: ["dev_branch_docker_hub"]
+  variables:
+    KUBE_VERSION: "1.12.10"
 
 pupernetes-master:
   <<: *pupernetes_template

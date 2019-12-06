@@ -50,7 +50,7 @@ $ chmod +x ./pupernetes
 ### AWS development
 
 ```bash
-$ cd ${GOPATH}/src/github.com/DataDog/datadog-agent 
+$ cd ${GOPATH}/src/github.com/DataDog/datadog-agent
 $ aws-vault exec ${DEV} -- inv -e e2e-tests -t dev --image datadog/agent-dev:master
 $ echo $?
 ```
@@ -58,8 +58,8 @@ $ echo $?
 ### Locally
 
 ```bash
-$ sudo ./pupernetes daemon run /opt/sandbox --job-type systemd 
-$ cd ${GOPATH}/src/github.com/DataDog/datadog-agent 
+$ sudo ./pupernetes daemon run /opt/sandbox --job-type systemd
+$ cd ${GOPATH}/src/github.com/DataDog/datadog-agent
 $ inv -e e2e-tests -t local --image datadog/agent-dev:master
 $ echo $?
 ```
