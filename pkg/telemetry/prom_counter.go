@@ -12,7 +12,7 @@ func NewCounter(subsystem, name string, tags []string, help string) Counter {
 	c := &promCounter{
 		pc: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Subsystem: fmt.Sprintf("_%s", subsystem),
+				Subsystem: subsystem,
 				Name:      fmt.Sprintf("_%s", name),
 				Help:      help,
 			},

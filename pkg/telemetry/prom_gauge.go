@@ -12,7 +12,7 @@ func NewGauge(subsystem, name string, tags []string, help string) Gauge {
 	g := &promGauge{
 		pg: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Subsystem: fmt.Sprintf("_%s", subsystem),
+				Subsystem: subsystem,
 				Name:      fmt.Sprintf("_%s", name),
 				Help:      help,
 			},
