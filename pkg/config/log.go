@@ -148,6 +148,7 @@ func SetupLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, sys
 	seelog.ReplaceLogger(logger)
 
 	log.SetupDatadogLogger(logger, seelogLogLevel)
+	log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
 	return nil
 }
 
@@ -186,7 +187,7 @@ func createSyslogHeaderFormatter(params string) seelog.FormatterFunc {
 
 		rfc = (ps[1] == "true")
 	} else {
-		fmt.Printf("badly formatted syslog header parameters - using defaults")
+		fmt.Println("badly formatted syslog header parameters - using defaults")
 	}
 
 	pid := os.Getpid()

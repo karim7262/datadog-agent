@@ -176,9 +176,9 @@ void Two::freePyInfo(py_info_t *info)
 {
     info->version = NULL;
     if (info->path) {
-        free(info->path);
+        _free(info->path);
     }
-    free(info);
+    _free(info);
     return;
 }
 
@@ -871,6 +871,16 @@ void Two::setGetConnectionInfoCb(cb_get_connection_info_t cb)
 void Two::setIsExcludedCb(cb_is_excluded_t cb)
 {
     _set_is_excluded_cb(cb);
+}
+
+void Two::setWritePersistentCacheCb(cb_write_persistent_cache_t cb)
+{
+    _set_write_persistent_cache_cb(cb);
+}
+
+void Two::setReadPersistentCacheCb(cb_read_persistent_cache_t cb)
+{
+    _set_read_persistent_cache_cb(cb);
 }
 
 // Python Helpers

@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/DataDog/datadog-agent/pkg/metadata/inventories"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -95,17 +96,48 @@ func Fqdn(hostname string) string {
 	return hostname
 }
 
-// GetHostname retrieve the host name for the Agent, trying to query these
+func setHostnameProvider(name string) {
+	hostnameProvider.Set(name)
+	inventories.SetAgentMetadata("hostname_source", name)
+}
+
+// GetHostname retrieves the host name from GetHostnameData
+func GetHostname() (string, error) {
+	hostnameData, err := GetHostnameData()
+	return hostnameData.Hostname, err
+}
+
+// HostnameProviderConfiguration is the key for the hostname provider associated to datadog.yaml
+const HostnameProviderConfiguration = "configuration"
+
+// HostnameData contains hostname and the hostname provider
+type HostnameData struct {
+	Hostname string
+	Provider string
+}
+
+// saveHostnameData creates a HostnameData struct, saves it in the cache under cacheHostnameKey
+// and calls setHostnameProvider with the provider if it is not empty.
+func saveHostnameData(cacheHostnameKey string, hostname string, provider string) HostnameData {
+	hostnameData := HostnameData{Hostname: hostname, Provider: provider}
+	cache.Cache.Set(cacheHostnameKey, hostnameData, cache.NoExpiration)
+	if provider != "" {
+		setHostnameProvider(provider)
+	}
+	return hostnameData
+}
+
+// GetHostnameData retrieves the host name for the Agent and hostname provider, trying to query these
 // environments/api, in order:
 // * GCE
 // * Docker
 // * kubernetes
 // * os
 // * EC2
-func GetHostname() (string, error) {
+func GetHostnameData() (HostnameData, error) {
 	cacheHostnameKey := cache.BuildAgentKey("hostname")
 	if cacheHostname, found := cache.Cache.Get(cacheHostnameKey); found {
-		return cacheHostname.(string), nil
+		return cacheHostname.(HostnameData), nil
 	}
 
 	var hostName string
@@ -116,9 +148,11 @@ func GetHostname() (string, error) {
 	configName := config.Datadog.GetString("hostname")
 	err = ValidHostname(configName)
 	if err == nil {
-		cache.Cache.Set(cacheHostnameKey, configName, cache.NoExpiration)
-		hostnameProvider.Set("configuration")
-		return configName, err
+		hostnameData := saveHostnameData(cacheHostnameKey, configName, HostnameProviderConfiguration)
+		if !isHostnameCanonicalForIntake(configName) && !config.Datadog.GetBool("hostname_force_config_as_canonical") {
+			_ = log.Warnf("Hostname '%s' defined in configuration will not be used as the in-app hostname. For more information: https://dtdg.co/agent-hostname-config-as-canonical", configName)
+		}
+		return hostnameData, err
 	}
 
 	expErr := new(expvar.String)
@@ -130,8 +164,8 @@ func GetHostname() (string, error) {
 
 	// if fargate we strip the hostname
 	if ecs.IsFargateInstance() {
-		cache.Cache.Set(cacheHostnameKey, "", cache.NoExpiration)
-		return "", nil
+		hostnameData := saveHostnameData(cacheHostnameKey, "", "")
+		return hostnameData, nil
 	}
 
 	// GCE metadata
@@ -139,9 +173,8 @@ func GetHostname() (string, error) {
 	if getGCEHostname, found := hostname.ProviderCatalog["gce"]; found {
 		gceName, err := getGCEHostname()
 		if err == nil {
-			cache.Cache.Set(cacheHostnameKey, gceName, cache.NoExpiration)
-			hostnameProvider.Set("gce")
-			return gceName, err
+			hostnameData := saveHostnameData(cacheHostnameKey, gceName, "gce")
+			return hostnameData, err
 		}
 		expErr := new(expvar.String)
 		expErr.Set(err.Error())
@@ -243,12 +276,21 @@ func GetHostname() (string, error) {
 		err = nil
 	}
 
-	cache.Cache.Set(cacheHostnameKey, hostName, cache.NoExpiration)
-	hostnameProvider.Set(provider)
+	hostnameData := saveHostnameData(cacheHostnameKey, hostName, provider)
 	if err != nil {
 		expErr := new(expvar.String)
 		expErr.Set(fmt.Sprintf(err.Error()))
 		hostnameErrors.Set("all", expErr)
 	}
-	return hostName, err
+	return hostnameData, err
+}
+
+// isHostnameCanonicalForIntake returns true if the intake will use the hostname as canonical hostname.
+func isHostnameCanonicalForIntake(hostname string) bool {
+	// Intake uses instance id for ec2 default hostname except for Windows.
+	if ec2.IsDefaultHostnameForIntake(hostname) {
+		_, err := ec2.GetInstanceID()
+		return err != nil
+	}
+	return true
 }

@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include <filesystem>
 
 #pragma comment(lib, "shlwapi.lib")
 
@@ -87,7 +86,7 @@ DWORD changeRegistryAcls(CustomActionData& data, const wchar_t* name) {
     //ExplicitAccess suser;
     //suser.BuildGrantUser(secretUserUsername.c_str(), GENERIC_READ | GENERIC_EXECUTE | READ_CONTROL | KEY_READ);
 
-    PSID  usersid = GetSidForUser(NULL, data.getQualifiedUsername().c_str());
+    PSID  usersid = GetSidForUser(NULL, data.Username().c_str());
     ExplicitAccess dduser;
     dduser.BuildGrantUser((SID *)usersid, GENERIC_ALL | KEY_ALL_ACCESS,
         SUB_CONTAINERS_AND_OBJECTS_INHERIT);
@@ -119,17 +118,15 @@ DWORD changeRegistryAcls(CustomActionData& data, const wchar_t* name) {
 
 DWORD addDdUserPermsToFile(CustomActionData& data, std::wstring &filename)
 {
-    std::string shortfile;
-    toMbcs(shortfile, (LPCWSTR)filename.c_str());
 
     if(!PathFileExistsW((LPCWSTR) filename.c_str()))
     {
         // return success; we don't need to do anything
-        WcaLog(LOGMSG_STANDARD, "file %s doesn't exist, not doing anything", shortfile.c_str());
+        WcaLog(LOGMSG_STANDARD, "file %S doesn't exist, not doing anything", filename.c_str());
         return 0;
     }
-    WcaLog(LOGMSG_STANDARD, "Changing file permissions on %s", shortfile.c_str());
-    PSID  usersid = GetSidForUser(NULL, data.getQualifiedUsername().c_str());
+    WcaLog(LOGMSG_STANDARD, "Changing file permissions on %S", filename.c_str());
+    PSID  usersid = GetSidForUser(NULL, data.Username().c_str());
     ExplicitAccess dduser;
     dduser.BuildGrantUser((SID *)usersid, FILE_ALL_ACCESS,
                           SUB_CONTAINERS_AND_OBJECTS_INHERIT);
@@ -227,7 +224,7 @@ doneRemove:
     return ;
 }
 
-int doCreateUser(const std::wstring& name, const wchar_t * domain, std::wstring& comment, const wchar_t* passbuf)
+int doCreateUser(const std::wstring& name, const std::wstring& comment, const wchar_t* passbuf)
 {
     
     USER_INFO_1 ui;
@@ -251,8 +248,15 @@ int doCreateUser(const std::wstring& name, const wchar_t * domain, std::wstring&
 
 }
 
-
-
+int doSetUserPassword(const std::wstring& name,  const wchar_t* passbuf)
+{
+    USER_INFO_1003 ui;
+    memset(&ui,0, sizeof(USER_INFO_1003));
+    ui.usri1003_password = (LPWSTR)passbuf;
+    DWORD ret = NetUserSetInfo(NULL, name.c_str(), 1003, (LPBYTE)&ui, NULL);
+    WcaLog(LOGMSG_STANDARD, "NetUserSetInfo Change Password %d", ret);
+    return ret;
+}
 DWORD DeleteUser(const wchar_t* host, const wchar_t* name){
     NET_API_STATUS ret = NetUserDel(NULL, name);
     return (DWORD)ret;
@@ -300,9 +304,9 @@ int doesUserExist(MSIHANDLE hInstall, const CustomActionData& data, bool isDC)
     LPWSTR refDomain = NULL;
     DWORD cchRefDomain = 0;
     SID_NAME_USE use;
-    std::string narrowdomain;
     DWORD err = 0;
-    const wchar_t * userToTry = data.getQualifiedUsername().c_str();
+    const wchar_t * userToTry = data.Username().c_str();
+    const wchar_t * hostToTry = NULL;
 
     BOOL bRet = LookupAccountName(NULL, userToTry, newsid, &cbSid, refDomain, &cchRefDomain, &use);
     if (bRet) {
@@ -325,9 +329,9 @@ int doesUserExist(MSIHANDLE hInstall, const CustomActionData& data, bool isDC)
                 WcaLog(LOGMSG_STANDARD, "Can't reach domain controller %d", err);
                 // if the user specified a domain, then also must be able to contact
                 // the domain authority
-                if (data.getDomainPtr() == NULL) {
+                if (data.isUserLocalUser() == NULL) {
                     WcaLog(LOGMSG_STANDARD, "trying fully qualified local account");
-                    bRet = LookupAccountName(NULL, data.getFullUsername().c_str(), newsid, &cbSid, refDomain, &cchRefDomain, &use);
+                    bRet = LookupAccountName(computername.c_str(), data.Username().c_str(), newsid, &cbSid, refDomain, &cchRefDomain, &use);
                     if (bRet) {
                         // this should *never* happen, because we didn't pass in a buffer large enough for
                         // the sid or the domain name.
@@ -354,7 +358,7 @@ int doesUserExist(MSIHANDLE hInstall, const CustomActionData& data, bool isDC)
                 WcaLog(LOGMSG_STANDARD, "doesUserExist: Lookup Account Name: Unexpected error %d 0x%x", err, err);
                 return -1;
             }
-            userToTry = data.getFullUsername().c_str();
+            hostToTry = computername.c_str();
 
         }
         else {        // we don't know what happened
@@ -370,7 +374,7 @@ int doesUserExist(MSIHANDLE hInstall, const CustomActionData& data, bool isDC)
     ZeroMemory(refDomain, (cchRefDomain + 1) * sizeof(wchar_t));
 
     // try it again
-    bRet = LookupAccountName(NULL, userToTry, newsid, &cbSid, refDomain, &cchRefDomain, &use);
+    bRet = LookupAccountName(hostToTry, userToTry, newsid, &cbSid, refDomain, &cchRefDomain, &use);
     if (!bRet) {
         err = GetLastError();
         WcaLog(LOGMSG_STANDARD, "Failed to lookup account name %d", GetLastError());
@@ -383,8 +387,7 @@ int doesUserExist(MSIHANDLE hInstall, const CustomActionData& data, bool isDC)
         goto cleanAndFail;
     }
     retval = 1;
-    toMbcs(narrowdomain, refDomain);
-    WcaLog(LOGMSG_STANDARD, "Got SID from %s", narrowdomain.c_str());
+    WcaLog(LOGMSG_STANDARD, "Got SID from %S", refDomain);
 
 cleanAndFail:
     if (newsid) {
@@ -396,135 +399,3 @@ cleanAndFail:
     return retval;
 }
 
-namespace {
-	std::wstring getLastErrorMessage() {
-		return L"Error code: " + std::to_wstring(GetLastError());
-	}
-}
-
-bool setUserProfileFolder(const std::wstring& username, const wchar_t* domain, const std::wstring& password) {
-	HANDLE token = nullptr;
-	if (LogonUser(username.c_str(), domain, password.c_str(), LOGON32_LOGON_SERVICE, 
-					LOGON32_PROVIDER_DEFAULT, &token) == 0) {
-		WcaLog(LOGMSG_STANDARD, "Cannot logon as user %S: %S.", username.c_str(), getLastErrorMessage().c_str());
-		return false;
-	}
-	
-	PROFILEINFO profileInfo;
-	ZeroMemory(&profileInfo, sizeof(PROFILEINFO));
-	profileInfo.dwSize = sizeof(PROFILEINFO);
-	std::vector<wchar_t> profileUserName{ username.begin(), username.end() };
-	profileUserName.push_back(0);
-	profileInfo.lpUserName = &profileUserName[0];
-	
-	if (!LoadUserProfile(token, &profileInfo)) {
-		WcaLog(LOGMSG_STANDARD, "Cannot load profile for %S: %S", username.c_str(), getLastErrorMessage().c_str());
-		return false;
-	}
-	
-	DWORD bufferSize = 0;	
-	if (GetUserProfileDirectory(token, nullptr, &bufferSize) || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-		WcaLog(LOGMSG_STANDARD, "Cannot get the user profile buffer size. %S", getLastErrorMessage().c_str());
-		return false;
-	}
-	
-	std::vector<wchar_t> userProfileFolder(bufferSize);	
-	if (!GetUserProfileDirectory(token, &userProfileFolder[0], &bufferSize)) {
-		WcaLog(LOGMSG_STANDARD, "Cannot get the user profile. %S", getLastErrorMessage().c_str());
-		return false;
-	}
-
-	USER_INFO_1006 ui;
-	ui.usri1006_home_dir = &userProfileFolder[0];
-	
-	if (NetUserSetInfo(nullptr, username.c_str(), 1006, reinterpret_cast<LPBYTE>(&ui), nullptr) != NERR_Success) {
-		WcaLog(LOGMSG_STANDARD, "Cannot set user profile. %S", getLastErrorMessage().c_str());
-		return false;
-	}
-	
-	WcaLog(LOGMSG_STANDARD, "User profile set to: %S", ui.usri1006_home_dir);
-	return true;
-}
-
-bool getUserProfileFolder(const std::wstring& username, std::wstring& userPofileFolder) {
-	USER_INFO_1* userInfo1 = nullptr;
-
-	if (NetUserGetInfo(nullptr, username.c_str(), 1, reinterpret_cast<LPBYTE*>(&userInfo1)) != NERR_Success) {
-		WcaLog(LOGMSG_STANDARD, "NetUserGetInfo failed.");
-		return false;
-	}
-
-	if (!userInfo1->usri1_home_dir) {
-		WcaLog(LOGMSG_STANDARD, "userInfo1->usri1_home_dir is null.");
-		return false;
-	}
-	WcaLog(LOGMSG_STANDARD, "User profile is: %S", userInfo1->usri1_home_dir);
-
-	userPofileFolder = userInfo1->usri1_home_dir;
-	NetApiBufferFree(userInfo1);
-	return true;
-}
-
-namespace {	
-	void RemoveLockedFolder(const std::wstring& folder) {
-		std::vector<std::filesystem::path> paths;
-
-		paths.emplace_back(folder);
-		for (auto p : std::filesystem::recursive_directory_iterator(folder)) {
-			paths.push_back(p.path());
-		}
-
-		// We reverse the order because we need to delete empty folders.
-		std::reverse(paths.begin(), paths.end());
-
-		for (const auto& p : paths) {
-			std::error_code error;
-			std::filesystem::remove(p, error);
-			if (error) {
-				// Delete the file or folder on the next reboot.
-				// Folder must be empty
-				if (!MoveFileEx(p.c_str(), nullptr, MOVEFILE_DELAY_UNTIL_REBOOT)) {
-					WcaLog(LOGMSG_STANDARD, "Cannot remove path: %s (Error code %d)", p.c_str(), GetLastError());
-				}
-			}
-		}
-	}
-
-	bool RemoveRegisterKey(const std::wstring& userSid) {
-		if (userSid.empty())
-			return false;
-
-		std::wstring key = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList\\" + userSid;
-		auto status = RegDeleteKey(HKEY_LOCAL_MACHINE, key.c_str());
-		if (status != ERROR_SUCCESS) {
-			WcaLog(LOGMSG_STANDARD, "Cannot remove registry key %S: (Error code %d)", key.c_str(), status);
-			return false;
-		}
-		return true;
-	}
-}
-
-std::optional<std::wstring> GetSidString(PSID sid) {
-	LPWSTR stringSid = nullptr;
-	if (!ConvertSidToStringSid(sid, &stringSid))
-		return std::nullopt;
-	
-	std::wstring result = stringSid;
-
-	LocalFree(stringSid);
-	return result;
-}
-
-bool RemoveUserProfile(const std::wstring& installedUser, const std::wstring& userProfileFolder, const std::wstring& userSid) {
-	try {		
-		RemoveLockedFolder(userProfileFolder);
-		return RemoveRegisterKey(userSid);
-	}
-	catch (const std::exception& e) {
-		WcaLog(LOGMSG_STANDARD, "Error: %s in RemoveUserProfile.", e.what());
-	}
-	catch (...) {
-		WcaLog(LOGMSG_STANDARD, "Unknow error in RemoveUserProfile.");
-	}
-	return false;
-}

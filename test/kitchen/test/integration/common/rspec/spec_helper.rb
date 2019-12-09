@@ -34,33 +34,62 @@ def agent_command
   end
 end
 
-def wait_until_stopped(timeout = 15)
+def wait_until_stopped(timeout = 60)
   # Check if the agent has stopped every second
   # Timeout after the given number of seconds
   for _ in 1..timeout do
     break if !is_running?
     sleep 1
   end
+  # HACK: somewhere between 6.15.0 and 6.16.0, the delay between the
+  # Agent start and the moment when the status command starts working
+  # has dramatically increased.
+  # Before (on ubuntu/debian):
+  # - during the first ~0.05s: connection refused
+  # - after: works correctly
+  # Now:
+  # - during the first ~0.05s: connection refused
+  # - between ~0.05s and ~1s: EOF
+  # - after: works correctly
+  # Until we understand and fix the problem, we're adding this sleep
+  # so that we don't get flakes in the kitchen tests.
+  sleep 2
 end
 
-def wait_until_started(timeout = 15)
+def wait_until_started(timeout = 60)
   # Check if the agent has started every second
   # Timeout after the given number of seconds
   for _ in 1..timeout do
     break if is_running?
     sleep 1
   end
+  # HACK: somewhere between 6.15.0 and 6.16.0, the delay between the
+  # Agent start and the moment when the status command starts working
+  # has dramatically increased.
+  # Before (on ubuntu/debian):
+  # - during the first ~0.05s: connection refused
+  # - after: works correctly
+  # Now:
+  # - during the first ~0.05s: connection refused
+  # - between ~0.05s and ~1s: EOF
+  # - after: works correctly
+  # Until we understand and fix the problem, we're adding this sleep
+  # so that we don't get flakes in the kitchen tests.
+  sleep 2
 end
 
 def stop
   if os == :windows
     # forces the trace agent (and other dependent services) to stop
     result = system 'net stop /y datadogagent 2>&1'
+    sleep 5
   else
     if has_systemctl
       result = system 'sudo systemctl stop datadog-agent.service'
-    else
+    elsif has_upstart
       result = system 'sudo initctl stop datadog-agent'
+    else
+      result = system "sudo /sbin/service datadog-agent stop"
     end
   end
   wait_until_stopped
@@ -70,11 +99,14 @@ end
 def start
   if os == :windows
     result = system 'net start datadogagent 2>&1'
+    sleep 5
   else
     if has_systemctl
       result = system 'sudo systemctl start datadog-agent.service'
-    else
+    elsif has_upstart
       result = system 'sudo initctl start datadog-agent'
+    else
+      result = system "sudo /sbin/service datadog-agent start"
     end
   end
   wait_until_started
@@ -86,9 +118,11 @@ def restart
     # forces the trace agent (and other dependent services) to stop
     if is_running?
       result = system 'net stop /y datadogagent 2>&1'
+      sleep 5
       wait_until_stopped
     end
     result = system 'net start datadogagent 2>&1'
+    sleep 5
     wait_until_started
   else
     if has_systemctl
@@ -97,9 +131,13 @@ def restart
       # and we lose 5 seconds.
       wait_until_stopped 5
       wait_until_started 5
-    else
+    elsif has_upstart
       # initctl can't restart
       result = system '(sudo initctl restart datadog-agent || sudo initctl start datadog-agent)'
+      wait_until_stopped 5
+      wait_until_started 5
+    else
+      result = system "sudo /sbin/service datadog-agent restart"
       wait_until_stopped 5
       wait_until_started 5
     end
@@ -109,6 +147,10 @@ end
 
 def has_systemctl
   system('command -v systemctl 2>&1 > /dev/null')
+end
+
+def has_upstart
+  system('/sbin/init --version 2>&1 | grep -q upstart >/dev/null')
 end
 
 def info
@@ -133,8 +175,10 @@ def status
   else
     if has_systemctl
       system('sudo systemctl status --no-pager datadog-agent.service')
-    else
+    elsif has_upstart
       system('sudo initctl status datadog-agent')
+    else
+      system("sudo /sbin/service datadog-agent status")
     end
   end
 end
@@ -145,9 +189,12 @@ def is_service_running?(svcname)
   else
     if has_systemctl
         system("sudo systemctl status --no-pager #{svcname}.service")
+    elsif has_upstart
+      status = `sudo initctl status #{svcname}`
+      status.include?('start/running')
     else
-        status = `sudo initctl status #{svcname}`
-        status.include?('start/running')
+      status = `sudo /sbin/service #{svcname} status`
+      status.include?('running')
     end
   end
 end
@@ -205,10 +252,6 @@ def read_requirements(file_contents)
   reqs
 end
 
-def pip_freeze
-  `/opt/datadog-agent/embedded/bin/pip freeze 2> /dev/null`
-end
-
 def is_port_bound(port)
   if os == :windows
     port_regex = Regexp.new(port.to_s)
@@ -233,17 +276,15 @@ def read_conf_file
     confYaml
 end
 
-# TODO: fix this, this is flaky
 def fetch_python_version(timeout = 15)
-  # Try to fetch the metadata.systemStats.pythonV from the Agent status
+  # Fetch the python_version from the Agent status
   # Timeout after the given number of seconds
   for _ in 1..timeout do
     json_info_output = json_info
-    if json_info_output.key?('metadata') &&
-      json_info_output['metadata'].key?('systemStats') &&
-      json_info_output['metadata']['systemStats'].key?('pythonV') &&
-      Gem::Version.correct?(json_info_output['metadata']['systemStats']['pythonV']) # Check that we do have a version number
-        return json_info_output['metadata']['systemStats']['pythonV']
+    if json_info_output.key?('python_version') &&
+      ! json_info_output['python_version'].nil? && # nil is considered a correct version by Gem::Version
+      Gem::Version.correct?(json_info_output['python_version']) # Check that we do have a version number
+        return json_info_output['python_version']
     end
     sleep 1
   end
@@ -287,8 +328,8 @@ shared_examples_for "an installed Agent" do
     end
     JSON.parse(IO.read(dna_json_path)).fetch('dd-agent-rspec').fetch('skip_windows_signing_test')
   }
-  
-  
+
+
   it 'is properly signed' do
     puts "swsc is #{skip_windows_signing_check}"
     #puts "is an upgrade is #{is_upgrade}"
@@ -297,7 +338,7 @@ shared_examples_for "an installed Agent" do
       # This allows either to be used without changing the test.
       msi_path = "#{ENV['USERPROFILE']}\\AppData\\Local\\Temp\\kitchen\\cache\\ddagent-cli.msi"
       msi_path_upgrade = "#{ENV['USERPROFILE']}\\AppData\\Local\\Temp\\kitchen\\cache\\ddagent-up.msi"
-      
+
       # The upgrade file should only be present when doing an upgrade test.  Therefore,
       # check the file we're upgrading to, not the file we're upgrading from
       if File.file?(msi_path_upgrade)
@@ -484,16 +525,17 @@ shared_examples_for 'an Agent with python3 enabled' do
     expect(output).to be_truthy
   end
 
-  # it 'runs Python 3 after python_version is set to 3' do
-  #   result = false
-  #   pythonV = fetch_python_version
-  #   if Gem::Version.new('3.0.0') <= Gem::Version.new(pythonV)
-  #     result = true
-  #   end
-  #   expect(result).to be_truthy
-  # end
+  it 'runs Python 3 after python_version is set to 3' do
+    result = false
+    python_version = fetch_python_version
+    if ! python_version.nil? && Gem::Version.new('3.0.0') <= Gem::Version.new(python_version)
+      result = true
+    end
+    expect(result).to be_truthy
+  end
 
   it 'restarts after python_version is set back to 2' do
+    skip if info.include? "v7."
     conf_path = ""
     if os != :windows
       conf_path = "/etc/datadog-agent/datadog.yaml"
@@ -509,14 +551,15 @@ shared_examples_for 'an Agent with python3 enabled' do
     expect(output).to be_truthy
   end
 
-  # it 'runs Python 2 after python_version is set back to 2' do
-  #   result = false
-  #   pythonV = fetch_python_version
-  #   if Gem::Version.new('3.0.0') > Gem::Version.new(pythonV)
-  #     result = true
-  #   end
-  #   expect(result).to be_truthy
-  # end
+  it 'runs Python 2 after python_version is set back to 2' do
+    skip if info.include? "v7."
+    result = false
+    python_version = fetch_python_version
+    if ! python_version.nil? && Gem::Version.new('3.0.0') > Gem::Version.new(python_version)
+      result = true
+    end
+    expect(result).to be_truthy
+  end
 end
 
 shared_examples_for 'an Agent that is removed' do
@@ -572,7 +615,7 @@ shared_examples_for 'an Agent with APM enabled' do
       expect(is_service_running?("datadog-trace-agent")).to be_truthy
     end
   end
-  
+
   shared_examples_for 'an Agent with logs enabled' do
     it 'has logs enabled' do
       confYaml = read_conf_file()
@@ -581,7 +624,7 @@ shared_examples_for 'an Agent with APM enabled' do
       expect(confYaml["logs_enabled"]).to be_truthy
     end
   end
-  
+
   shared_examples_for 'an Agent with process enabled' do
     it 'has process enabled' do
       confYaml = read_conf_file()
@@ -598,36 +641,36 @@ shared_examples_for 'an Agent with APM enabled' do
   def get_user_sid(uname)
     output = `powershell -command "(New-Object System.Security.Principal.NTAccount('#{uname}')).Translate([System.Security.Principal.SecurityIdentifier]).value"`.strip
     output
-  end 
-  
-  def get_sddl_for_object(name) 
+  end
+
+  def get_sddl_for_object(name)
     cmd = "powershell -command \"get-acl -Path \\\"#{name}\\\" | format-list -Property sddl\""
     outp = `#{cmd}`.gsub("\n", "").gsub(" ", "")
     sddl = outp.gsub("/\s+/", "").split(":").drop(1).join(":").strip
     sddl
   end
-  
+
   def equal_sddl?(left, right)
     # First, split the sddl into the ownership (user and group), and the dacl
     left_array = left.split("D:")
     right_array = right.split("D:")
-  
+
     # compare the ownership & group.  Must be the same
     if left_array[0] != right_array[0]
       return false
     end
     left_dacl = left_array[1].scan(/(\([^)]*\))/)
     right_dacl = right_array[1].scan(/(\([^)]*\))/)
-  
-    
+
+
     # if they're different lengths, they're different
     if left_dacl.length != right_dacl.length
       return false
     end
-  
+
     ## now need to break up the DACL list, because they may be listed in different
     ## orders... the order doesn't matter but the components should be the same.  So..
-  
+
     left_dacl.each do |left_entry|
       found = false
       right_dacl.each do |right_entry|
@@ -648,9 +691,9 @@ shared_examples_for 'an Agent with APM enabled' do
     fname = "secout.txt"
     system "secedit /export /cfg  #{fname} /areas USER_RIGHTS"
     data = Hash.new
-    
+
     utext = File.open(fname).read
-    text = utext.unpack("v*").pack("U*") 
+    text = utext.unpack("v*").pack("U*")
     text.each_line do |line|
       next unless line.include? "="
       kv = line.strip.split("=")
@@ -659,7 +702,7 @@ shared_examples_for 'an Agent with APM enabled' do
     #File::delete(fname)
     data
   end
-  
+
   def check_has_security_right(data, k, name)
     right = data[k]
     unless right
@@ -671,7 +714,7 @@ shared_examples_for 'an Agent with APM enabled' do
     end
     false
   end
-  
+
   def check_is_user_in_group(user, group)
     members = `net localgroup "#{group}"`
     members.split(/\n+/).each do |line|
@@ -679,15 +722,15 @@ shared_examples_for 'an Agent with APM enabled' do
     end
     false
   end
-  
+
   def get_username_from_tasklist(exename)
     # output of tasklist command is
     # Image Name  PID  Session Name  Session#  Mem Usage Status  User Name  CPU Time  Window Title
     output = `tasklist /v /fi "imagename eq #{exename}" /nh`.gsub("\n", "").gsub("NT AUTHORITY", "NT_AUTHORITY")
-  
-    # for the above, the system user comes out as "NT AUTHORITY\System", which confuses the split 
+
+    # for the above, the system user comes out as "NT AUTHORITY\System", which confuses the split
     # below.  So special case it, and get rid of the space
-  
+
     #username is fully qualified <domain>\username
     uname = output.split(' ')[7].partition('\\').last
     uname

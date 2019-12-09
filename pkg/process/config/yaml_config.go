@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	ddutil "github.com/DataDog/datadog-agent/pkg/util"
+	httputils "github.com/DataDog/datadog-agent/pkg/util/http"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/process/util"
@@ -36,13 +36,13 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 		return err
 	}
 
-	a.EnableLocalSystemProbe = config.Datadog.GetBool(key(spNS, "use_local_system_probe"))
-
 	// Whether agent should disable collection for TCP, UDP, or IPv6 connection type respectively
 	a.DisableTCPTracing = config.Datadog.GetBool(key(spNS, "disable_tcp"))
 	a.DisableUDPTracing = config.Datadog.GetBool(key(spNS, "disable_udp"))
 	a.DisableIPv6Tracing = config.Datadog.GetBool(key(spNS, "disable_ipv6"))
-	a.DisableDNSInspection = config.Datadog.GetBool(key(spNS, "disable_dns_inspection"))
+	if config.Datadog.IsSet(key(spNS, "disable_dns_inspection")) {
+		a.DisableDNSInspection = config.Datadog.GetBool(key(spNS, "disable_dns_inspection"))
+	}
 
 	a.CollectLocalDNS = config.Datadog.GetBool(key(spNS, "collect_local_dns"))
 
@@ -70,6 +70,9 @@ func (a *AgentConfig) loadSysProbeYamlConfig(path string) error {
 	}
 	if s := config.Datadog.GetInt(key(spNS, "conntrack_short_term_buffer_size")); s > 0 {
 		a.ConntrackShortTermBufferSize = s
+	}
+	if s := config.Datadog.GetInt(key(spNS, "conntrack_max_state_size")); s > 0 {
+		a.ConntrackMaxStateSize = s
 	}
 
 	if logFile := config.Datadog.GetString(key(spNS, "log_file")); logFile != "" {
@@ -305,7 +308,7 @@ func (a *AgentConfig) loadProcessYamlConfig(path string) error {
 	}
 
 	// Build transport (w/ proxy if needed)
-	a.Transport = ddutil.CreateHTTPTransport()
+	a.Transport = httputils.CreateHTTPTransport()
 
 	return nil
 }

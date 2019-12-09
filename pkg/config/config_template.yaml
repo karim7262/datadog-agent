@@ -131,6 +131,18 @@ api_key:
 #
 # histogram_copy_to_distribution_prefix: "<PREFIX>"
 
+## @param aggregator_stop_timeout - integer - optional - default: 2
+## When stopping the agent, the Aggregator will try to flush out data ready for
+## aggregation (metrics, events, ...). Data are flushed to the Forwarder in order
+## to be sent to DataDog, therefore the Agent might take at most
+## 'aggregator_stop_timeout'+'forwarder_stop_timeout' seconds to exit.
+##
+## You can set the maximum amount of time, in seconds, allocated to the
+## Aggregator to do so. You can disable this feature by setting
+## 'aggregator_stop_timeout' to 0.
+#
+# aggregator_stop_timeout: 2
+
 ## @param forwarder_timeout - integer - optional - default: 20
 ## Forwarder timeout in seconds
 #
@@ -148,6 +160,18 @@ api_key:
 #
 # forwarder_num_workers: 1
 
+## @param forwarder_stop_timeout - integer - optional - default: 2
+## When stopping the agent, the Forwarder will try to flush all new
+## transactions (not the ones in retry state).  New transactions will be created
+## as the Aggregator flush it's internal data too, therefore the Agent might take
+## at most 'aggregator_stop_timeout'+'forwarder_stop_timeout' seconds to exit.
+##
+## You can set the maximum amount of time, in seconds, allocated to the
+## Forwarder to send those transactions.  You can disable this feature by setting
+## 'forwarder_stop_timeout' to 0.
+#
+# forwarder_stop_timeout: 2
+
 ## @param collect_ec2_tags - boolean - optional - default: false
 ## Collect AWS EC2 custom tags as host tags.
 #
@@ -157,6 +181,36 @@ api_key:
 ## Collect Google Cloud Engine metadata as host tags
 #
 # collect_gce_tags: true
+
+## @param exclude_gce_tags - list of strings - optional - default: ["kube-env", "kubelet-config", "containerd-configure-sh", "startup-script", "shutdown-script", "configure-sh", "sshKeys", "ssh-keys", "user-data", "cli-cert", "ipsec-cert", "ssl-cert", "google-container-manifest", "bosh_settings"]
+## Google Cloud Engine metadata attribute to exclude from being converted into
+## host tags -- only applicable when collect_gce_tags is true.
+#
+# exclude_gce_tags:
+#   - "kube-env"
+#   - "kubelet-config"
+#   - "containerd-configure-sh"
+#   - "startup-script"
+#   - "shutdown-script"
+#   - "configure-sh"
+#   - "sshKeys"
+#   - "ssh-keys"
+#   - "user-data"
+#   - "cli-cert"
+#   - "ipsec-cert"
+#   - "ssl-cert"
+#   - "google-container-manifest"
+#   - "bosh_settings"
+
+## @param flare_stripped_keys - list of strings - optional
+## By default, the Agent removes known sensitive keys from Agent and Integrations yaml configs before
+## including them in the flare.
+## Use this parameter to define additional sensitive keys that the Agent should scrub from
+## the yaml files included in the flare.
+#
+# flare_stripped_keys:
+#   - "sensitive_key_1"
+#   - "sensitive_key_2"
 
 {{ end }}
 {{- if .Agent }}
@@ -1329,7 +1383,14 @@ api_key:
 
 ## @param clustername - string - optional
 ## Set a custom kubernetes cluster identifier to avoid host alias collisions.
+## The cluster name can be up to 40 characters with the following restrictions:
+## * Lowercase letters, numbers, and hyphens only.
+## * Must start with a letter.
+## * Must end with a number or a letter.
+##
+## These are the same rules as the ones enforced by GKE:
+## https://cloud.google.com/kubernetes-engine/docs/reference/rest/v1beta1/projects.locations.clusters#Cluster.FIELDS.name
 #
-# clustername: <CLUSTER_IDENTIFIER>
+# cluster_name: <CLUSTER_IDENTIFIER>
 
 {{ end -}}

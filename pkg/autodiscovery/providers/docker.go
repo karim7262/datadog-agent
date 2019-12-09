@@ -14,6 +14,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
+	"github.com/DataDog/datadog-agent/pkg/autodiscovery/providers/names"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/util/docker"
@@ -46,18 +47,22 @@ func NewDockerConfigProvider(config config.ConfigurationProviders) (ConfigProvid
 
 // String returns a string representation of the DockerConfigProvider
 func (d *DockerConfigProvider) String() string {
-	return Docker
+	return names.Docker
 }
 
 // Collect retrieves all running containers and extract AD templates from their labels.
 func (d *DockerConfigProvider) Collect() ([]integration.Config, error) {
 	var err error
+	firstCollection := false
+
+	d.Lock()
 	if d.dockerUtil == nil {
 		d.dockerUtil, err = docker.GetDockerUtil()
 		if err != nil {
+			d.Unlock()
 			return []integration.Config{}, err
 		}
-		go d.listen()
+		firstCollection = true
 	}
 
 	var containers map[string]map[string]string
@@ -66,6 +71,7 @@ func (d *DockerConfigProvider) Collect() ([]integration.Config, error) {
 	if d.labelCache == nil || d.syncCounter == d.syncInterval {
 		containers, err = d.dockerUtil.AllContainerLabels()
 		if err != nil {
+			d.Unlock()
 			return []integration.Config{}, err
 		}
 		d.labelCache = containers
@@ -74,10 +80,14 @@ func (d *DockerConfigProvider) Collect() ([]integration.Config, error) {
 		containers = d.labelCache
 	}
 
-	d.Lock()
 	d.syncCounter += 1
 	d.upToDate = true
 	d.Unlock()
+
+	// start listening after the first collection to avoid race in cache map init
+	if firstCollection {
+		go d.listen()
+	}
 
 	return parseDockerLabels(containers)
 }

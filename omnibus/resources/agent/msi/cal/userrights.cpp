@@ -27,7 +27,7 @@ PSID GetSidForUser(LPCWSTR host, LPCWSTR user) {
 	ZeroMemory(refDomain, (cchRefDomain + 1) * sizeof(wchar_t));
 
 	// try it again
-	bRet = LookupAccountName(host, user, newsid, &cbSid, refDomain, &cchRefDomain, &use);
+	bRet = LookupAccountName(NULL, user, newsid, &cbSid, refDomain, &cchRefDomain, &use);
 	if (!bRet) {
 		WcaLog(LOGMSG_STANDARD, "Failed to lookup account name %d", GetLastError());
 		goto cleanAndFail;
@@ -271,7 +271,7 @@ int EnableServiceForUser(CustomActionData& data, const std::wstring& service)
 		WcaLog(LOGMSG_STANDARD,"Failed to query security info %d\n", GetLastError());
 		goto cleanAndReturn;
 	}
-	if ((sid = GetSidForUser(NULL, data.getQualifiedUsername().c_str())) == NULL) {
+	if ((sid = GetSidForUser(NULL, data.Username().c_str())) == NULL) {
 		WcaLog(LOGMSG_STANDARD,"Failed to get sid\n");
 		goto cleanAndReturn;
 	}
