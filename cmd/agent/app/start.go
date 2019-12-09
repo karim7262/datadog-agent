@@ -16,7 +16,6 @@ import (
 
 	"os"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/api"
@@ -126,7 +125,6 @@ func StartAgent() error {
 
 	// Setup expvar server
 	var port = config.Datadog.GetString("expvar_port")
-	http.Handle("/metrics", promhttp.Handler()) // add prometheus route
 	go http.ListenAndServe("127.0.0.1:"+port, http.DefaultServeMux)
 
 	// Setup healthcheck port
