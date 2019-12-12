@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/api/response"
@@ -56,7 +57,7 @@ func newTagger() *Tagger {
 		streamers:   make(map[string]collectors.Streamer),
 		fetchers:    make(map[string]collectors.Fetcher),
 		infoIn:      make(chan []*collectors.TagInfo, 5),
-		pullTicker:  time.NewTicker(5 * time.Second),
+		pullTicker:  time.NewTicker(config.Datadog.GetDuration("tagger_pull_interval") * time.Second),
 		pruneTicker: time.NewTicker(5 * time.Minute),
 		retryTicker: time.NewTicker(30 * time.Second),
 		stop:        make(chan bool),
