@@ -144,7 +144,7 @@ build do
 
     # Adding pympler for memory debug purposes
     requirements.push("pympler==0.7")
-
+    requirements.push("mapr-streams-python --global-option=build_ext --global-option=\"--library-dirs=/opt/mapr/lib\" --global-option=\"--include-dirs=/opt/mapr/include/\"")
     # Render the filtered requirements file
     erb source: "static_requirements.txt.erb",
         dest: "#{static_reqs_out_file}",
