@@ -484,6 +484,7 @@ agent_deb-x64-a6:
     - source /root/.bashrc && conda activate $CONDA_ENV
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_6
+    - apt-get install mapr-client
   <<: *skip_when_unwanted_on_6
   <<: *agent_build_common_deb
 
@@ -503,6 +504,7 @@ agent_deb-x64-a7:
     - source /root/.bashrc && conda activate $CONDA_ENV
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_7
+    - apt-get install mapr-client
   <<: *skip_when_unwanted_on_7
   <<: *agent_build_common_deb
 
@@ -518,6 +520,7 @@ agent_deb-arm-a6:
     - source /root/.bashrc
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_6
+    - apt-get install mapr-client
   <<: *skip_when_unwanted_on_6
   <<: *agent_build_common_deb
 
@@ -533,6 +536,7 @@ agent_deb-arm-a7:
     - source /root/.bashrc
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_7
+    - apt-get install mapr-client
   <<: *skip_when_unwanted_on_7
   <<: *agent_build_common_deb
 
@@ -610,6 +614,8 @@ agent_rpm-x64-a6:
     - source /root/.bashrc && conda activate $CONDA_ENV
     - inv -e deps --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_6
+    - rpm --import https://package.mapr.com/releases/pub/maprgpg.key
+    - yum install mapr-client.x86_64
   <<: *skip_when_unwanted_on_6
   <<: *agent_build_common_rpm
 
