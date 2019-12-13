@@ -398,6 +398,7 @@ def omnibus_build(ctx, puppy=False, log_level="info", base_dir=None, gem_path=No
                 env['SKIP_SIGN_MAC'] = 'true'
 
             env['PACKAGE_VERSION'] = get_version(ctx, include_git=True, url_safe=True, env=env)
+            print("PACKAGE_VERSION: {}".format(env['PACKAGE_VERSION']))
 
             omnibus_start = datetime.datetime.now()
             ctx.run(cmd.format(**args), env=env)
