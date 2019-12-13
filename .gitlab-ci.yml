@@ -2016,41 +2016,41 @@ kitchen_debian_upgrade6-a7:
 #     - scan ${SRC_AGENT}:${SRC_TAG}-7-py3-amd64
 #     - scan ${SRC_AGENT}:${SRC_TAG}-7-py3-jmx-amd64
 
-.docker_tag_job_definition: &docker_tag_job_definition
-  stage: image_deploy
-  tags: [ "runner:docker", "size:large" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
-  before_script:
-    - export SRC_TAG=v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}
-    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_LOGIN_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
-    - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin "$DOCKER_REGISTRY_URL"
-    - pip install -r requirements.txt
-    - if [[ -z "$DELEGATION_PASS_SSM_KEY" ]]; then echo "No signing key set"; exit 0; fi
-    - echo "Importing delegation signing key"
-    - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_PASS_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
-    - export NOTARY_AUTH=$(echo "$DOCKER_REGISTRY_LOGIN:$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text)" | base64)
-    - export NOTARY_DELEGATION_PASSPHRASE="$DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE"
-    - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_KEY_SSM_KEY --with-decryption --query "Parameter.Value" --out text > /tmp/docker.key
-    - notary -d ~/.docker/trust key import /tmp/docker.key; rm /tmp/docker.key
-  dependencies: [] # Don't download Gitlab artefacts
+# .docker_tag_job_definition: &docker_tag_job_definition
+#   stage: image_deploy
+#   tags: [ "runner:docker", "size:large" ]
+#   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:v1912023-8c8dc1c-0.6.1
+#   before_script:
+#     - export SRC_TAG=v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}
+#     - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_LOGIN_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
+#     - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text | docker login --username "$DOCKER_REGISTRY_LOGIN" --password-stdin "$DOCKER_REGISTRY_URL"
+#     - pip install -r requirements.txt
+#     - if [[ -z "$DELEGATION_PASS_SSM_KEY" ]]; then echo "No signing key set"; exit 0; fi
+#     - echo "Importing delegation signing key"
+#     - export DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_PASS_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
+#     - export NOTARY_AUTH=$(echo "$DOCKER_REGISTRY_LOGIN:$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text)" | base64)
+#     - export NOTARY_DELEGATION_PASSPHRASE="$DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE"
+#     - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_KEY_SSM_KEY --with-decryption --query "Parameter.Value" --out text > /tmp/docker.key
+#     - notary -d ~/.docker/trust key import /tmp/docker.key; rm /tmp/docker.key
+#   dependencies: [] # Don't download Gitlab artefacts
 
-.docker_hub_variables: &docker_hub_variables
-  DOCKER_REGISTRY_LOGIN_SSM_KEY: docker_hub_login
-  DOCKER_REGISTRY_PWD_SSM_KEY: docker_hub_pwd
-  DELEGATION_KEY_SSM_KEY: docker_hub_signing_key
-  DELEGATION_PASS_SSM_KEY: docker_hub_signing_pass
-  DOCKER_REGISTRY_URL: docker.io
-  SRC_AGENT: *agent_ecr
-  SRC_DSD: *dogstatsd_ecr
-  SRC_DCA: *cluster-agent_ecr
+# .docker_hub_variables: &docker_hub_variables
+#   DOCKER_REGISTRY_LOGIN_SSM_KEY: docker_hub_login
+#   DOCKER_REGISTRY_PWD_SSM_KEY: docker_hub_pwd
+#   DELEGATION_KEY_SSM_KEY: docker_hub_signing_key
+#   DELEGATION_PASS_SSM_KEY: docker_hub_signing_pass
+#   DOCKER_REGISTRY_URL: docker.io
+#   SRC_AGENT: *agent_ecr
+#   SRC_DSD: *dogstatsd_ecr
+#   SRC_DCA: *cluster-agent_ecr
 
-.quay_variables: &quay_variables
-  <<: *docker_hub_variables
-  DOCKER_REGISTRY_LOGIN_SSM_KEY: quay_login
-  DOCKER_REGISTRY_PWD_SSM_KEY: quay_pwd
-  DOCKER_REGISTRY_URL: quay.io
+# .quay_variables: &quay_variables
+#   <<: *docker_hub_variables
+#   DOCKER_REGISTRY_LOGIN_SSM_KEY: quay_login
+#   DOCKER_REGISTRY_PWD_SSM_KEY: quay_pwd
+#   DOCKER_REGISTRY_URL: quay.io
 
-# dev_branch_docker_hub:
+# # dev_branch_docker_hub:
 #   <<: *docker_tag_job_definition
 #   needs:
 #     - build_agent6
@@ -2615,127 +2615,127 @@ kitchen_debian_upgrade6-a7:
 # - in the gitlab pipeline view, trigger the step (in the first column)
 #
 
-.latest_revert_to_previous_release_6:
-  <<: *docker_tag_job_definition
-  stage: source_test
-  when: manual
-  variables:
-    <<: *docker_hub_variables
-    RELEASE: ""  # tag name of the non-jmx version, for example "6.9.0"
-  script:
-    - if [[ -z "$RELEASE" ]]; then echo "Need release version to revert to"; exit 1; fi
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest-py2      --template datadog/agent-ARCH:${RELEASE}
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest-py2-jmx  --template datadog/agent-ARCH:${RELEASE}-jmx
-
-.latest_revert_to_previous_release_7:
-  <<: *docker_tag_job_definition
-  stage: source_test
-  when: manual
-  variables:
-    <<: *docker_hub_variables
-    RELEASE: ""  # tag name of the non-jmx version, for example "6.9.0"
-  script:
-    - if [[ -z "$RELEASE" ]]; then echo "Need release version to revert to"; exit 1; fi
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest      --template datadog/agent-ARCH:${RELEASE}
-    - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest-jmx  --template datadog/agent-ARCH:${RELEASE}-jmx
-    - inv -e docker.publish --signed-pull --signed-push datadog/dogstatsd:${RELEASE} datadog/dogstatsd:latest
-
-#
-# Use this step to delete a tag of a given image
-# We call the Docker Hub API because docker cli doesn't support deleting tags
-# - remove the leading dot from the name
-# - set the IMAGE and TAG envvars
-# - in the gitlab pipeline view, trigger the step (in the first column)
-#
-.delete_docker_tag:
-  tags: [ "runner:docker", "size:large" ]
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
-  before_script:
-    - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_LOGIN_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
-    - PASS=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
-    - pip install -r requirements.txt
-    - |
-      export DOCKER_TOKEN=`curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'$DOCKER_REGISTRY_LOGIN'", "password": "'$PASS'"}' https://hub.docker.com/v2/users/login/ | python -c 'import sys, json; print(json.load(sys.stdin)["token"].strip())'`
-  dependencies: [] # Don't download Gitlab artefacts
-  stage: source_test
-  when: manual
-  variables:
-    <<: *docker_hub_variables
-    IMAGE: ""  # image name, for example "agent"
-    TAG: ""  # tag name, for example "6.9.0"
-    ORGANIZATION: "datadog"
-  script:
-    - if [[ -z "$IMAGE" ]]; then echo "Need an image"; exit 1; fi
-    - if [[ -z "$TAG" ]]; then echo "Need a tag to delete"; exit 1; fi
-    - inv -e docker.delete ${ORGANIZATION} ${IMAGE} ${TAG} ${DOCKER_TOKEN} &>/dev/null
-
-#
-# Cloudfront cache invalidation:
-# Duplicated in 2 jobs: one that runs "on success" of the previous stage, and one that runs "on failure" of previous stages.
-# Compared to having 1 single job that runs "always", this setup guarantees that if earlier stages first failed and were
-# then retried successfully, the cloudfront invalidation will also run after the successful retry.
-#
-.deploy_cloudfront_invalidate: &deploy_cloudfront_invalidate
-  <<: *run_when_triggered
-  stage: deploy_invalidate
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:$DATADOG_AGENT_BUILDERS
-  before_script:
-    - ls $OMNIBUS_PACKAGE_DIR
-  tags: [ "runner:main", "size:large" ]
-  script:
-    - cd /deploy_scripts/cloudfront-invalidation
-    - "REPO=apt PATTERN_SUBSTRING=/$DEB_RPM_BUCKET_BRANCH/ ./invalidate.sh"
-    - "REPO=yum PATTERN_SUBSTRING=/$DEB_RPM_BUCKET_BRANCH/ ./invalidate.sh"
-
-# deploy_cloudfront_invalidate_on_success:
-#   <<: *deploy_cloudfront_invalidate
-#   when: on_success
-
-# deploy_cloudfront_invalidate_on_failure:
-#   <<: *deploy_cloudfront_invalidate
-#   when: on_failure
-
-#
-# end to end
-#
-
-.pupernetes_template: &pupernetes_template
-  stage: e2e
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:$DATADOG_AGENT_BUILDERS
-  tags: [ "runner:main", "size:large" ]
-  before_script: [ "# noop" ] # Override top level entry
-  script:
-  - inv -e e2e-tests --image=datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2
-  - inv -e e2e-tests --image=datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py3
-
-# pupernetes-dev:
-#   <<: *pupernetes_template
+# .latest_revert_to_previous_release_6:
+#   <<: *docker_tag_job_definition
+#   stage: source_test
 #   when: manual
-#   except:
-#     - master
-#     - tags
-
-# pupernetes-master:
-#   <<: *pupernetes_template
-#   only:
-#     - master
-#   script:
-#   - inv -e e2e-tests --image=datadog/agent-dev:master-py2
-#   - inv -e e2e-tests --image=datadog/agent-dev:master-py3
-
-# pupernetes-tags-6:
-#   <<: *pupernetes_template
-#   <<: *run_when_triggered_on_tag_6
 #   variables:
-#     PYTHON_RUNTIMES: '2,3'
-#   when: manual
+#     <<: *docker_hub_variables
+#     RELEASE: ""  # tag name of the non-jmx version, for example "6.9.0"
 #   script:
-#   - VERSION=$(inv -e agent.version)
-#   - inv -e e2e-tests --image=datadog/agent:${VERSION}
+#     - if [[ -z "$RELEASE" ]]; then echo "Need release version to revert to"; exit 1; fi
+#     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest-py2      --template datadog/agent-ARCH:${RELEASE}
+#     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest-py2-jmx  --template datadog/agent-ARCH:${RELEASE}-jmx
 
-# pupernetes-tags-7:
-#   <<: *pupernetes_template
-#   <<: *run_when_triggered_on_tag_7
+# .latest_revert_to_previous_release_7:
+#   <<: *docker_tag_job_definition
+#   stage: source_test
+#   when: manual
+#   variables:
+#     <<: *docker_hub_variables
+#     RELEASE: ""  # tag name of the non-jmx version, for example "6.9.0"
+#   script:
+#     - if [[ -z "$RELEASE" ]]; then echo "Need release version to revert to"; exit 1; fi
+#     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest      --template datadog/agent-ARCH:${RELEASE}
+#     - inv -e docker.publish-manifest --signed-push --platform linux/amd64 --platform linux/arm64 --name datadog/agent --tag latest-jmx  --template datadog/agent-ARCH:${RELEASE}-jmx
+#     - inv -e docker.publish --signed-pull --signed-push datadog/dogstatsd:${RELEASE} datadog/dogstatsd:latest
+
+# #
+# # Use this step to delete a tag of a given image
+# # We call the Docker Hub API because docker cli doesn't support deleting tags
+# # - remove the leading dot from the name
+# # - set the IMAGE and TAG envvars
+# # - in the gitlab pipeline view, trigger the step (in the first column)
+# #
+# .delete_docker_tag:
+#   tags: [ "runner:docker", "size:large" ]
+#   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
+#   before_script:
+#     - DOCKER_REGISTRY_LOGIN=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_LOGIN_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
+#     - PASS=$(aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DOCKER_REGISTRY_PWD_SSM_KEY --with-decryption --query "Parameter.Value" --out text)
+#     - pip install -r requirements.txt
+#     - |
+#       export DOCKER_TOKEN=`curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'$DOCKER_REGISTRY_LOGIN'", "password": "'$PASS'"}' https://hub.docker.com/v2/users/login/ | python -c 'import sys, json; print(json.load(sys.stdin)["token"].strip())'`
+#   dependencies: [] # Don't download Gitlab artefacts
+#   stage: source_test
+#   when: manual
+#   variables:
+#     <<: *docker_hub_variables
+#     IMAGE: ""  # image name, for example "agent"
+#     TAG: ""  # tag name, for example "6.9.0"
+#     ORGANIZATION: "datadog"
+#   script:
+#     - if [[ -z "$IMAGE" ]]; then echo "Need an image"; exit 1; fi
+#     - if [[ -z "$TAG" ]]; then echo "Need a tag to delete"; exit 1; fi
+#     - inv -e docker.delete ${ORGANIZATION} ${IMAGE} ${TAG} ${DOCKER_TOKEN} &>/dev/null
+
+# #
+# # Cloudfront cache invalidation:
+# # Duplicated in 2 jobs: one that runs "on success" of the previous stage, and one that runs "on failure" of previous stages.
+# # Compared to having 1 single job that runs "always", this setup guarantees that if earlier stages first failed and were
+# # then retried successfully, the cloudfront invalidation will also run after the successful retry.
+# #
+# .deploy_cloudfront_invalidate: &deploy_cloudfront_invalidate
+#   <<: *run_when_triggered
+#   stage: deploy_invalidate
+#   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:$DATADOG_AGENT_BUILDERS
+#   before_script:
+#     - ls $OMNIBUS_PACKAGE_DIR
+#   tags: [ "runner:main", "size:large" ]
+#   script:
+#     - cd /deploy_scripts/cloudfront-invalidation
+#     - "REPO=apt PATTERN_SUBSTRING=/$DEB_RPM_BUCKET_BRANCH/ ./invalidate.sh"
+#     - "REPO=yum PATTERN_SUBSTRING=/$DEB_RPM_BUCKET_BRANCH/ ./invalidate.sh"
+
+# # deploy_cloudfront_invalidate_on_success:
+# #   <<: *deploy_cloudfront_invalidate
+# #   when: on_success
+
+# # deploy_cloudfront_invalidate_on_failure:
+# #   <<: *deploy_cloudfront_invalidate
+# #   when: on_failure
+
+# #
+# # end to end
+# #
+
+# .pupernetes_template: &pupernetes_template
+#   stage: e2e
+#   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/deploy:$DATADOG_AGENT_BUILDERS
+#   tags: [ "runner:main", "size:large" ]
+#   before_script: [ "# noop" ] # Override top level entry
+#   script:
+#   - inv -e e2e-tests --image=datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py2
+#   - inv -e e2e-tests --image=datadog/agent-dev:${CI_COMMIT_REF_SLUG}-py3
+
+# # pupernetes-dev:
+# #   <<: *pupernetes_template
+# #   when: manual
+# #   except:
+# #     - master
+# #     - tags
+
+# # pupernetes-master:
+# #   <<: *pupernetes_template
+# #   only:
+# #     - master
+# #   script:
+# #   - inv -e e2e-tests --image=datadog/agent-dev:master-py2
+# #   - inv -e e2e-tests --image=datadog/agent-dev:master-py3
+
+# # pupernetes-tags-6:
+# #   <<: *pupernetes_template
+# #   <<: *run_when_triggered_on_tag_6
+# #   variables:
+# #     PYTHON_RUNTIMES: '2,3'
+# #   when: manual
+# #   script:
+# #   - VERSION=$(inv -e agent.version)
+# #   - inv -e e2e-tests --image=datadog/agent:${VERSION}
+
+# # pupernetes-tags-7:
+# #   <<: *pupernetes_template
+# #   <<: *run_when_triggered_on_tag_7
 #   variables:
 #     PYTHON_RUNTIMES: '3'
 #   when: manual
