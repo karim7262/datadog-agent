@@ -563,6 +563,8 @@ puppy_deb-x64:
     # Artifacts and cache must live within project directory but we run omnibus in a neutral directory.
     # Thus, we move the artifacts at the end in a gitlab-friendly dir.
     # Use --skip-deps since the deps are installed by `before_script`.
+    - echo "AGENT_MAJOR_VERSION set to ${AGENT_MAJOR_VERSION}"
+    - inv agent.version --url-safe
     - inv -e agent.omnibus-build --puppy --log-level debug --release-version "$RELEASE_VERSION_7" --base-dir $OMNIBUS_BASE_DIR --skip-deps
     - find $OMNIBUS_BASE_DIR/pkg -name "datadog-puppy*_amd64.deb" -exec dpkg -c {} \;
     - $S3_CP_CMD $OMNIBUS_BASE_DIR/pkg/datadog-puppy*_amd64.deb $S3_ARTIFACTS_URI/datadog-puppy_amd64.deb
