@@ -419,6 +419,9 @@ func initConfig(config Config) {
 	config.BindEnv("logs_config.processing_rules")
 	// enforce the agent to use files to collect container logs on kubernetes environment
 	config.BindEnvAndSetDefault("logs_config.k8s_container_use_file", false)
+	// TODO
+	config.BindEnvAndSetDefault("logs_config.force_tagger_call_duration", 15)
+	config.BindEnvAndSetDefault("logs_config.tagger_warmup_duration", 3)
 
 	// Internal Use Only: avoid modifying those configuration parameters, this could lead to unexpected results.
 	config.BindEnvAndSetDefault("logs_config.run_path", defaultRunPath)

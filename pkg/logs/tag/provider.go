@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DataDog/datadog-agent/pkg/config"
+
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 )
@@ -28,32 +30,59 @@ var NoopProvider Provider = &noopProvider{}
 
 // provider caches a list of up-to-date tags for a given entity polling periodically the tagger.
 type provider struct {
-	entityID string
-	tags     []string
-	done     chan struct{}
-	mu       sync.Mutex
+	entityID                string
+	tags                    []string
+	done                    chan struct{}
+	callTagger              bool
+	taggerWarmupDuration    time.Duration
+	forceTaggerCallDuration time.Duration
+	mu                      sync.Mutex
 }
 
 // NewProvider returns a new Provider.
 func NewProvider(entityID string) Provider {
 	return &provider{
-		entityID: entityID,
-		tags:     []string{},
-		done:     make(chan struct{}),
+		entityID:                entityID,
+		tags:                    []string{},
+		done:                    make(chan struct{}),
+		callTagger:              true,
+		taggerWarmupDuration:    config.Datadog.GetDuration("logs_config.tagger_warmup_duration") * time.Second,
+		forceTaggerCallDuration: config.Datadog.GetDuration("logs_config.force_tagger_call_duration") * time.Second,
 	}
 }
 
 // GetTags returns the list of up-to-date tags.
 func (p *provider) GetTags() []string {
+	if p.getCallTagger() {
+		p.updateTags()
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.tags
 }
 
+func (p *provider) setCallTagger(b bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.callTagger = b
+}
+
+func (p *provider) getCallTagger() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.callTagger
+}
+
 // Start starts the polling of new tags on another go routine.
 func (p *provider) Start() {
+	// Warmup duration to make sure the tagger collects all the service tags
+	<-time.After(p.taggerWarmupDuration)
+	// initial tags update
+	p.updateTags()
 	go func() {
-		p.updateTags()
+		// Block updating tags cache as during this time, GetTags will do the update
+		<-time.After(p.forceTaggerCallDuration)
+		p.setCallTagger(false)
 		ticker := time.NewTicker(refreshPeriod)
 		defer ticker.Stop()
 		for {

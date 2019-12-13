@@ -59,6 +59,8 @@ func (suite *AgentTestSuite) SetupTest() {
 	mockConfig.Set("logs_config.run_path", suite.testDir)
 	// Shorter grace period for tests.
 	mockConfig.Set("logs_config.stop_grace_period", 1)
+	mockConfig.Set("logs_config.tagger_warmup_duration", 0)
+	mockConfig.Set("logs_config.force_tagger_call_duration", 0)
 }
 
 func (suite *AgentTestSuite) TearDownTest() {
