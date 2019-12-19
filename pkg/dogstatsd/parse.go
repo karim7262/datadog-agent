@@ -60,7 +60,7 @@ func parseTags(rawTags []byte, interner *stringInterner) []string {
 			break
 		}
 		tags[i] = interner.LoadOrStore(rawTags[:tagIndex])
-		rawTags = rawTags[+len(commaSeparator):]
+		rawTags = rawTags[tagIndex+len(commaSeparator):]
 		i++
 	}
 	tags[i] = interner.LoadOrStore(rawTags)
