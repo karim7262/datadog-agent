@@ -78,7 +78,7 @@ func parseServiceCheckTimestamp(rawTimestamp []byte) (int64, error) {
 	return strconv.ParseInt(string(rawTimestamp), 10, 64)
 }
 
-func applyServiceCheckOptionalField(serviceCheck dogstatsdServiceCheck, optionalField []byte) (dogstatsdServiceCheck, error) {
+func applyServiceCheckOptionalField(interner *stringInterner, serviceCheck dogstatsdServiceCheck, optionalField []byte) (dogstatsdServiceCheck, error) {
 	newServiceCheck := serviceCheck
 	var err error
 	switch {
@@ -87,7 +87,7 @@ func applyServiceCheckOptionalField(serviceCheck dogstatsdServiceCheck, optional
 	case bytes.HasPrefix(optionalField, serviceCheckHostnamePrefix):
 		newServiceCheck.hostname = string(optionalField[len(serviceCheckHostnamePrefix):])
 	case bytes.HasPrefix(optionalField, serviceCheckTagsPrefix):
-		newServiceCheck.tags = parseTags(optionalField[len(serviceCheckTagsPrefix):])
+		newServiceCheck.tags = parseTags(optionalField[len(serviceCheckTagsPrefix):], interner)
 	case bytes.HasPrefix(optionalField, serviceCheckMessagePrefix):
 		newServiceCheck.message = string(optionalField[len(serviceCheckMessagePrefix):])
 	}
@@ -97,7 +97,7 @@ func applyServiceCheckOptionalField(serviceCheck dogstatsdServiceCheck, optional
 	return newServiceCheck, nil
 }
 
-func parseServiceCheck(message []byte) (dogstatsdServiceCheck, error) {
+func parseServiceCheck(interner *stringInterner, message []byte) (dogstatsdServiceCheck, error) {
 	if !hasServiceCheckFormat(message) {
 		return dogstatsdServiceCheck{}, fmt.Errorf("invalid dogstatsd service check format: %q", message)
 	}
@@ -124,7 +124,7 @@ func parseServiceCheck(message []byte) (dogstatsdServiceCheck, error) {
 	var optionalField []byte
 	for message != nil {
 		optionalField, message = nextField(message)
-		serviceCheck, err = applyServiceCheckOptionalField(serviceCheck, optionalField)
+		serviceCheck, err = applyServiceCheckOptionalField(interner, serviceCheck, optionalField)
 		if err != nil {
 			log.Warnf("invalid service check optional field: %v", err)
 		}

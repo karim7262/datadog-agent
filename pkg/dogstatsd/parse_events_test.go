@@ -1,12 +1,6 @@
 package dogstatsd
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestEventMinimal(t *testing.T) {
 	e, err := parseEvent([]byte("_e{10,9}:test title|test text"))
 
@@ -225,3 +219,4 @@ func TestEventMetadataMultiple(t *testing.T) {
 	assert.Equal(t, string("aggKey"), e.aggregationKey)
 	assert.Equal(t, string("source test"), e.sourceType)
 }
+*/

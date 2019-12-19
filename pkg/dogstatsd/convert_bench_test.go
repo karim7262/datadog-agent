@@ -21,12 +21,13 @@ var sample *metrics.MetricSample
 
 func BenchmarkParseMetric(b *testing.B) {
 	for i := 1; i < 1000; i *= 4 {
+		interner := newStringInterner()
 		b.Run(fmt.Sprintf("%d-tags", i), func(sb *testing.B) {
 			rawSample := buildRawSample(i)
 			sb.ResetTimer()
 
 			for n := 0; n < sb.N; n++ {
-				sample, _ = parseMetricMessage(rawSample, "", []string{}, "default-hostname")
+				sample, _ = parseMetricMessage(interner, rawSample, "", []string{}, "default-hostname")
 			}
 		})
 	}

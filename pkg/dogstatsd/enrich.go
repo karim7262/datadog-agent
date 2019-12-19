@@ -19,24 +19,24 @@ var (
 	getTags tagRetriever = tagger.Tag
 )
 
-func parseMetricMessage(message []byte, namespace string, namespaceBlacklist []string, defaultHostname string) (*metrics.MetricSample, error) {
-	sample, err := parseMetricSample(message)
+func parseMetricMessage(interner *stringInterner, message []byte, namespace string, namespaceBlacklist []string, defaultHostname string) (*metrics.MetricSample, error) {
+	sample, err := parseMetricSample(interner, message)
 	if err != nil {
 		return nil, err
 	}
 	return enrichMetricSample(sample, namespace, namespaceBlacklist, defaultHostname), nil
 }
 
-func parseEventMessage(message []byte, defaultHostname string) (*metrics.Event, error) {
-	sample, err := parseEvent(message)
+func parseEventMessage(interner *stringInterner, message []byte, defaultHostname string) (*metrics.Event, error) {
+	sample, err := parseEvent(interner, message)
 	if err != nil {
 		return nil, err
 	}
 	return enrichEvent(sample, defaultHostname), nil
 }
 
-func parseServiceCheckMessage(message []byte, defaultHostname string) (*metrics.ServiceCheck, error) {
-	sample, err := parseServiceCheck(message)
+func parseServiceCheckMessage(interner *stringInterner, message []byte, defaultHostname string) (*metrics.ServiceCheck, error) {
+	sample, err := parseServiceCheck(interner, message)
 	if err != nil {
 		return nil, err
 	}

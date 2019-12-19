@@ -5,13 +5,7 @@
 
 package dogstatsd
 
-import (
-	"testing"
-
-	"github.com/DataDog/datadog-agent/pkg/dogstatsd/listeners"
-	"github.com/DataDog/datadog-agent/pkg/metrics"
-)
-
+/*
 func BenchmarkParsePacket(b *testing.B) {
 	s, _ := NewServer(nil, nil, nil)
 	defer s.Stop()
@@ -24,3 +18,4 @@ func BenchmarkParsePacket(b *testing.B) {
 		s.parsePacket(&packet, []*metrics.MetricSample{}, []*metrics.Event{}, []*metrics.ServiceCheck{})
 	}
 }
+*/

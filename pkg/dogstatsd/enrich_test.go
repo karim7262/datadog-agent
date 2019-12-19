@@ -1,15 +1,6 @@
 package dogstatsd
 
-import (
-	"errors"
-	"testing"
-
-	"github.com/DataDog/datadog-agent/pkg/metrics"
-	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestConvertParseGauge(t *testing.T) {
 	parsed, err := parseMetricMessage([]byte("daemon:666|g"), "", nil, "default-hostname")
 
@@ -746,3 +737,4 @@ func TestConvertEntityOriginDetectionTagsError(t *testing.T) {
 	assert.Equal(t, "my-hostname", parsed.Host)
 	assert.InEpsilon(t, 1.0, parsed.SampleRate, epsilon)
 }
+*/
