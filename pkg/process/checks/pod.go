@@ -19,7 +19,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/kubelet"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
-	yaml "gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -79,14 +78,14 @@ func (c *PodCheck) Run(cfg *config.AgentConfig, groupID int32) ([]model.MessageB
 		podModel.Tags = tags
 
 		// scrub & generate YAML
-		for c := 0; c < len(podList[p].Spec.Containers); c++ {
-			scrubContainer(&podList[p].Spec.Containers[c], cfg)
-		}
-		for c := 0; c < len(podList[p].Spec.InitContainers); c++ {
-			scrubContainer(&podList[p].Spec.InitContainers[c], cfg)
-		}
-		yamlPod, _ := yaml.Marshal(podList[p])
-		podModel.Yaml = yamlPod
+		// for c := 0; c < len(podList[p].Spec.Containers); c++ {
+		// 	scrubContainer(&podList[p].Spec.Containers[c], cfg)
+		// }
+		// for c := 0; c < len(podList[p].Spec.InitContainers); c++ {
+		// 	scrubContainer(&podList[p].Spec.InitContainers[c], cfg)
+		// }
+		// yamlPod, _ := yaml.Marshal(podList[p])
+		// podModel.Yaml = yamlPod
 
 		podMsgs = append(podMsgs, podModel)
 	}
