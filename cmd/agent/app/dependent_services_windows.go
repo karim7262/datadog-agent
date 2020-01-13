@@ -9,7 +9,7 @@ package app
 import (
 	"fmt"
 	"syscall"
-
+	"github.com/DataDog/datadog-agent/cmd/agent/common"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc/mgr"
@@ -52,6 +52,7 @@ func processInit() error {
 
 // Start starts the service
 func (s *Servicedef) Start() error {
+	common.Elog.Info(0x4000002D, s.name)
 	if s.serviceInit != nil {
 		err := s.serviceInit()
 		if err != nil {
@@ -68,6 +69,7 @@ func (s *Servicedef) Start() error {
 	 */
 	h, err := windows.OpenSCManager(nil, nil, windows.SC_MANAGER_CONNECT)
 	if err != nil {
+		common.Elog.Error(0xC000002E, err.Error())
 		log.Warnf("Failed to connect to scm %v", err)
 		return err
 	}
@@ -77,6 +79,7 @@ func (s *Servicedef) Start() error {
 	hSvc, err := windows.OpenService(m.Handle, syscall.StringToUTF16Ptr(s.serviceName),
 		windows.SERVICE_START|windows.SERVICE_STOP)
 	if err != nil {
+		common.Elog.Error( 0xC000002F, err.Error())
 		log.Warnf("Failed to open service %v", err)
 		return fmt.Errorf("could not access service: %v", err)
 	}
@@ -84,6 +87,7 @@ func (s *Servicedef) Start() error {
 	defer scm.Close()
 	err = scm.Start("is", "manual-started")
 	if err != nil {
+		common.Elog.Error(0xC0000030, err.Error())
 		log.Warnf("Failed to start service %v", err)
 		return fmt.Errorf("could not start service: %v", err)
 	}

@@ -420,17 +420,27 @@ def omnibus_build(ctx, puppy=False, log_level="info", base_dir=None, gem_path=No
         print("Omnibus: {}".format(omnibus_elapsed))
 
 @task
-def clean(ctx):
+def clean(ctx, windows_only=False):
     """
     Remove temporary objects and binary artifacts
     """
-    # go clean
-    print("Executing go clean")
-    ctx.run("go clean")
+    if not windows_only:
+        # go clean
+        print("Executing go clean")
+        ctx.run("go clean")
 
-    # remove the bin/agent folder
-    print("Remove agent binary folder")
-    ctx.run("rm -rf ./bin/agent")
+        # remove the bin/agent folder
+        print("Remove agent binary folder")
+        ctx.run("rm -rf ./bin/agent")
+
+    # clean up windows artifacts
+    if sys.platform == 'win32':
+        windows_files = [ "./agentmsg.h", "./cmd/agent/agentmsg.rc", "./cmd/agent/MSG00409.bin", "./cmd/agent/rsrc.syso", "./cmd/agent/MSG00409.bin"]
+        for f in windows_files:
+            if os.path.exists(f):
+                print("removing file {}".format(f))
+                os.remove(f)
+
 
 
 @task

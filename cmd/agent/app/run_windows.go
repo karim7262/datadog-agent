@@ -2,7 +2,7 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2016-2019 Datadog, Inc.
-// +build !windows
+// +build windows
 
 package app
 
@@ -132,6 +132,7 @@ func StartAgent() error {
 	// Main context passed to components
 	common.MainCtx, common.MainCtxCancel = context.WithCancel(context.Background())
 
+	common.Elog.Info(0x4000001F, "")
 	// Global Agent configuration
 	err := common.SetupConfig(confFilePath)
 	if err != nil {
@@ -139,6 +140,7 @@ func StartAgent() error {
 		return fmt.Errorf("unable to set up global agent configuration: %v", err)
 	}
 
+	common.Elog.Info(0x40000020, "")
 	// Setup logger
 	if runtime.GOOS != "android" {
 		syslogURI := config.GetSyslogURI()
@@ -173,22 +175,28 @@ func StartAgent() error {
 		)
 	}
 	if err != nil {
+		common.Elog.Error(0xC0000021, err.Error())
 		return fmt.Errorf("Error while setting up logging, exiting: %v", err)
 	}
 
+	common.Elog.Info(0x40000022, version.AgentVersion)
 	log.Infof("Starting Datadog Agent v%v", version.AgentVersion)
 
 	// Setup expvar server
+
 	var port = config.Datadog.GetString("expvar_port")
 	go http.ListenAndServe("127.0.0.1:"+port, http.DefaultServeMux)
 
 	// Setup healthcheck port
+	common.Elog.Info(0x40000023, "")
 	var healthPort = config.Datadog.GetInt("health_port")
 	if healthPort > 0 {
 		err := healthprobe.Serve(common.MainCtx, healthPort)
 		if err != nil {
+			common.Elog.Error(0xC0000024, err.Error())
 			return log.Errorf("Error starting health port, exiting: %v", err)
 		}
+		common.Elog.Info(0x40000025, "")
 		log.Debugf("Health check listening on port %d", healthPort)
 	}
 
@@ -204,6 +212,7 @@ func StartAgent() error {
 	if err != nil {
 		return log.Errorf("Error while getting hostname, exiting: %v", err)
 	}
+	common.Elog.Info(0x40000026, hostname)
 	log.Infof("Hostname is: %s", hostname)
 
 	// HACK: init host metadata module (CPU) early to avoid any
@@ -213,9 +222,11 @@ func StartAgent() error {
 		log.Errorf("Unable to initialize host metadata: %v", err)
 	}
 
+	common.Elog.Info(0x40000027, "")
 	// start the cmd HTTP server
 	if runtime.GOOS != "android" {
 		if err = api.StartServer(); err != nil {
+			common.Elog.Error( 0xC0000028, err.Error())
 			return log.Errorf("Error while starting api server, exiting: %v", err)
 		}
 	}
@@ -259,10 +270,12 @@ func StartAgent() error {
 			log.Errorf("Could not start dogstatsd: %s", err)
 		}
 	}
+	common.Elog.Info(0x40000029, "")
 	log.Debugf("statsd started")
 
 	// start logs-agent
 	if config.Datadog.GetBool("logs_enabled") || config.Datadog.GetBool("log_enabled") {
+		common.Elog.Info( 0x4000002A, "")
 		if config.Datadog.GetBool("log_enabled") {
 			log.Warn(`"log_enabled" is deprecated, use "logs_enabled" instead`)
 		}
@@ -295,7 +308,9 @@ func StartAgent() error {
 	}
 
 	// start dependent services
+	common.Elog.Info(0x4000002B, "")
 	startDependentServices()
+	common.Elog.Info(0x4000002C, "")
 	return nil
 }
 

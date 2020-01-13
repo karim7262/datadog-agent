@@ -24,7 +24,7 @@ import (
 	"golang.org/x/sys/windows/svc/eventlog"
 )
 
-var elog debug.Log
+
 
 func main() {
 	common.EnableLoggingToFile()
@@ -57,22 +57,26 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+	var interr error
 	if err := common.ImportRegistryConfig(); err != nil {
-		elog.Warning(0x80000001, err.Error())
+		common.Elog.Warning(0x80000001, err.Error())
 		// continue running agent with existing config
+		interr = err
 	}
 	if err := common.CheckAndUpgradeConfig(); err != nil {
-		elog.Warning(0x80000002, err.Error())
+		common.Elog.Warning(0x80000002, err.Error())
 		// continue running with what we have.
+		interr = err
 	}
+	common.Elog.Info(0x4000001E, interr.Error())
 	if err := app.StartAgent(); err != nil {
 		log.Errorf("Failed to start agent %v", err)
-		elog.Error(0xc000000B, err.Error())
+		common.Elog.Error(0xc000000B, err.Error())
 		errno = 1 // indicates non-successful return from handler.
 		changes <- svc.Status{State: svc.Stopped}
 		return
 	}
-	elog.Info(0x40000003, config.ServiceName)
+	common.Elog.Info(0x40000003, config.ServiceName)
 
 loop:
 	for {
@@ -86,23 +90,23 @@ loop:
 				changes <- c.CurrentStatus
 			case svc.Stop:
 				log.Info("Received stop message from service control manager")
-				elog.Info(0x4000000c, config.ServiceName)
+				common.Elog.Info(0x4000000c, config.ServiceName)
 				break loop
 			case svc.Shutdown:
 				log.Info("Received shutdown message from service control manager")
-				elog.Info(0x4000000d, config.ServiceName)
+				common.Elog.Info(0x4000000d, config.ServiceName)
 				break loop
 			default:
 				log.Warnf("unexpected control request #%d", c)
-				elog.Warning(0xc0000009, string(c.Cmd))
+				common.Elog.Warning(0xc0000009, string(c.Cmd))
 			}
 		case <-signals.Stopper:
-			elog.Info(0x4000000a, config.ServiceName)
+			common.Elog.Info(0x4000000a, config.ServiceName)
 			break loop
 
 		}
 	}
-	elog.Info(0x4000000d, config.ServiceName)
+	common.Elog.Info(0x4000000d, config.ServiceName)
 	log.Infof("Initiating service shutdown")
 	changes <- svc.Status{State: svc.StopPending}
 	app.StopAgent()
@@ -113,22 +117,22 @@ loop:
 func runService(isDebug bool) {
 	var err error
 	if isDebug {
-		elog = debug.New(config.ServiceName)
+		common.Elog = debug.New(config.ServiceName)
 	} else {
-		elog, err = eventlog.Open(config.ServiceName)
+		common.Elog, err = eventlog.Open(config.ServiceName)
 		if err != nil {
 			return
 		}
 	}
-	defer elog.Close()
+	defer common.Elog.Close()
 
-	elog.Info(0x40000007, config.ServiceName)
+	common.Elog.Info(0x40000007, config.ServiceName)
 	run := svc.Run
 
 	err = run(config.ServiceName, &myservice{})
 	if err != nil {
-		elog.Error(0xc0000008, err.Error())
+		common.Elog.Error(0xc0000008, err.Error())
 		return
 	}
-	elog.Info(0x40000004, config.ServiceName)
+	common.Elog.Info(0x40000004, config.ServiceName)
 }

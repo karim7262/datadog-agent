@@ -21,6 +21,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/winutil"
 	"github.com/cihub/seelog"
 	"golang.org/x/sys/windows/registry"
+	"golang.org/x/sys/windows/svc/debug"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -35,6 +36,9 @@ var (
 	subServices = map[string]string{"logs_enabled": "logs_enabled",
 		"apm_enabled":     "apm_config.enabled",
 		"process_enabled": "process_config.enabled"}
+
+	// Elog is the eventlog logger
+	Elog debug.Log
 )
 
 var (
@@ -121,6 +125,7 @@ func GetViewsPath() string {
 func CheckAndUpgradeConfig() error {
 	datadogConfPath := filepath.Join(DefaultConfPath, "datadog.conf")
 	if _, err := os.Stat(datadogConfPath); os.IsNotExist(err) {
+		Elog.Info(0x4000001A, err.Error())
 		log.Debug("Previous config file not found, not upgrading")
 		return nil
 	}
@@ -129,25 +134,31 @@ func CheckAndUpgradeConfig() error {
 	if err == nil {
 		// was able to read config, check for api key
 		if config.Datadog.GetString("api_key") != "" {
+			Elog.Info(0x40000018, "")
 			log.Debug("Datadog.yaml found, and API key present.  Not upgrading config")
 			return nil
 		}
 	}
+	Elog.Info(0x4000001C, err.Error())
+	defer Elog.Info(0x4000001D, "None")
 	return ImportConfig(DefaultConfPath, DefaultConfPath, false)
 }
 
 // ImportRegistryConfig imports settings from Windows registry into datadog.yaml
 func ImportRegistryConfig() error {
 
+	Elog.Info(0x40000010, "ImportRegistryConfig()")
 	k, err := registry.OpenKey(registry.LOCAL_MACHINE,
 		"SOFTWARE\\Datadog\\Datadog Agent",
 		registry.ALL_ACCESS)
 	if err != nil {
 		if err == registry.ErrNotExist {
+			Elog.Info(0x40000011, "early")
 			log.Debug("Windows installation key not found, not updating config")
 			return nil
 		}
 		// otherwise, unexpected error
+		Elog.Info(0x40000012, "ImportRegistryConfig()")
 		log.Warnf("Unexpected error getting registry config %s", err.Error())
 		return err
 	}
@@ -155,6 +166,7 @@ func ImportRegistryConfig() error {
 
 	err = SetupConfigWithoutSecrets("")
 	if err != nil {
+		Elog.Error(0xC0000013, err.Error())
 		return fmt.Errorf("unable to set up global agent configuration: %v", err)
 	}
 
@@ -162,10 +174,11 @@ func ImportRegistryConfig() error {
 	datadogYamlPath := config.Datadog.ConfigFileUsed()
 
 	if config.Datadog.GetString("api_key") != "" {
+		Elog.Info(0x40000014, "return")
 		return fmt.Errorf("%s seems to contain a valid configuration, not overwriting config",
 			datadogYamlPath)
 	}
-
+	Elog.Info(40000015, "ImportRegistryConfig")
 	overrides := make(map[string]interface{})
 
 	var val string
@@ -284,6 +297,7 @@ func ImportRegistryConfig() error {
 		overrides["python_version"] = val
 		log.Debugf("Setting python version to %s", val)
 	}
+	Elog.Info(0x40000016, "")
 
 	// apply overrides to the config
 	config.AddOverrides(overrides)
@@ -291,18 +305,21 @@ func ImportRegistryConfig() error {
 	// build the global agent configuration
 	err = SetupConfigWithoutSecrets("")
 	if err != nil {
+		Elog.Error(0xC0000013, err.Error())
 		return fmt.Errorf("unable to set up global agent configuration: %v", err)
 	}
 
 	// dump the current configuration to datadog.yaml
 	b, err := yaml.Marshal(config.Datadog.AllSettings())
 	if err != nil {
+		Elog.Error(0xc0000017, err.Error())
 		log.Errorf("unable to unmarshal config to YAML: %v", err)
 		return fmt.Errorf("unable to unmarshal config to YAML: %v", err)
 	}
 	// file permissions will be used only to create the file if doesn't exist,
 	// please note on Windows such permissions have no effect.
 	if err = ioutil.WriteFile(datadogYamlPath, b, 0640); err != nil {
+		Elog.Error(0xC0000018, err.Error())
 		log.Errorf("unable to unmarshal config to %s: %v", datadogYamlPath, err)
 		return fmt.Errorf("unable to unmarshal config to %s: %v", datadogYamlPath, err)
 	}
@@ -316,6 +333,6 @@ func ImportRegistryConfig() error {
 		k.DeleteValue(valuename)
 	}
 	log.Debugf("Successfully wrote the config into %s\n", datadogYamlPath)
-
+	Elog.Info(0x40000019, "Done registry conversion")
 	return nil
 }
