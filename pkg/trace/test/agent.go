@@ -165,6 +165,8 @@ func (s *agentRunner) createConfigFile(conf []byte) (string, error) {
 		v.Set("api_key", "testing123")
 	}
 	if !v.IsSet("apm_config.trace_writer.flush_period_seconds") {
+		// note that the agent log will output: "Unknown key in config file" but this is
+		// intended for this non-user-facing setting.
 		v.Set("apm_config.trace_writer.flush_period_seconds", 0.1)
 	}
 	v.Set("log_level", "debug")

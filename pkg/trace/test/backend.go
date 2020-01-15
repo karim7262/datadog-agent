@@ -109,11 +109,11 @@ func (s *fakeBackend) handleStats(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *fakeBackend) handleTraces(w http.ResponseWriter, req *http.Request) {
-	var payload pb.TracePayload
-	if err := readProtoRequest(req, &payload); err != nil {
+	p, err := TracePayloadFromRequest(req)
+	if err != nil {
 		log.Println("server: error reading traces: ", err)
 	}
-	s.out <- payload
+	s.out <- p
 }
 
 func readJSONRequest(req *http.Request, v interface{}) error {
@@ -123,6 +123,13 @@ func readJSONRequest(req *http.Request, v interface{}) error {
 	}
 	defer rc.Close()
 	return json.NewDecoder(rc).Decode(v)
+}
+
+// TracePayloadFromRequest attempts to read a pb.TracePayload from the given request's body,
+// returning any error that might have occurred.
+func TracePayloadFromRequest(req *http.Request) (pb.TracePayload, error) {
+	var payload pb.TracePayload
+	return payload, readProtoRequest(req, &payload)
 }
 
 func readProtoRequest(req *http.Request, msg proto.Message) error {
