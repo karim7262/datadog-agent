@@ -341,7 +341,7 @@ func (s *Server) parseMetricMessage(message []byte) (metrics.MetricSample, error
 	metricSample := enrichMetricSample(sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 	metricSample.Tags = append(metricSample.Tags, s.extraTags...)
 	dogstatsdMetricPackets.Add(1)
-	tlmProcessed.Inc("metrics", "ok")
+	//tlmProcessed.Inc("metrics", "ok")
 	return metricSample, nil
 }
 
