@@ -122,7 +122,7 @@ if [[ $1 == "upgrade6-test" ]]; then
   cat kitchen-azure-upgrade6-test.yml >> kitchen.yml
 fi
 
-kitchen diagnose --no-instances --loader
+kitchen diagnose --all
 
 rm -rf cookbooks
 rm -f Berksfile.lock

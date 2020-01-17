@@ -24,6 +24,7 @@ provisioner:
   product_version: 14.12.9
 <% end %>
   install_strategy: always
+  log_level: debug
 
 <% if ENV['KITCHEN_DRIVER'] && ENV['KITCHEN_DRIVER'] == "hyperv" %>
 driver:
