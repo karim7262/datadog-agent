@@ -58,6 +58,7 @@ driver_config:
   <% else %>
   azure_resource_group_suffix: plnone
   <% end %>
+  log_level: debug
 <% end %>
 
 platforms:
