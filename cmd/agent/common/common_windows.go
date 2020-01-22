@@ -178,7 +178,7 @@ func ImportRegistryConfig() error {
 		return fmt.Errorf("%s seems to contain a valid configuration, not overwriting config",
 			datadogYamlPath)
 	}
-	Elog.Info(40000015, "ImportRegistryConfig")
+	Elog.Info(0x40000015, "ImportRegistryConfig")
 	overrides := make(map[string]interface{})
 
 	var val string
