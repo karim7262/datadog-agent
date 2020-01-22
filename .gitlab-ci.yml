@@ -157,6 +157,13 @@ before_script:
     variables:
       - $RELEASE_VERSION_7 == ""
 
+# use this to skip the windows puppy & DSD builds until we want
+# them.  They're chewing up too much build cycles
+
+.skip_unless_wanted_on_windows: &skip_unless_wanted_on_windows
+  only:
+    variables:
+      - $ALL_WINDOWS == "true"
 #
 # source_test
 #
@@ -899,6 +906,7 @@ windows_puppy_msi_x64-a7:
   before_script:
     - set RELEASE_VERSION $RELEASE_VERSION_7
   <<: *skip_when_unwanted_on_7
+  <<: *skip_unless_wanted_on_windows
 
 windows_puppy_msi_x86-a7:
   extends: .windows_puppy_agent_base
@@ -909,6 +917,7 @@ windows_puppy_msi_x86-a7:
   before_script:
     - set RELEASE_VERSION $RELEASE_VERSION_7
   <<: *skip_when_unwanted_on_7
+  <<: *skip_unless_wanted_on_windows
 
 
 # build dogstatsd package for Windows
@@ -921,6 +930,7 @@ windows_dsd_msi_x64:
     OMNIBUS_TARGET: dogstatsd
   before_script:
     - set RELEASE_VERSION $RELEASE_VERSION_7
+  <<: *skip_unless_wanted_on_windows
 
 # build Agent package for android
 agent_android_apk:
