@@ -293,13 +293,15 @@ func (ctr *realConntracker) unregister(c ct.Con) int {
 		}
 
 		// move the mapping from the permanent to "short lived" connection
-		translation, ok := ctr.state[key]
+		translation, wasTranslated := ctr.state[key]
 
-		delete(ctr.state, key)
-		if len(ctr.shortLivedBuffer) < ctr.maxShortLivedBuffer && ok {
-			ctr.shortLivedBuffer[key] = translation.IPTranslation
-		} else {
-			log.Warn("exceeded maximum tracked short lived connections")
+		if wasTranslated {
+			delete(ctr.state, key)
+			if len(ctr.shortLivedBuffer) < ctr.maxShortLivedBuffer {
+				ctr.shortLivedBuffer[key] = translation.IPTranslation
+			} else {
+				log.Warn("exceeded maximum tracked short lived connections")
+			}
 		}
 	}
 
