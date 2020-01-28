@@ -642,7 +642,7 @@ func (agg *BufferedAggregator) run() {
 			agg.handleSenderBucket(checkHistogramBucket)
 		case metric := <-agg.metricIn:
 			aggregatorDogstatsdMetricSample.Add(1)
-			tlmProcessed.Inc("dogstatsd_metrics")
+			//tlmProcessed.Inc("dogstatsd_metrics")
 			agg.addSample(metric, timeNowNano())
 		case event := <-agg.eventIn:
 			aggregatorEvent.Add(1)

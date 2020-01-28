@@ -103,13 +103,13 @@ func (l *UDPListener) Listen() {
 
 			log.Errorf("dogstatsd-udp: error reading packet: %v", err)
 			udpPacketReadingErrors.Add(1)
-			tlmUDPPackets.Inc("error")
+			//tlmUDPPackets.Inc("error")
 			continue
 		}
-		tlmUDPPackets.Inc("ok")
+		//tlmUDPPackets.Inc("ok")
 
 		udpBytes.Add(int64(n))
-		tlmUDPPacketsBytes.Add(float64(n))
+		//tlmUDPPacketsBytes.Add(float64(n))
 
 		// packetBuffer merges multiple packets together and sends them when its buffer is full
 		l.packetBuffer.addMessage(l.buffer[:n])
