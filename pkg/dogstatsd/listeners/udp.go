@@ -11,7 +11,6 @@ import (
 	"net"
 	"strings"
 
-	"github.com/DataDog/datadog-agent/pkg/telemetry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -22,11 +21,6 @@ var (
 	udpPacketReadingErrors = expvar.Int{}
 	udpPackets             = expvar.Int{}
 	udpBytes               = expvar.Int{}
-
-	tlmUDPPackets = telemetry.NewCounter("dogstatsd", "udp_packets",
-		[]string{"state"}, "Dogstatsd UDP packets count")
-	tlmUDPPacketsBytes = telemetry.NewCounter("dogstatsd", "udp_packets_bytes",
-		nil, "Dogstatsd UDP packets bytes count")
 )
 
 func init() {
