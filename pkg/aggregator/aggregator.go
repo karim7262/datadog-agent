@@ -209,7 +209,7 @@ type BufferedAggregator struct {
 func NewBufferedAggregator(s serializer.MetricSerializer, metricPool *metrics.MetricSamplePool, hostname, agentName string, flushInterval time.Duration) *BufferedAggregator {
 	aggregator := &BufferedAggregator{
 		metricPool:             metricPool,
-		bufferedMetricIn:       make(chan []metrics.MetricSample, 100),  // TODO make buffer size configurable
+		bufferedMetricIn:       make(chan []metrics.MetricSample, 4096), // TODO make buffer size configurable
 		bufferedServiceCheckIn: make(chan []*metrics.ServiceCheck, 100), // TODO make buffer size configurable
 		bufferedEventIn:        make(chan []*metrics.Event, 100),        // TODO make buffer size configurable
 
