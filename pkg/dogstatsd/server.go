@@ -221,6 +221,9 @@ func (s *Server) handleMessages() {
 	if workers < 2 {
 		workers = 2
 	}
+	if workers > 8 {
+		workers = 8
+	}
 
 	for i := 0; i < workers; i++ {
 		go s.worker()
