@@ -58,6 +58,9 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	changes <- svc.Status{State: svc.StartPending}
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 	var interr error
+	common.Elog.Info(0x40000031, config.ServiceName)
+	defer common.Elog.Info(0x40000034, "ServiceExecute")
+
 	if err := common.ImportRegistryConfig(); err != nil {
 		common.Elog.Warning(0x80000001, err.Error())
 		// continue running agent with existing config
@@ -115,6 +118,7 @@ loop:
 }
 
 func runService(isDebug bool) {
+	
 	var err error
 	if isDebug {
 		common.Elog = debug.New(config.ServiceName)
@@ -125,11 +129,14 @@ func runService(isDebug bool) {
 		}
 	}
 	defer common.Elog.Close()
-
+	defer common.Elog.Info(0x40000034, "runService")
+	
 	common.Elog.Info(0x40000007, config.ServiceName)
 	run := svc.Run
 
+	common.Elog.Info(0x40000032, "")
 	err = run(config.ServiceName, &myservice{})
+	common.Elog.Info(0x40000033, fmt.Sprintf("%v", err))
 	if err != nil {
 		common.Elog.Error(0xc0000008, err.Error())
 		return

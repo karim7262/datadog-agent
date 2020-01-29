@@ -349,3 +349,31 @@ Severity=Error
 Language=English
 Failed to start service %1.
 .
+
+MessageId=49
+SymbolicName=MSG_ENTER_EXECUTE
+Severity=Informational
+Language=English
+Entered service callback Execute (%1)
+.
+
+MessageId=50
+SymbolicName=MSG_CALLING_RUN
+Severity=Informational
+Language=English
+Entering run method.
+.
+
+MessageId=51
+SymbolicName=MSG_RUN_RETURN
+Severity=Informational
+Language=English
+Run method returned %s
+.
+
+MessageId=52
+SymbolicName=MSG_DEFER_FUNCTION_EXIT
+Severity=Informational
+Language=English
+Function %s has executed the defer().
+.
