@@ -3,7 +3,6 @@ package dogstatsd
 import (
 	"bytes"
 	"strconv"
-	"strings"
 	"unsafe"
 )
 
@@ -52,7 +51,21 @@ func parseTags(rawTags []byte) []string {
 	if len(rawTags) == 0 {
 		return nil
 	}
-	return strings.Split(string(rawTags), commaSeparatorString)
+	tagsCount := bytes.Count(rawTags, commaSeparator)
+	tagsList := make([]string, tagsCount+1)
+
+	i := 0
+	for i < tagsCount {
+		tagPos := bytes.Index(rawTags, commaSeparator)
+		if tagPos < 0 {
+			break
+		}
+		tagsList[i] = string(rawTags[:tagPos])
+		rawTags = rawTags[tagPos+len(commaSeparator):]
+		i++
+	}
+	tagsList[i] = string(rawTags)
+	return tagsList
 }
 
 // the std API does not have methods to do []byte => float parsing
