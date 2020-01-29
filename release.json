@@ -1,6 +1,6 @@
 {
 	"nightly": {
-		"INTEGRATIONS_CORE_VERSION": "celene/volume_metric_tags_testing",
+		"INTEGRATIONS_CORE_VERSION": "celene/volume_metric_tags",
 		"OMNIBUS_SOFTWARE_VERSION": "master",
 		"OMNIBUS_RUBY_VERSION": "datadog-5.5.0",
 		"JMXFETCH_VERSION": "0.34.0",
