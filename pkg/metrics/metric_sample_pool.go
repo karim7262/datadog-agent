@@ -6,7 +6,8 @@ import (
 
 // MetricSamplePool is a pool of metrics sample
 type MetricSamplePool struct {
-	pool *sync.Pool
+	pool      *sync.Pool
+	batchSize int
 }
 
 // NewMetricSamplePool creates a new MetricSamplePool
@@ -17,6 +18,7 @@ func NewMetricSamplePool(batchSize int) *MetricSamplePool {
 				return make([]MetricSample, batchSize)
 			},
 		},
+		batchSize: batchSize,
 	}
 }
 
@@ -25,7 +27,7 @@ func (m *MetricSamplePool) GetBatch() []MetricSample {
 	if m == nil {
 		return nil
 	}
-	return m.pool.Get().([]MetricSample)
+	return make([]MetricSample, m.batchSize)
 }
 
 // PutBatch puts a batch back into the pool
@@ -33,5 +35,4 @@ func (m *MetricSamplePool) PutBatch(batch []MetricSample) {
 	if m == nil {
 		return
 	}
-	m.pool.Put(batch[:cap(batch)])
 }
