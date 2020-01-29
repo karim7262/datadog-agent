@@ -21,8 +21,6 @@ var (
 	fieldSeparator = []byte("|")
 	colonSeparator = []byte(":")
 	commaSeparator = []byte(",")
-
-	commaSeparatorString = ","
 )
 
 func findMessageType(message []byte) messageType {
