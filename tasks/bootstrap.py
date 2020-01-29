@@ -47,12 +47,7 @@ def process_deps(ctx, target, version, kind, step, cmd=None, verbose=False):
             # download tools
             path = os.path.join(get_gopath(ctx), 'src', target)
             if not os.path.exists(path):
-                ctx.run("go get{} -d -u {}".format(verbosity, target))
-
-            with ctx.cd(path):
-                # checkout versions
-                ctx.run("git fetch")
-                ctx.run("git checkout {}".format(version))
+                ctx.run("go get{} -d -u {}@{}".format(verbosity, target, version))
         elif step == "install":
             ctx.run("go install{} {}".format(verbosity, target))
     elif kind == "python":
