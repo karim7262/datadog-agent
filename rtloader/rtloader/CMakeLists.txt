@@ -51,14 +51,6 @@ find_library( LIBdl dl )
 endif()
 
 
-ADD_CUSTOM_COMMAND(
-    TARGET datadog-agent-rtloader
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.0.1.0.dylib ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.0.1.0.dylib
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.1.dylib ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.1.dylib
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.dylib ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.dylib
-)
-
 install(TARGETS datadog-agent-rtloader
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

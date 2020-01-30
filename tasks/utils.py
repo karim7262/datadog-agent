@@ -44,6 +44,7 @@ def get_multi_python_location(embedded_path=None, rtloader_root=None):
                 rtloader_lib.append(libpath)
     else: # if rtloader_root is specified we're working in dev mode from the rtloader folder
         rtloader_lib.append("{}/rtloader".format(rtloader_root))
+        rtloader_lib.append("{}/rtloader/build".format(rtloader_root))
 
     rtloader_headers = "{}/include".format(rtloader_root or embedded_path)
     rtloader_common_headers = "{}/common".format(rtloader_root or embedded_path)
