@@ -49,3 +49,35 @@ func setupConfig(confFilePath string, configName string, withoutSecrets bool) er
 	}
 	return nil
 }
+
+func GenericInitialization(confFilePath string, loggerName config.LoggerName,
+	logLevel string, cmdPort int) error {
+
+	if logLevel != "" {
+		// Honour the deprecated --log-level argument
+		overrides := make(map[string]interface{})
+		overrides["log_level"] = logLevel
+		config.AddOverrides(overrides)
+	} else {
+		logLevel = config.GetEnv("DD_LOG_LEVEL", "off")
+	}
+
+	overrides := make(map[string]interface{})
+	overrides["cmd_port"] = cmdPort // 0 to let the os assign an available port
+	config.AddOverrides(overrides)
+
+	err := SetupConfig(confFilePath)
+	if err != nil {
+		return fmt.Errorf("unable to set up global agent configuration: %v", err)
+	}
+
+	err = config.SetupLogger(loggerName, logLevel, "", "", false, true, false)
+	if err != nil {
+		fmt.Printf("Cannot setup logger, exiting: %v\n", err)
+		return err
+	}
+
+	SetupAutoConfig(config.Datadog.GetString("confd_path"))
+
+	return nil
+}

@@ -90,28 +90,13 @@ var checkCmd = &cobra.Command{
 	Long:  `Use this to run a specific check with a specific rate`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		if logLevel != "" {
-			// Honour the deprecated --log-level argument
-			overrides := make(map[string]interface{})
-			overrides["log_level"] = logLevel
-			config.AddOverrides(overrides)
-		} else {
-			logLevel = config.GetEnv("DD_LOG_LEVEL", "off")
+		err := common.GenericInitialization(confFilePath, loggerName, logLevel, 0)
+		if err != nil {
+			return fmt.Errorf("Error with agent initialization, exiting: %v", err)
 		}
 
 		if flagNoColor {
 			color.NoColor = true
-		}
-
-		err := common.SetupConfig(confFilePath)
-		if err != nil {
-			return fmt.Errorf("unable to set up global agent configuration: %v", err)
-		}
-
-		err = config.SetupLogger(loggerName, logLevel, "", "", false, true, false)
-		if err != nil {
-			fmt.Printf("Cannot setup logger, exiting: %v\n", err)
-			return err
 		}
 
 		if len(args) != 0 {
@@ -129,7 +114,6 @@ var checkCmd = &cobra.Command{
 
 		s := serializer.NewSerializer(common.Forwarder)
 		agg := aggregator.InitAggregatorWithFlushInterval(s, nil, hostname, "agent", checkCmdFlushInterval)
-		common.SetupAutoConfig(config.Datadog.GetString("confd_path"))
 
 		if config.Datadog.GetBool("inventories_enabled") {
 			metadata.SetupInventoriesExpvar(common.AC, common.Coll)

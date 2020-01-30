@@ -17,7 +17,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
 	"github.com/DataDog/datadog-agent/pkg/collector/corechecks/embed/jmx"
-	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/jmxfetch"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/spf13/cobra"
@@ -107,60 +106,41 @@ func init() {
 }
 
 func doJmxCollect(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("collect", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("collect", jmxfetch.ReporterConsole, true, nil)
 }
 
 func doJmxListEverything(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("list_everything", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("list_everything", jmxfetch.ReporterConsole, true, nil)
 }
 
 func doJmxListMatching(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("list_matching_attributes", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("list_matching_attributes", jmxfetch.ReporterConsole, true, nil)
 }
 
 func doJmxListWithMetrics(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("list_with_metrics", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("list_with_metrics", jmxfetch.ReporterConsole, true, nil)
 }
 
 func doJmxListLimited(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("list_limited_attributes", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("list_limited_attributes", jmxfetch.ReporterConsole, true, nil)
 }
 
 func doJmxListCollected(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("list_collected_attributes", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("list_collected_attributes", jmxfetch.ReporterConsole, true, nil)
 }
 
 func doJmxListNotCollected(cmd *cobra.Command, args []string) error {
-	return RunJmxCommand("list_not_matching_attributes", jmxfetch.ReporterConsole, nil)
+	return RunJmxCommand("list_not_matching_attributes", jmxfetch.ReporterConsole, true, nil)
 }
 
-func RunJmxCommand(command string, reporter jmxfetch.JMXReporter, output func(...interface{})) error {
+func RunJmxCommand(command string, reporter jmxfetch.JMXReporter, init bool, output func(...interface{})) error {
 
-	if jmxLogLevel != "" {
-		// Honour the deprecated --log-level argument
-		overrides := make(map[string]interface{})
-		overrides["log_level"] = jmxLogLevel
-		config.AddOverrides(overrides)
-	} else {
-		jmxLogLevel = config.GetEnv("DD_LOG_LEVEL", "debug")
+	if init {
+		err := common.GenericInitialization(confFilePath, loggerName, jmxLogLevel, 0)
+		if err != nil {
+			return fmt.Errorf("Error with agent initialization, exiting: %v", err)
+		}
 	}
-
-	overrides := make(map[string]interface{})
-	overrides["cmd_port"] = 0 // let the os assign an available port
-	config.AddOverrides(overrides)
-
-	err := common.SetupConfig(confFilePath)
-	if err != nil {
-		return fmt.Errorf("unable to set up global agent configuration: %v", err)
-	}
-
-	err = config.SetupLogger(loggerName, jmxLogLevel, "", "", false, true, false)
-	if err != nil {
-		fmt.Printf("Cannot setup logger, exiting: %v\n", err)
-		return err
-	}
-
-	common.SetupAutoConfig(config.Datadog.GetString("confd_path"))
 
 	// start the cmd HTTP server
 	if err := api.StartServer(); err != nil {
@@ -179,7 +159,7 @@ func RunJmxCommand(command string, reporter jmxfetch.JMXReporter, output func(..
 
 	loadConfigs(runner)
 
-	err = runner.Start(false)
+	err := runner.Start(false)
 	if err != nil {
 		return err
 	}
@@ -204,7 +184,7 @@ func RunJmxListWithMetrics() error {
 	out := func(a ...interface{}) {
 		fmt.Println(a...)
 	}
-	return RunJmxCommand("list_with_metrics", jmxfetch.ReporterJSON, out)
+	return RunJmxCommand("list_with_metrics", jmxfetch.ReporterJSON, false, out)
 }
 
 func loadConfigs(runner *jmxfetch.JMXFetch) {
