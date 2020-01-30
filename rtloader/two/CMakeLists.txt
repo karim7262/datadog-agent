@@ -72,3 +72,9 @@ else()
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
 endif()
+
+ADD_CUSTOM_COMMAND(
+    TARGET datadog-agent-two
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-two.dylib ${CMAKE_SOURCE_DIR}/two/libdatadog-agent-two.dylib
+)
