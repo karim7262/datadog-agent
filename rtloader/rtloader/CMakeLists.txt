@@ -57,8 +57,10 @@ install(TARGETS datadog-agent-rtloader
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if (WIN32)
 ADD_CUSTOM_COMMAND(
     TARGET datadog-agent-rtloader
     POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.a ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.a
 )
+endif()
