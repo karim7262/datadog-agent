@@ -84,7 +84,7 @@ PUPPY_CORECHECKS = [
 def build(ctx, rebuild=False, race=False, build_include=None, build_exclude=None,
           puppy=False, development=True, precompile_only=False, skip_assets=False,
           embedded_path=None, rtloader_root=None, python_home_2=None, python_home_3=None,
-          major_version='7', python_runtimes='3', arch='x64', exclude_rtloader=False,
+          major_version='7', arch='x64', exclude_rtloader=False,
           python_runtimes=None):
     """
     Build the agent. If the bits to include in the build are not specified,
