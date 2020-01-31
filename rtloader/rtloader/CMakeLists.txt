@@ -50,18 +50,15 @@ if(NOT WIN32)
 find_library( LIBdl dl )
 endif()
 
-
-ADD_CUSTOM_COMMAND(
-    TARGET datadog-agent-rtloader
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.0.1.0.dll ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.0.1.0.dll
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.1.dll ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.1.dll
-    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.dll ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.dll
-)
-
 install(TARGETS datadog-agent-rtloader
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION include
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+ADD_CUSTOM_COMMAND(
+    TARGET datadog-agent-rtloader
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/libdatadog-agent-rtloader.a ${CMAKE_SOURCE_DIR}/libdatadog-agent-rtloader.a
 )
