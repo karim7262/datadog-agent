@@ -8,26 +8,19 @@ Vagrant.configure("2") do |config|
   config.vm.communicator = "winrm"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
-  gopath = ENV['GOPATH'].gsub('\\', '/')
-  config.vm.synced_folder gopath + "/src/github.com/DataDog", "/Users/dogdev/go/src/github.com/DataDog"
+  home = ENV['HOME'].gsub('\\', '/')
+  config.vm.synced_folder home, home, id: "home"
 
-  config.vm.define "win-10-prl", autostart: false  do |cfg|
-    cfg.vm.box     = "windows_10_ent_parallels.box"
+  gopath = ENV['GOPATH'].gsub('\\', '/')
+  config.vm.synced_folder gopath + "/src/github.com/DataDog", "/Users/dogdev/go/src/github.com/DataDog", id: "gopath"
+
+
+  config.vm.define "windows-10", autostart: false  do |cfg|
+    cfg.vm.box     = "windows_10_ent.box"
   end
-  config.vm.define "win-10-vmw", autostart: false  do |cfg|
-    cfg.vm.box     = "windows_10_ent_vmware.box"
-  end
-  config.vm.define "win-10-vbx", autostart: false  do |cfg|
-    cfg.vm.box     = "windows_10_ent_virtualbox.box"
-  end
-  config.vm.define "win-srv-prl", autostart: false do |cfg|
-    cfg.vm.box     = "windows_2019_core_parallels.box"
-  end
-  config.vm.define "win-srv-vmw", autostart: false do |cfg|
-    cfg.vm.box     = "windows_2019_core_vmware.box"
-  end
-  config.vm.define "win-srv-vbx", autostart: false do |cfg|
-    cfg.vm.box     = "windows_2019_core_virtualbox.box"
+  config.vm.define "windows-server-2019", autostart: false do |cfg|
+    cfg.vm.box     = "windows_2019_core.box"
+    cfg.vm.provision "shell", path: "scripts/create-machine.ps1", args: "-machineHome #{home} -machineName windows-server-2019"
   end
 
   ["vmware_fusion", "vmware_workstation"].each do |provider|
