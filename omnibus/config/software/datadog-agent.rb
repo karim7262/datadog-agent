@@ -45,6 +45,9 @@ build do
 
   # include embedded path (mostly for `pkg-config` binary)
   env = with_embedded_path(env)
+  if linux?
+    env = with_glibc_version(env)
+  end
 
   # cgosymbolizer must be patched on SLES11 builders - PR upstream pending merge
   if suse?

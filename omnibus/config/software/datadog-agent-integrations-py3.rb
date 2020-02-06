@@ -111,6 +111,10 @@ build do
       "PATH" => "#{install_dir}/embedded/bin:#{ENV['PATH']}",
     }
 
+    if linux?
+      nix_build_env = with_glibc_version(nix_build_env)
+    end
+
     #
     # Prepare the requirements file containing ALL the dependencies needed by
     # any integration. This will provide the "static Python environment" of the Agent.

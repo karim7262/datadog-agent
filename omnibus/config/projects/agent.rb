@@ -26,6 +26,11 @@ else
   install_dir '/opt/datadog-agent'
 end
 
+if linux?
+  glibc_version '2.12.2'
+  glibc_version 'x64'
+end
+
 # build_version is computed by an invoke command/function.
 # We can't call it directly from there, we pass it through the environment instead.
 build_version ENV['PACKAGE_VERSION']
@@ -90,7 +95,7 @@ package :zip do
       "#{Omnibus::Config.source_dir()}\\etc\\datadog-agent\\extra_package_files",
       "#{Omnibus::Config.source_dir()}\\cf-root",
     ]
-  
+
     additional_sign_files [
         "#{Omnibus::Config.source_dir()}\\cf-root\\bin\\agent\\process-agent.exe",
         "#{Omnibus::Config.source_dir()}\\cf-root\\bin\\agent\\trace-agent.exe",
