@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strconv"
 	"time"
 
 	coreconfig "github.com/DataDog/datadog-agent/pkg/config"
@@ -113,6 +114,12 @@ func Run(ctx context.Context) {
 
 	tagger.Init()
 	defer tagger.Stop()
+
+	if src := cfg.ReceiverHost; src != "localhost" {
+		// non-local traffic is likely enabled, try to broadcast our location
+		log.Debug("Running address broadcaster...")
+		go runDiscovery(ctx, src, strconv.Itoa(cfg.ReceiverPort))
+	}
 
 	agnt := NewAgent(ctx, cfg)
 	log.Infof("Trace agent running on host %s", cfg.Hostname)
