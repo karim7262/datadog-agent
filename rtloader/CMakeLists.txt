@@ -23,6 +23,12 @@ option(DISABLE_PYTHON2 "Do not build Python2 support")
 option(DISABLE_PYTHON3 "Do not build Python3 support")
 option(BUILD_DEMO "Build the demo app" ON)
 
+## Target specific GLIBC
+if (TARGET_GLIBC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include ${TARGET_GLIBC}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${TARGET_GLIBC}")
+endif()
+
 ## Add Build Targets
 if (NOT DISABLE_PYTHON2)
     add_subdirectory(two)
