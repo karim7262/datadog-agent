@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+//PythonCollector collector for python
 type PythonCollector struct {
 	pythonPath      string
 	environmentName string

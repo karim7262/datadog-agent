@@ -23,10 +23,10 @@ type CheckMetadata map[string][]*CheckInstanceMetadata
 // CheckInstanceMetadata contains metadata provided by an instance of an integration.
 type CheckInstanceMetadata map[string]interface{}
 
-// PackageMetadata contains metadata about all packages running on the host
+// PackagesMetadata contains metadata about all packages running on the host
 type PackagesMetadata map[string]*PackageManagerMetadata
 
-// PackageMetadata contains metadata about packages for a given package manager
+// PackageManagerMetadata contains metadata about packages for a given package manager
 type PackageManagerMetadata map[string]string
 
 // Payload handles the JSON unmarshalling of the metadata payload

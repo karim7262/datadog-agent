@@ -18,6 +18,7 @@ var (
 	allowedSymbols = []rune{'.', '-', '+', '~', ':', '_'}
 )
 
+//RpmCollector collector for rpm
 type RpmCollector struct {
 	rpmBin string
 }

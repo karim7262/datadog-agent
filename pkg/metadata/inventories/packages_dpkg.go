@@ -20,6 +20,7 @@ var (
 	dpkgSrcCaptureRegexpNames = dpkgSrcCaptureRegexp.SubexpNames()
 )
 
+//DpkgCollector collector for dpkg
 type DpkgCollector struct {
 	dpkgStatusFile string
 }

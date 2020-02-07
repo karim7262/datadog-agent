@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+//BrewCollector collector for brew
 type BrewCollector struct {
 	brewPath string
 }

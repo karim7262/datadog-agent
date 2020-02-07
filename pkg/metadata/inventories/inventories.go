@@ -76,7 +76,7 @@ func SetAgentMetadata(name string, value interface{}) {
 	}
 }
 
-// SetAgentMetadata updates the agent metadata value in the cache
+// SetPackageMetadata updates the agent metadata value in the cache
 func SetPackageMetadata(packageManager string, packageName string, version string) {
 	packageCacheMutex.Lock()
 	defer packageCacheMutex.Unlock()
