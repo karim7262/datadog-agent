@@ -37,6 +37,10 @@ if ohai["platform"] != "windows"
     "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
   }
 
+  if linux?
+    env = with_glibc_version(env)
+  end
+
   python_configure = ["./configure",
                       "--prefix=#{install_dir}/embedded"]
 

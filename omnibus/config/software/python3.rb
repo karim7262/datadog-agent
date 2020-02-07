@@ -31,20 +31,25 @@ if ohai["platform"] != "windows"
     # something here...
   end
 
+  env = case ohai["platform"]
+        when "aix"
+          aix_env
+        else
+          {
+            "CFLAGS" => "-I#{install_dir}/embedded/include -O2 -g -pipe",
+            "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
+          }
+        end
+
+  if linux?
+    env = with_glibc_version(env)
+  end
+
   python_configure.push("--with-dbmliborder=")
 
   build do
     ship_license "PSFL"
 
-    env = case ohai["platform"]
-          when "aix"
-            aix_env
-          else
-            {
-              "CFLAGS" => "-I#{install_dir}/embedded/include -O2 -g -pipe",
-              "LDFLAGS" => "-Wl,-rpath,#{install_dir}/embedded/lib -L#{install_dir}/embedded/lib",
-            }
-          end
     command python_configure.join(" "), :env => env
     command "make -j #{workers}", :env => env
     command "make install", :env => env
