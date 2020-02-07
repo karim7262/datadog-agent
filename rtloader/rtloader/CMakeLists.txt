@@ -29,6 +29,12 @@ add_library(datadog-agent-rtloader SHARED
 )
 endif()
 
+if (TARGET_GLIBC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include ${TARGET_GLIBC}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${TARGET_GLIBC}")
+    target_link_libraries(datadog-agent-rtloader ${CMAKE_DL_LIBS})
+endif()
+
 set_target_properties(datadog-agent-rtloader PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 1
