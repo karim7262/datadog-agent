@@ -53,6 +53,9 @@ type realConntracker struct {
 	nfct    *ct.Nfct
 	nfctDel *ct.Nfct
 
+	// BPF NAT filter
+	filter *natFilter
+
 	state map[connKey]*connValue
 
 	// a short term buffer of connections to IPTranslations. Since we cannot make sure that tracer.go
@@ -108,21 +111,28 @@ func newConntrackerOnce(procRoot string, deleteBufferSize, maxStateSize int) (Co
 	}
 
 	netns := getGlobalNetNSFD(procRoot)
+	natFilter, err := loadNATFilter()
+	if err != nil {
+		log.Errorf("error loading BPF NAT filter: %s", err)
+	}
 
 	logger := getLogger()
 	nfct, err := ct.Open(&ct.Config{ReadTimeout: 10 * time.Millisecond, NetNS: netns, Logger: logger})
 	if err != nil {
 		return nil, err
 	}
+	natFilter.Attach(nfct)
 
 	nfctDel, err := ct.Open(&ct.Config{ReadTimeout: 10 * time.Millisecond, NetNS: netns, Logger: logger})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open delete NFCT")
 	}
+	natFilter.Attach(nfctDel)
 
 	ctr := &realConntracker{
 		nfct:                 nfct,
 		nfctDel:              nfctDel,
+		filter:               natFilter,
 		compactTicker:        time.NewTicker(compactInterval),
 		state:                make(map[connKey]*connValue),
 		shortLivedBuffer:     make(map[connKey]*IPTranslation),
@@ -220,6 +230,7 @@ func (ctr *realConntracker) GetStats() map[string]int64 {
 }
 
 func (ctr *realConntracker) Close() {
+	ctr.filter.Close()
 	ctr.compactTicker.Stop()
 	ctr.exceededSizeLogLimit.Close()
 }
