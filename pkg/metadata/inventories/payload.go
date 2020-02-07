@@ -23,12 +23,19 @@ type CheckMetadata map[string][]*CheckInstanceMetadata
 // CheckInstanceMetadata contains metadata provided by an instance of an integration.
 type CheckInstanceMetadata map[string]interface{}
 
+// PackageMetadata contains metadata about all packages running on the host
+type PackagesMetadata map[string]*PackageManagerMetadata
+
+// PackageMetadata contains metadata about packages for a given package manager
+type PackageManagerMetadata map[string]string
+
 // Payload handles the JSON unmarshalling of the metadata payload
 type Payload struct {
-	Hostname      string         `json:"hostname"`
-	Timestamp     int64          `json:"timestamp"`
-	CheckMetadata *CheckMetadata `json:"check_metadata"`
-	AgentMetadata *AgentMetadata `json:"agent_metadata"`
+	Hostname        string            `json:"hostname"`
+	Timestamp       int64             `json:"timestamp"`
+	CheckMetadata   *CheckMetadata    `json:"check_metadata"`
+	AgentMetadata   *AgentMetadata    `json:"agent_metadata"`
+	PackageMetadata *PackagesMetadata `json:"package_metadata"`
 }
 
 // MarshalJSON serialization a Payload to JSON

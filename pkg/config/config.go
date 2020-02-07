@@ -613,6 +613,13 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("inventories_enabled", true)
 	config.BindEnvAndSetDefault("inventories_max_interval", 600) // 10min
 	config.BindEnvAndSetDefault("inventories_min_interval", 300) // 5min
+	config.BindEnvAndSetDefault("inventories.brew_path", "brew")
+	config.BindEnvAndSetDefault("inventories.dpkg_status_file", "/var/lib/dpkg/status")
+	config.BindEnvAndSetDefault("inventories.rpm_path", "rpm")
+	// TODO support windows path
+	config.BindEnvAndSetDefault("inventories.python_environments", map[string]string{
+		"python2": "python2", "python3": "python3", "ddagent-python": "/opt/datadog-agent/embedded/bin/python"},
+	)
 
 	setAssetFs(config)
 }

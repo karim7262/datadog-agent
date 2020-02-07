@@ -34,10 +34,12 @@ type checkMetadataCacheEntry struct {
 }
 
 var (
-	checkMetadataCache = make(map[string]*checkMetadataCacheEntry) // by check ID
-	checkCacheMutex    = &sync.Mutex{}
-	agentMetadataCache = make(AgentMetadata)
-	agentCacheMutex    = &sync.Mutex{}
+	checkMetadataCache   = make(map[string]*checkMetadataCacheEntry) // by check ID
+	checkCacheMutex      = &sync.Mutex{}
+	agentMetadataCache   = make(AgentMetadata)
+	agentCacheMutex      = &sync.Mutex{}
+	packageMetadataCache = make(PackagesMetadata)
+	packageCacheMutex    = &sync.Mutex{}
 
 	agentStartupTime = timeNow()
 
@@ -66,6 +68,26 @@ func SetAgentMetadata(name string, value interface{}) {
 
 	if agentMetadataCache[name] != value {
 		agentMetadataCache[name] = value
+
+		select {
+		case metadataUpdatedC <- nil:
+		default: // To make sure this call is not blocking
+		}
+	}
+}
+
+// SetAgentMetadata updates the agent metadata value in the cache
+func SetPackageMetadata(packageManager string, packageName string, version string) {
+	packageCacheMutex.Lock()
+	defer packageCacheMutex.Unlock()
+
+	packageManagerData, found := packageMetadataCache[packageManager]
+	if !found {
+		packageManagerData = &PackageManagerMetadata{}
+	}
+
+	if (*packageManagerData)[packageName] != version {
+		(*packageManagerData)[packageName] = version
 
 		select {
 		case metadataUpdatedC <- nil:
@@ -158,10 +180,11 @@ func CreatePayload(hostname string, ac AutoConfigInterface, coll CollectorInterf
 	}
 
 	return &Payload{
-		Hostname:      hostname,
-		Timestamp:     timeNow().UnixNano(),
-		CheckMetadata: &checkMetadata,
-		AgentMetadata: &agentMetadata,
+		Hostname:        hostname,
+		Timestamp:       timeNow().UnixNano(),
+		CheckMetadata:   &checkMetadata,
+		AgentMetadata:   &agentMetadata,
+		PackageMetadata: CollectPackagesVersions(),
 	}
 }
 
