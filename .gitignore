@@ -97,7 +97,7 @@ dogstatsd-msg.h
 *.aps
 
 # ebpf object files
-pkg/ebpf/c/*.o
+pkg/ebpf/**/*.o
 
 # windows container build output
 build.out/

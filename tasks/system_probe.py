@@ -28,7 +28,10 @@ def build(ctx, race=False, go_version=None, incremental_build=False, major_versi
     Build the system_probe
     """
 
+    # Build tracer eBPF code
     build_object_files(ctx, install=True)
+    # Build conntrack NAT socket filter
+    build_object_files(ctx, bpf_dir=os.path.join(".", "pkg", "ebpf", "netlink"), target_name="nat_filter", pkg="netlink", install=True)
 
     # TODO use pkg/version for this
     main = "main."
@@ -195,12 +198,12 @@ def build_dev_docker_image(ctx, image_name, push=False):
 
 
 @task
-def object_files(ctx, install=True):
+def object_files(ctx, bpf_dir=os.path.join(".", "pkg", "ebpf"), target_name="tracer-ebpf", pkg="ebpf", install=True):
     """object_files builds the eBPF object files"""
-    build_object_files(ctx, install=install)
+    build_object_files(ctx, bpf_dir, target_name, pkg, install=install)
 
 
-def build_object_files(ctx, install=True):
+def build_object_files(ctx, bpf_dir=os.path.join(".", "pkg", "ebpf"), target_name="tracer-ebpf", pkg="ebpf", install=True):
     """build_object_files builds only the eBPF object
     set install to False to disable replacing the assets
     """
@@ -217,7 +220,6 @@ def build_object_files(ctx, install=True):
             if d.startswith("linux-")
         ]
 
-    bpf_dir = os.path.join(".", "pkg", "ebpf")
     c_dir = os.path.join(bpf_dir, "c")
 
     flags = [
@@ -233,7 +235,7 @@ def build_object_files(ctx, install=True):
         '-O2',
         '-emit-llvm',
         '-c',
-        os.path.join(c_dir, "tracer-ebpf.c"),
+        os.path.join(c_dir, target_name+".c"),
     ]
 
     # Mapping used by the kernel, from https://elixir.bootlin.com/linux/latest/source/scripts/subarch.include
@@ -263,13 +265,13 @@ def build_object_files(ctx, install=True):
     commands = []
 
     # Build both the standard and debug version
-    obj_file = os.path.join(c_dir, "tracer-ebpf.o")
+    obj_file = os.path.join(c_dir, target_name+".o")
     commands.append(cmd.format(
         flags=" ".join(flags),
         file=obj_file
     ))
 
-    debug_obj_file = os.path.join(c_dir, "tracer-ebpf-debug.o")
+    debug_obj_file = os.path.join(c_dir, target_name+"-debug.o")
     commands.append(cmd.format(
         flags=" ".join(flags + ["-DDEBUG=1"]),
         file=debug_obj_file
@@ -279,8 +281,8 @@ def build_object_files(ctx, install=True):
         # Now update the assets stored in the go code
         commands.append("go get -u github.com/jteeuwen/go-bindata/...")
 
-        assets_cmd = os.environ["GOPATH"]+"/bin/go-bindata -pkg ebpf -prefix '{c_dir}' -modtime 1 -o '{go_file}' '{obj_file}' '{debug_obj_file}'"
-        go_file = os.path.join(bpf_dir, "tracer-ebpf.go")
+        assets_cmd = os.environ["GOPATH"]+"/bin/go-bindata -pkg %s -prefix '{c_dir}' -modtime 1 -o '{go_file}' '{obj_file}' '{debug_obj_file}'" % (pkg)
+        go_file = os.path.join(bpf_dir, target_name+".go")
         commands.append(assets_cmd.format(
             c_dir=c_dir,
             go_file=go_file,
