@@ -28,7 +28,7 @@ end
 
 if linux?
   glibc_version '2.12.2'
-  glibc_version 'x64'
+  glibc_arch 'x64'
 end
 
 # build_version is computed by an invoke command/function.
