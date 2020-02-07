@@ -21,8 +21,6 @@ var (
 	fieldSeparator = []byte("|")
 	colonSeparator = []byte(":")
 	commaSeparator = []byte(",")
-
-	commaSeparatorString = ","
 )
 
 // parser parses dogstatsd messages
