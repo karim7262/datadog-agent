@@ -23,6 +23,10 @@ env = {
   "conf_dir" =>  "#{install_dir}/embedded/etc"
 }
 
+if linux?
+  env = with_glibc_version(env)
+end
+
 build do
   ship_license "https://raw.githubusercontent.com/sysstat/sysstat/master/COPYING"
   command(["./configure",
@@ -31,6 +35,6 @@ build do
        "--disable-sensors",
        "--disable-documentation"
     ].join(" "), :env => env)
-  command "make -j #{workers}", :env => { "LD_RUN_PATH" => "#{install_dir}/embedded/lib" }
+  command "make -j #{workers}", :env => env
   command "make install"
 end
