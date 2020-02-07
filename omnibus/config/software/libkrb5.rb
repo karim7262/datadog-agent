@@ -10,6 +10,16 @@ relative_path "krb5-#{version}/src"
 
 reconf_env = { "PATH" => "#{install_dir}/embedded/bin:#{ENV["PATH"]}" }
 
+env = {
+  "LDFLAGS" => "-pthread -L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
+  "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
+  "LD_RUN_PATH" => "#{install_dir}/embedded/lib",
+}
+
+if linux?
+  env = with_glibc_version(env)
+end
+
 build do
 
   ship_license "https://raw.githubusercontent.com/krb5/krb5/master/NOTICE"
@@ -25,15 +35,6 @@ build do
          "--without-system-verto", # do not prefer libverto from the system, if installed
          "--without-libedit", # we don't want to link with libraries outside of the install dir
          "--prefix=#{install_dir}/embedded"].join(" ")
-  env = {
-    "LDFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-    "CFLAGS" => "-L#{install_dir}/embedded/lib -I#{install_dir}/embedded/include",
-    "LD_RUN_PATH" => "#{install_dir}/embedded/lib",
-  }
-
-  if linux?
-    env = with_glibc_version(env)
-  end
 
   command cmd, :env => env
   command "make -j #{workers}", :env => { "LD_RUN_PATH" => "#{install_dir}/embedded/lib" }
