@@ -7,8 +7,6 @@
 package inventories
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -163,70 +161,6 @@ func TestGetPayload(t *testing.T) {
 
 	//marshaled, err := p.MarshalJSON()
 	//assert.Nil(t, err)
-	jsonString := `
-	{
-		"hostname": "testHostname",
-		"timestamp": %v,
-		"check_metadata":
-		{
-			"check1":
-			[
-				{
-					"check_provided_key1": 456,
-					"check_provided_key2": "Hi",
-					"config.hash": "check1_instance1",
-					"config.provider": "provider1",
-					"last_updated": %v
-				},
-				{
-					"config.hash": "check1_instance2",
-					"config.provider": "provider1",
-					"last_updated": %v
-				}
-			],
-			"check2":
-			[
-				{
-					"check_provided_key1": "hi",
-					"config.hash": "check2_instance1",
-					"config.provider": "provider2",
-					"last_updated": %v
-				}
-			],
-			"non_running_checkid":
-			[
-				{
-					"check_provided_key1": "this_should_be_kept",
-					"config.hash": "non_running_checkid",
-					"config.provider": "",
-					"last_updated": %v
-				}
-			]
-		},
-		"agent_metadata":
-		{
-			"test": true
-		},
-		"package_metadata": {
-			"brew": {
-				"vim": "1:1.2.1
-			},
-			"rpm": {
-				"test": 1.2.1-ubuntu1
-			},
-			"python": {
-				"env1": {
-					"pack1": "1.2.1"
-				},
-				"env2": {
-				}
-			}
-			"python-env1" {}
-			"python-env2" {}
-		}
-	}`
-	jsonString = fmt.Sprintf(jsonString, startNow.UnixNano(), startNow.UnixNano(), agentStartupTime.UnixNano(), originalStartNow.UnixNano(), originalStartNow.UnixNano())
-	jsonString = strings.Join(strings.Fields(jsonString), "") // Removes whitespaces and new lines
 	//assert.Equal(t, jsonString, string(marshaled))
 
 }

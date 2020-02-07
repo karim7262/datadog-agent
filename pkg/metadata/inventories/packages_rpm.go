@@ -24,7 +24,7 @@ type RpmCollector struct {
 }
 
 func (c *RpmCollector) existsInHost() bool {
-	cmd := exec.Command("docker", "exec", "2c8b6428bee9", "rpm", "--version")
+	cmd := exec.Command(c.rpmBin, "--version")
 	if err := cmd.Run(); err != nil {
 		//fmt.Println(string(out))
 		return false
@@ -38,7 +38,7 @@ func (c *RpmCollector) getPackageManagerName() string {
 
 func (c *RpmCollector) collectPackageVersions() *PackageManagerMetadata {
 	allPackages := PackageManagerMetadata{}
-	out, err := exec.Command("docker", "exec", "2c8b6428bee9", "rpm", "-qa", "--qf", "%{NAME} %{EPOCH}:%{VERSION}-%{RELEASE} %{SOURCERPM}\n").CombinedOutput()
+	out, err := exec.Command(c.rpmBin, "-qa", "--qf", "%{NAME} %{EPOCH}:%{VERSION}-%{RELEASE} %{SOURCERPM}\n").CombinedOutput()
 	if err != nil {
 		return &allPackages
 	}
@@ -148,7 +148,6 @@ func containsRune(s []rune, e rune) bool {
 
 func init() {
 	rpmBin := config.Datadog.GetString("inventories.rpm_bim")
-	rpmBin = "docker exec -it 2c8b6428bee9 rpm"
 	collector := &RpmCollector{rpmBin}
 	if collector.existsInHost() {
 		RegisterPackageCollector(collector)
