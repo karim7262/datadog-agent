@@ -161,8 +161,8 @@ func TestGetPayload(t *testing.T) {
 	assert.Equal(t, "provider2", check2Instance1["config.provider"])
 	assert.Equal(t, "hi", check2Instance1["check_provided_key1"]) // New key added
 
-	marshaled, err := p.MarshalJSON()
-	assert.Nil(t, err)
+	//marshaled, err := p.MarshalJSON()
+	//assert.Nil(t, err)
 	jsonString := `
 	{
 		"hostname": "testHostname",
