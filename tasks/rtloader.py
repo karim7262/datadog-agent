@@ -44,7 +44,7 @@ def build(ctx, install_prefix=None, glibc_version=None, python_runtimes='3', cma
         cmake_options += " -G \"Unix Makefiles\""
 
     if glibc_version:
-        cmake_options += "-DTARGET_GLIBC:PATH=" \
+        cmake_options += " -DTARGET_GLIBC:PATH=" \
             "/usr/local/glibc_version_header/version_headers/{}/force_link_glibc_{}.h".format(
                 arch, glibc_version
         )
