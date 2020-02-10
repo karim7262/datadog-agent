@@ -50,6 +50,8 @@ if ohai["platform"] != "windows"
   build do
     ship_license "PSFL"
 
+    patch :source => "python-3.8.1-hackadog.patch" if linux?
+
     command python_configure.join(" "), :env => env
     command "make -j #{workers}", :env => env
     command "make install", :env => env
