@@ -4,7 +4,7 @@
     <ListItem Text="Datadog EU" Value="datadoghq.eu"/>
   </ComboBox>
  <Dialog Id="SiteDlg" Width="370" Height="270" Title="!(loc.SiteDialogTitle)">
-  <Control Id="SiteFromDefault" Type="ComboBox" ComboList="yes" Height="15" Width="320" X="25" Y="148" Property="SITE"/>
+  <Control Id="SiteFromDefault" Type="ComboBox" ComboList="no" Height="15" Width="320" X="25" Y="148" Property="SITE"/>
   <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17"
         Text="Back">
 
