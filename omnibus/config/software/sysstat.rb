@@ -29,6 +29,9 @@ end
 
 build do
   ship_license "https://raw.githubusercontent.com/sysstat/sysstat/master/COPYING"
+
+  patch source: "sysstat-11.1.3-hackadog.patch", env: env
+
   command(["./configure",
        "--prefix=#{install_dir}/embedded",
        "--disable-nls",
