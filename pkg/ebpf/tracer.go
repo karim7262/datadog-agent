@@ -22,6 +22,14 @@ import (
 var (
 	expvarEndpoints map[string]*expvar.Map
 	expvarTypes     = []string{"conntrack", "state", "tracer", "ebpf", "kprobes", "dns"}
+
+	// kprobeOverrides specifies a mapping between sections in our kprobe functions and
+	// the actual eBPF function that it should bind to
+	kprobeOverrides = map[KProbeName]KProbeName{
+		TCPSendMsgPre410: TCPSendMsg,
+		UDPSendMsgPre410: UDPSendMsg,
+		UDPRecvMsgPre410: UDPRecvMsg,
+	}
 )
 
 func init() {

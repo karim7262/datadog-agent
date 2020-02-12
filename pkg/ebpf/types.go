@@ -1,7 +1,5 @@
 package ebpf
 
-import "fmt"
-
 // KProbeName stores the name of the kernel probes setup for tracing
 type KProbeName string
 
@@ -51,32 +49,4 @@ const (
 
 	// InetCskAcceptReturn traces the return value for the inet_csk_accept syscall
 	InetCskAcceptReturn KProbeName = "kretprobe/inet_csk_accept"
-)
-
-// bpfMapName stores the name of the BPF maps storing statistics and other info
-type bpfMapName string
-
-const (
-	connMap            bpfMapName = "conn_stats"
-	tcpStatsMap        bpfMapName = "tcp_stats"
-	tcpCloseEventMap   bpfMapName = "tcp_close_events"
-	latestTimestampMap bpfMapName = "latest_ts"
-	tracerStatusMap    bpfMapName = "tracer_status"
-	portBindingsMap    bpfMapName = "port_bindings"
-	telemetryMap       bpfMapName = "telemetry"
-)
-
-// sectionName returns the sectionName for the given BPF map
-func (b bpfMapName) sectionName() string {
-	return fmt.Sprintf("maps/%s", b)
-}
-
-var (
-	// kprobeOverrides specifies a mapping between sections in our kprobe functions and
-	// the actual eBPF function that it should bind to
-	kprobeOverrides = map[KProbeName]KProbeName{
-		TCPSendMsgPre410: TCPSendMsg,
-		UDPSendMsgPre410: UDPSendMsg,
-		UDPRecvMsgPre410: UDPRecvMsg,
-	}
 )

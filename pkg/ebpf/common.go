@@ -2,12 +2,10 @@ package ebpf
 
 import (
 	"bufio"
-	"encoding/binary"
 	"fmt"
 	"os"
 	"path"
 	"strings"
-	"unsafe"
 
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
@@ -30,8 +28,6 @@ var requiredKernelFuncs = []string{
 var (
 	// ErrNotImplemented will be returned on non-linux environments like Windows and Mac OSX
 	ErrNotImplemented = errors.New("BPF-based system probe not implemented on non-linux systems")
-
-	nativeEndian binary.ByteOrder
 )
 
 func kernelCodeToString(code uint32) string {
@@ -148,19 +144,6 @@ func verifyKernelFuncs(path string) ([]string, error) {
 	return missing, nil
 }
 
-// In lack of binary.NativeEndian ...
-func init() {
-	var i int32 = 0x01020304
-	u := unsafe.Pointer(&i)
-	pb := (*byte)(u)
-	b := *pb
-	if b == 0x04 {
-		nativeEndian = binary.LittleEndian
-	} else {
-		nativeEndian = binary.BigEndian
-	}
-}
-
 func isUbuntu(platform string) bool {
 	return strings.Contains(strings.ToLower(platform), "ubuntu")
 }
@@ -176,14 +159,6 @@ func isCentOS(platform string) bool {
 func isRHEL(platform string) bool {
 	p := strings.ToLower(platform)
 	return strings.Contains(p, "redhat") || strings.Contains(p, "red hat") || strings.Contains(p, "rhel")
-}
-
-func isRHELOrCentOS() (bool, error) {
-	platform, err := util.GetPlatform()
-	if err != nil {
-		return false, err
-	}
-	return isCentOS(platform) || isRHEL(platform), nil
 }
 
 // isPre410Kernel compares current kernel version to the minimum kernel version(4.1.0) and see if it's older

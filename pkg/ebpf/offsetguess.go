@@ -40,6 +40,11 @@ const (
 	procNameMaxSize = 15
 )
 
+var (
+	// the native endianness of this system. See init() for how this is initialized.
+	nativeEndian binary.ByteOrder
+)
+
 // These constants should be in sync with the equivalent definitions in the ebpf program.
 const (
 	stateUninitialized C.__u64 = 0
@@ -539,4 +544,17 @@ func tcpGetInfo(conn net.Conn) (*syscall.TCPInfo, error) {
 	}
 
 	return &tcpInfo, nil
+}
+
+// In lack of binary.NativeEndian ...
+func init() {
+	var i int32 = 0x01020304
+	u := unsafe.Pointer(&i)
+	pb := (*byte)(u)
+	b := *pb
+	if b == 0x04 {
+		nativeEndian = binary.LittleEndian
+	} else {
+		nativeEndian = binary.BigEndian
+	}
 }
