@@ -23,6 +23,8 @@ if arm?
 end
 
 if linux?
+  # build psutil with patch
+  dependency 'psutil'
   # add nfsiostat script
   dependency 'unixodbc'
   dependency 'nfsiostat'
@@ -57,7 +59,9 @@ blacklist_folders = [
 # package names of dependencies that won't be added to the Agent Python environment
 blacklist_packages = Array.new
 
-if suse?
+# FIXME: don't want to deal with aerospike on linux right now
+# if suse?
+if linux?
   blacklist_folders.push('aerospike')  # Temporarily blacklist Aerospike until builder supports new dependency
   blacklist_packages.push(/^aerospike==/)  # Temporarily blacklist Aerospike until builder supports new dependency
 end
