@@ -10,7 +10,7 @@ dependency "pip"
 
 source url: "https://github.com/giampaolo/psutil/archive/release-#{version}.tar.gz"
 
-relative_path "psutil-#{version}"
+relative_path "psutil-release-#{version}"
 
 env = with_embedded_path
 env = with_standard_compiler_flags(env)
