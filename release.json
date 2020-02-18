@@ -1,6 +1,6 @@
 {
     "7.17.0-vsphere-5.0.0": {
-        "INTEGRATIONS_CORE_VERSION": "b3b6f3d5d12e8ebab1b29ada0250854ed41000ef", 
+        "INTEGRATIONS_CORE_VERSION": "florian/r_ddbase", 
         "OMNIBUS_SOFTWARE_VERSION": "7.17.0", 
         "OMNIBUS_RUBY_VERSION": "datadog-5.5.0", 
         "JMXFETCH_VERSION": "0.34.0", 
