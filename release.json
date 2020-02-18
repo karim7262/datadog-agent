@@ -1,5 +1,5 @@
 {
-    "7.17.0-vsphere-5.0.0": {
+    "7.17.0-vsphere-5.0.0rc1": {
         "INTEGRATIONS_CORE_VERSION": "florian/r_ddbase", 
         "OMNIBUS_SOFTWARE_VERSION": "7.17.0", 
         "OMNIBUS_RUBY_VERSION": "datadog-5.5.0", 
