@@ -20,6 +20,7 @@ RUN apt-get update \
  && curl https://keybase.io/justcontainers/key.asc | gpg --import \
  && gpg --verify /tmp/s6.tgz.sig /output/s6.tgz
 
+RUN apt-get install selinux-basics selinux-policy-default policycoreutils-python-utils
 # Extract and cleanup:
 #   - unused systemd unit
 #   - GPL sources for embedded software  # FIXME: move upstream
