@@ -20,7 +20,7 @@ RUN apt-get update \
  && curl https://keybase.io/justcontainers/key.asc | gpg --import \
  && gpg --verify /tmp/s6.tgz.sig /output/s6.tgz
 
-RUN apt-get install selinux-basics selinux-policy-default policycoreutils-python-utils
+RUN apt-get install --no-install-recommends -y selinux-basics selinux-policy-default policycoreutils-python-utils
 # Extract and cleanup:
 #   - unused systemd unit
 #   - GPL sources for embedded software  # FIXME: move upstream
@@ -65,6 +65,9 @@ RUN find / -maxdepth 1 -type f -name 'datadog-agent*_amd64.deb' ! -name "$DD_AGE
  && ln -s /opt/datadog-agent/embedded/ssl etc/ssl \
  && mkdir conf.d checks.d
 
+RUN semodule -v -i etc/datadog-agent/selinux/system_probe_policy.pp
+RUN semanage fcontext -a -t system_probe_t opt/datadog-agent/embedded/bin/system-probe
+RUN restorecon -v opt/datadog-agent/embedded/bin/system-probe
 # Configuration:
 #   - copy default config files
 COPY datadog*.yaml etc/datadog-agent/
