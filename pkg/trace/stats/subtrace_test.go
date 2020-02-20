@@ -57,6 +57,7 @@ func TestExtractTopLevelSubtracesShouldIgnoreLeafTopLevel(t *testing.T) {
 	expected := []Subtrace{
 		{trace[0], trace},
 		{trace[1], []*pb.Span{trace[1], trace[2]}},
+		{trace[3], []*pb.Span{trace[3]}},
 	}
 
 	traceutil.ComputeTopLevel(trace)
