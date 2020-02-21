@@ -77,6 +77,8 @@ variables:
 # you NEED to overwrite it.
 before_script:
   - echo running default before_script
+  - echo RELEASE_VERSION_6=$RELEASE_VERSION_6
+  - echo RELEASE_VERSION_7=$RELEASE_VERSION_7
   - cd $SRC_PATH
   - pip install --upgrade --ignore-installed pip setuptools
   - pip install -r requirements.txt
@@ -833,7 +835,7 @@ agent_suse-x64-a7:
 
 .windows_main_agent_base:
   extends: .windows_msi_base
-  variables: 
+  variables:
     OMNIBUS_TARGET: main
 
 windows_msi_x64-a7:
@@ -878,7 +880,7 @@ windows_msi_x86-a6:
 
 .windows_puppy_agent_base:
   extends: .windows_msi_base
-  variables: 
+  variables:
     OMNIBUS_TARGET: puppy
 
 windows_puppy_msi_x64-a7:
@@ -912,7 +914,7 @@ windows_dsd_msi_x64:
     OMNIBUS_TARGET: dogstatsd
   before_script:
     - set RELEASE_VERSION $RELEASE_VERSION_7
-  
+
 # build Agent package for android
 agent_android_apk:
   stage: package_build
