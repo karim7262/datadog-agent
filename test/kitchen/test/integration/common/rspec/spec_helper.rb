@@ -590,6 +590,7 @@ shared_examples_for 'an Agent that is removed' do
     if os == :windows
       expect(File).not_to exist("C:\\Program Files\\Datadog\\Datadog Agent\\")
     else
+      system("tree /opt/datadog-agent")
       expect(File).not_to exist("/opt/datadog-agent/")
     end
   end
