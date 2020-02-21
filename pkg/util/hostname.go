@@ -251,7 +251,7 @@ func GetHostnameData() (HostnameData, error) {
 		}
 
 		ec2Hostname, _, _, err := getValidEc2Hostname(getEC2Hostname)
-		if err != nil && hostName != ec2Hostname && ec2.IsWindowsDefaultHostname(originalHostname) {
+		if err == nil && hostName != ec2Hostname && ec2.IsWindowsDefaultHostname(originalHostname) {
 			// REMOVEME: This should be removed if/when the default `ec2_use_windows_prefix_detection` is set to true
 			log.Info("You may want to use the EC2 instance-id for the in-app hostname." +
 				" For more information: https://docs.datadoghq.com/ec2-use-win-prefix-detection")
