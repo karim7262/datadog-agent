@@ -7,6 +7,14 @@
 # All rights reserved - Do Not Redistribute
 #
 
+execute 'remove ifdown' do
+  command "rm -f /sbin/ifdown"
+end
+
+execute 'prevent ifdown from being executed' do
+  command "ln -s /usr/bin/true /sbin/ifdown || ln -s /bin/true /sbin/ifdown"
+end
+
 for i in 1..30 do
   ruby_block 'print ip a' do
     block do
