@@ -12,7 +12,7 @@ execute 'remove ifdown' do
 end
 
 execute 'prevent ifdown from being executed' do
-  command "ln -s /usr/bin/true /sbin/ifdown || ln -s /bin/true /sbin/ifdown"
+  command "if [ -f /usr/bin/true ]; then ln -s /usr/bin/true /sbin/ifdown; else ln -s /bin/true /sbin/ifdown; fi"
 end
 
 for i in 1..30 do
