@@ -1,0 +1,5 @@
+suites:
+
+- name: dd-agent-suse-inv
+  run_list:
+    - "recipe[dd-agent-suse-inv]"
