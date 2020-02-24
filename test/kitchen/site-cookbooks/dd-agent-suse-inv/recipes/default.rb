@@ -53,3 +53,16 @@ for i in 1..30 do
     EOF
   end
 end
+
+ruby_block 'print azure agent log' do
+  block do
+    #tricky way to load this Chef::Mixin::ShellOut utilities
+    Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
+    res = shell_out('cat /var/log/waagent.log')
+    puts "stdout:"
+    puts res.stdout
+    puts "stderr:"
+    puts res.stderr
+  end
+  action :create
+end
