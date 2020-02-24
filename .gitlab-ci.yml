@@ -5,7 +5,7 @@ variables:
   DATADOG_AGENT_BUILDERS: v2194239-8bba855
   DD_AGENT_TESTING_DIR: $CI_PROJECT_DIR/test/kitchen
 
-kitchen_test_suse_inv:
+kitchen_test_suse_inv-1:
   stage: test
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:$DATADOG_AGENT_BUILDERS
   before_script:
@@ -17,6 +17,71 @@ kitchen_test_suse_inv:
     - bash -l tasks/kitchen_setup.sh
   script:
     - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh suse-inv-test 7
+  variables:
+    DD_PIPELINE_ID: $CI_PIPELINE_ID-1
+  artifacts:
+    expire_in: 2 weeks
+    when: always
+    paths:
+      - $CI_PROJECT_DIR/kitchen_logs
+  tags: [ "runner:main", "size:large" ]
+
+kitchen_test_suse_inv-2:
+  stage: test
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:$DATADOG_AGENT_BUILDERS
+  before_script:
+    - rsync -azr --delete ./ $SRC_PATH
+    - export TEST_PLATFORMS="sles-11,urn,SUSE:SLES-BYOS:11-SP4:2019.12.05"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-12,urn,SUSE:SLES-BYOS:12-SP4:2019.11.13"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-15,urn,SUSE:SLES-BYOS:15:2019.11.15"
+    - cd $DD_AGENT_TESTING_DIR
+    - bash -l tasks/kitchen_setup.sh
+  script:
+    - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh suse-inv-test 7
+  variables:
+    DD_PIPELINE_ID: $CI_PIPELINE_ID-2
+  artifacts:
+    expire_in: 2 weeks
+    when: always
+    paths:
+      - $CI_PROJECT_DIR/kitchen_logs
+  tags: [ "runner:main", "size:large" ]
+
+kitchen_test_suse_inv-3:
+  stage: test
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:$DATADOG_AGENT_BUILDERS
+  before_script:
+    - rsync -azr --delete ./ $SRC_PATH
+    - export TEST_PLATFORMS="sles-11,urn,SUSE:SLES-BYOS:11-SP4:2019.12.05"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-12,urn,SUSE:SLES-BYOS:12-SP4:2019.11.13"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-15,urn,SUSE:SLES-BYOS:15:2019.11.15"
+    - cd $DD_AGENT_TESTING_DIR
+    - bash -l tasks/kitchen_setup.sh
+  script:
+    - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh suse-inv-test 7
+  variables:
+    DD_PIPELINE_ID: $CI_PIPELINE_ID-3
+  artifacts:
+    expire_in: 2 weeks
+    when: always
+    paths:
+      - $CI_PROJECT_DIR/kitchen_logs
+  tags: [ "runner:main", "size:large" ]
+
+kitchen_test_suse_inv-4:
+  stage: test
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:$DATADOG_AGENT_BUILDERS
+  before_script:
+    - rsync -azr --delete ./ $SRC_PATH
+    - export TEST_PLATFORMS="sles-11,urn,SUSE:SLES-BYOS:11-SP4:2019.12.05"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-12,urn,SUSE:SLES-BYOS:12-SP4:2019.11.13"
+    - export TEST_PLATFORMS="$TEST_PLATFORMS|sles-15,urn,SUSE:SLES-BYOS:15:2019.11.15"
+    - cd $DD_AGENT_TESTING_DIR
+    - bash -l tasks/kitchen_setup.sh
+  script:
+    - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh suse-inv-test 7
+  variables:
+    DD_PIPELINE_ID: $CI_PIPELINE_ID-4
   artifacts:
     expire_in: 2 weeks
     when: always
