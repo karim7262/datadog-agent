@@ -7,6 +7,19 @@
 # All rights reserved - Do Not Redistribute
 #
 
+ruby_block 'print cron' do
+  block do
+    #tricky way to load this Chef::Mixin::ShellOut utilities
+    Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
+    res = shell_out('ls /etc/cron.*/* | xargs cat')
+    puts "stdout:"
+    puts res.stdout
+    puts "stderr:"
+    puts res.stderr
+  end
+  action :create
+end
+
 for i in 1..30 do
   ruby_block 'print ip a' do
     block do
