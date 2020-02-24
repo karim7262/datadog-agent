@@ -7,13 +7,13 @@
 # All rights reserved - Do Not Redistribute
 #
 
-execute 'remove ifdown' do
-  command "rm -f /sbin/ifdown"
-end
+# execute 'remove ifdown' do
+#   command "rm -f /sbin/ifdown"
+# end
 
-execute 'prevent ifdown from being executed' do
-  command "if [ -f /usr/bin/true ]; then ln -s /usr/bin/true /sbin/ifdown; else ln -s /bin/true /sbin/ifdown; fi"
-end
+# execute 'prevent ifdown from being executed' do
+#   command "if [ -f /usr/bin/true ]; then ln -s /usr/bin/true /sbin/ifdown; else ln -s /bin/true /sbin/ifdown; fi"
+# end
 
 for i in 1..20 do
   ruby_block 'print hostname' do
