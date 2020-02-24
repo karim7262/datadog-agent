@@ -15,7 +15,33 @@ execute 'prevent ifdown from being executed' do
   command "if [ -f /usr/bin/true ]; then ln -s /usr/bin/true /sbin/ifdown; else ln -s /bin/true /sbin/ifdown; fi"
 end
 
-for i in 1..30 do
+for i in 1..20 do
+  ruby_block 'print hostname' do
+    block do
+      #tricky way to load this Chef::Mixin::ShellOut utilities
+      Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
+      res = shell_out('hostname -v')
+      puts "stdout:"
+      puts res.stdout
+      puts "stderr:"
+      puts res.stderr
+    end
+    action :create
+  end
+
+  ruby_block 'print uname -a' do
+    block do
+      #tricky way to load this Chef::Mixin::ShellOut utilities
+      Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
+      res = shell_out('uname -a')
+      puts "stdout:"
+      puts res.stdout
+      puts "stderr:"
+      puts res.stderr
+    end
+    action :create
+  end
+
   ruby_block 'print ip a' do
     block do
       #tricky way to load this Chef::Mixin::ShellOut utilities
