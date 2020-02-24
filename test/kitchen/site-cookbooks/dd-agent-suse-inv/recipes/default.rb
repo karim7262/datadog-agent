@@ -7,11 +7,11 @@
 # All rights reserved - Do Not Redistribute
 #
 
-ruby_block 'print cron' do
+ruby_block 'print unit files' do
   block do
     #tricky way to load this Chef::Mixin::ShellOut utilities
     Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
-    res = shell_out('ls /etc/cron.*/* | xargs cat')
+    res = shell_out('systemctl list-unit-files')
     puts "stdout:"
     puts res.stdout
     puts "stderr:"
@@ -38,7 +38,7 @@ for i in 1..30 do
     block do
       #tricky way to load this Chef::Mixin::ShellOut utilities
       Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
-      res = shell_out('ps aux')
+      res = shell_out('ps axf -A -F')
       puts "stdout:"
       puts res.stdout
       puts "stderr:"
