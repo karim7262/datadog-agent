@@ -20,7 +20,7 @@ service 'waagent' do
   action :stop
 end
 
-for i in 1..20 do
+for i in 1..40 do
   ruby_block 'print hostname' do
     block do
       #tricky way to load this Chef::Mixin::ShellOut utilities
