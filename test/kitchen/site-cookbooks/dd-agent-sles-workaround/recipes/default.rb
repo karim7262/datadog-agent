@@ -16,8 +16,8 @@ if node['platform_family'] == 'suse'
     action :stop
   end
 
-  # Wait a bit to let the Azure Agent go down
-  execute 'Wait a bit to let Azure Agent stop' do
-    command "sleep 5"
+  execute 'Doing something just to test' do
+    command "sleep 3"
   end
+
 end
