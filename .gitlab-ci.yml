@@ -2,7 +2,7 @@ stages:
   - test
 
 variables:
-  DATADOG_AGENT_BUILDERS: v2194239-8bba855
+  DATADOG_AGENT_BUILDERS: v2093589-8bb07dc
   DD_AGENT_TESTING_DIR: $CI_PROJECT_DIR/test/kitchen
 
 kitchen_test_suse_inv-1:

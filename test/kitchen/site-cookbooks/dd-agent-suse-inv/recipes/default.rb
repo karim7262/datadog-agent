@@ -15,11 +15,6 @@
 #   command "if [ -f /usr/bin/true ]; then ln -s /usr/bin/true /sbin/ifdown; else ln -s /bin/true /sbin/ifdown; fi"
 # end
 
-service 'waagent' do
-  service_name "waagent"
-  action :stop
-end
-
 for i in 1..20 do
   ruby_block 'print hostname' do
     block do
