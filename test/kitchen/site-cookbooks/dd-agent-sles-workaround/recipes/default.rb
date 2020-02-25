@@ -11,13 +11,16 @@ if node['platform_family'] == 'suse'
   # Stop the Windows Azure Agent, for some reason it's changing the hostname
   # every 30s on SLES 11 and 12, which leads to a network interface reset,
   # making it likely for tests to fail if a network call happens during the reset.
-  service 'waagent' do
-    service_name "waagent"
-    action :stop
-  end
+  # service 'waagent' do
+  #   service_name "waagent"
+  #   action :stop
+  # end
 
-  execute 'Doing something just to test' do
-    command "sleep 3"
+  execute '' do
+    command <<-EOF
+      rm -rf /sbin/ifdown
+      if [ -f /usr/bin/true ]; then ln -s /usr/bin/true /sbin/ifdown; else ln -s /bin/true /sbin/ifdown; fi
+    EOF
   end
 
 end
