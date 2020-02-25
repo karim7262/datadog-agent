@@ -20,12 +20,25 @@ service 'waagent' do
   action :stop
 end
 
-for i in 1..40 do
+for i in 1..20 do
   ruby_block 'print hostname' do
     block do
       #tricky way to load this Chef::Mixin::ShellOut utilities
       Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
       res = shell_out('hostname -v')
+      puts "stdout:"
+      puts res.stdout
+      puts "stderr:"
+      puts res.stderr
+    end
+    action :create
+  end
+
+  ruby_block 'cat /etc/HOSTNAME' do
+    block do
+      #tricky way to load this Chef::Mixin::ShellOut utilities
+      Chef::Resource::RubyBlock.send(:include, Chef::Mixin::ShellOut)
+      res = shell_out('cat /etc/HOSTNAME')
       puts "stdout:"
       puts res.stdout
       puts "stderr:"
