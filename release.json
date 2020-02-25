@@ -1,4 +1,18 @@
 {
+    "6.18.0-florian-tuf": {
+        "INTEGRATIONS_CORE_VERSION": "florian/bump_securesystemslib", 
+        "OMNIBUS_SOFTWARE_VERSION": "7.18.0-rc.1", 
+        "OMNIBUS_RUBY_VERSION": "datadog-5.5.0", 
+        "JMXFETCH_VERSION": "0.35.0", 
+        "JMXFETCH_HASH": "1f1c8435b56050e006990c450b3c8969c3097932c01e080b2c320343a968fcba"
+    },
+    "7.18.0-florian-tuf": {
+        "INTEGRATIONS_CORE_VERSION": "florian/bump_securesystemslib", 
+        "OMNIBUS_SOFTWARE_VERSION": "7.18.0-rc.1", 
+        "OMNIBUS_RUBY_VERSION": "datadog-5.5.0", 
+        "JMXFETCH_VERSION": "0.35.0", 
+        "JMXFETCH_HASH": "1f1c8435b56050e006990c450b3c8969c3097932c01e080b2c320343a968fcba"
+    },
     "nightly": {
         "INTEGRATIONS_CORE_VERSION": "master",
         "OMNIBUS_SOFTWARE_VERSION": "master",
