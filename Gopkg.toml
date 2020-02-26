@@ -144,7 +144,8 @@
   version = "~1.1.4"
 
 [[constraint]]
-  name = "github.com/DataDog/viper"
+  name = "github.com/spf13/viper"
+  source = "github.com/DataDog/viper"
   version = "~v1.7.0"
 
 [[constraint]]
