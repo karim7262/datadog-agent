@@ -28,10 +28,10 @@ if linux?
   dependency 'nfsiostat'
   # need kerberos for hdfs
   dependency 'libkrb5'
+end
 
-  unless suse? || arm?
-    dependency 'aerospike-py3'
-  end
+unless suse? || arm? || windows?
+  dependency 'aerospike-py3'
 end
 
 relative_path 'integrations-core'
