@@ -348,7 +348,7 @@ func (s *Server) parsePackets(batcher *batcher, packets []*listeners.Packet) {
 
 func (s *Server) errLog(format string, params ...interface{}) {
 	if !s.disableVerboseLogs {
-		log.Errorf(format, params)
+		log.Errorf(format, params...)
 	}
 }
 
