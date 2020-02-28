@@ -76,6 +76,9 @@ type Server struct {
 	statsLock             sync.Mutex
 	mapper                *mapper.MetricMapper
 	telemetryEnabled      bool
+	// disableVerboseLogs is a feature flag to disable the logs capable
+	// of flooding the stderr (e.g. parsing error messages).
+	disableVerboseLogs bool
 }
 
 // metricStat holds how many times a metric has been
@@ -168,6 +171,7 @@ func NewServer(samplePool *metrics.MetricSamplePool, samplesOut chan<- []metrics
 		debugMetricsStats:     metricsStats,
 		metricsStats:          make(map[string]metricStat),
 		telemetryEnabled:      telemetry.IsEnabled(),
+		disableVerboseLogs:    config.Datadog.GetBool("dogstatsd_disable_verbose_logs"),
 	}
 
 	forwardHost := config.Datadog.GetString("statsd_forward_host")
@@ -294,9 +298,9 @@ func (s *Server) parsePackets(batcher *batcher, packets []*listeners.Packet) {
 				serviceCheck, err := s.parseServiceCheckMessage(message)
 				if err != nil {
 					if len(originTags) > 0 {
-						log.Errorf("Dogstatsd: error parsing service check '%q' origin tags %v: %s", message, originTags, err)
+						s.errLog("Dogstatsd: error parsing service check '%q' origin tags %v: %s", message, originTags, err)
 					} else {
-						log.Errorf("Dogstatsd: error parsing service check '%q': %s", message, err)
+						s.errLog("Dogstatsd: error parsing service check '%q': %s", message, err)
 					}
 					continue
 				}
@@ -306,9 +310,9 @@ func (s *Server) parsePackets(batcher *batcher, packets []*listeners.Packet) {
 				event, err := s.parseEventMessage(message)
 				if err != nil {
 					if len(originTags) > 0 {
-						log.Errorf("Dogstatsd: error parsing event '%q' origin tags %v: %s", message, originTags, err)
+						s.errLog("Dogstatsd: error parsing event '%q' origin tags %v: %s", message, originTags, err)
 					} else {
-						log.Errorf("Dogstatsd: error parsing event '%q': %s", message, err)
+						s.errLog("Dogstatsd: error parsing event '%q': %s", message, err)
 					}
 					continue
 				}
@@ -318,9 +322,9 @@ func (s *Server) parsePackets(batcher *batcher, packets []*listeners.Packet) {
 				sample, err := s.parseMetricMessage(message)
 				if err != nil {
 					if len(originTags) > 0 {
-						log.Errorf("Dogstatsd: error parsing metric message '%q' origin tags %v: %s", message, originTags, err)
+						s.errLog("Dogstatsd: error parsing metric message '%q' origin tags %v: %s", message, originTags, err)
 					} else {
-						log.Errorf("Dogstatsd: error parsing metric message '%q': %s", message, err)
+						s.errLog("Dogstatsd: error parsing metric message '%q': %s", message, err)
 					}
 					continue
 				}
@@ -340,6 +344,12 @@ func (s *Server) parsePackets(batcher *batcher, packets []*listeners.Packet) {
 		s.packetPool.Put(packet)
 	}
 	batcher.flush()
+}
+
+func (s *Server) errLog(format string, params ...interface{}) {
+	if !s.disableVerboseLogs {
+		log.Errorf(format, params)
+	}
 }
 
 func (s *Server) parseMetricMessage(message []byte) (metrics.MetricSample, error) {
