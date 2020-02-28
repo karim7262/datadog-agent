@@ -77,7 +77,9 @@ type Server struct {
 	mapper                *mapper.MetricMapper
 	telemetryEnabled      bool
 	// disableVerboseLogs is a feature flag to disable the logs capable
-	// of flooding the stderr (e.g. parsing error messages).
+	// of flooding the logger output (e.g. parsing messages error).
+	// NOTE(remy): this should probably be dropped and use a throttler logger, see
+	// package (pkg/trace/logutils) for a possible throttler implemetation.
 	disableVerboseLogs bool
 }
 
@@ -347,7 +349,9 @@ func (s *Server) parsePackets(batcher *batcher, packets []*listeners.Packet) {
 }
 
 func (s *Server) errLog(format string, params ...interface{}) {
-	if !s.disableVerboseLogs {
+	if s.disableVerboseLogs {
+		log.Debugf(format, params...)
+	} else {
 		log.Errorf(format, params...)
 	}
 }
