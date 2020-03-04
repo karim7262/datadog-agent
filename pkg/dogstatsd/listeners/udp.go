@@ -9,6 +9,7 @@ import (
 	"expvar"
 	"fmt"
 	"net"
+	"runtime"
 	"strings"
 
 	"github.com/DataDog/datadog-agent/pkg/telemetry"
@@ -91,6 +92,10 @@ func NewUDPListener(packetOut chan Packets, packetPool *PacketPool) (*UDPListene
 
 // Listen runs the intake loop. Should be called in its own goroutine
 func (l *UDPListener) Listen() {
+	// we want this routine to have its own thread to be able to drain the
+	// udp socket without being unscheduled
+	runtime.LockOSThread()
+
 	log.Infof("dogstatsd-udp: starting to listen on %s", l.conn.LocalAddr())
 	for {
 		udpPackets.Add(1)
@@ -98,7 +103,7 @@ func (l *UDPListener) Listen() {
 		if err != nil {
 			// connection has been closed
 			if strings.HasSuffix(err.Error(), " use of closed network connection") {
-				return
+				break
 			}
 
 			log.Errorf("dogstatsd-udp: error reading packet: %v", err)
@@ -114,6 +119,8 @@ func (l *UDPListener) Listen() {
 		// packetBuffer merges multiple packets together and sends them when its buffer is full
 		l.packetBuffer.addMessage(l.buffer[:n])
 	}
+
+	runtime.UnlockOSThread()
 }
 
 // Stop closes the UDP connection and stops listening
