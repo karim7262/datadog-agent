@@ -54,6 +54,7 @@ func (s *tagStore) processTagInfo(info *collectors.TagInfo) error {
 		return fmt.Errorf("empty source name, skipping message")
 	}
 	if info.DeleteEntity {
+		log.Warnf("[MISSINGTAG] processTagInfo delete source: %s entity: %s", info.Source, info.Entity)
 		s.toDeleteMutex.Lock()
 		s.toDelete[info.Entity] = struct{}{}
 		s.toDeleteMutex.Unlock()
@@ -63,7 +64,7 @@ func (s *tagStore) processTagInfo(info *collectors.TagInfo) error {
 	// TODO: check if real change
 	s.storeMutex.Lock()
 	defer s.storeMutex.Unlock()
-	log.Warnf("[MISSINGTAG] processTagInfo entity: %s, lower: [%v] high: [%v], orch: [%v]", info.Entity, info.LowCardTags, info.HighCardTags, info.OrchestratorCardTags)
+	log.Warnf("[MISSINGTAG] processTagInfo source: %s entity: %s, lower: [%v] high: [%v], orch: [%v]", info.Source, info.Entity, info.LowCardTags, info.HighCardTags, info.OrchestratorCardTags)
 	storedTags, exist := s.store[info.Entity]
 	if !exist {
 		storedTags = &entityTags{
