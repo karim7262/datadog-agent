@@ -63,6 +63,7 @@ func (s *tagStore) processTagInfo(info *collectors.TagInfo) error {
 	// TODO: check if real change
 	s.storeMutex.Lock()
 	defer s.storeMutex.Unlock()
+	log.Warnf("[MISSINGTAG] processTagInfo entity: %s, lower: [%v] high: [%v], orch: [%v]", info.Entity, info.LowCardTags, info.HighCardTags, info.OrchestratorCardTags)
 	storedTags, exist := s.store[info.Entity]
 	if !exist {
 		storedTags = &entityTags{
@@ -72,9 +73,9 @@ func (s *tagStore) processTagInfo(info *collectors.TagInfo) error {
 		}
 		s.store[info.Entity] = storedTags
 	}
-
 	storedTags.Lock()
 	defer storedTags.Unlock()
+
 	_, found := storedTags.lowCardTags[info.Source]
 	if found && info.CacheMiss {
 		// check if the source tags is already present for this entry

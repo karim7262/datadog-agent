@@ -194,7 +194,7 @@ func (ku *KubeUtil) GetLocalPodList() ([]*Pod, error) {
 				missingID = true
 			}
 		}
-		log.Warnf("[TAGMISSING] Pod: %s, missing container ID: %v", pod.Metadata.Name, missingID)
+		log.Warnf("[TAGMISSING] Pod: %s, missing container.ID: %v", pod.Metadata.Name, missingID)
 	}
 	pods.Items = tmpSlice
 
