@@ -61,10 +61,11 @@ type DCAClient struct {
 	// used to setup the DCAClient
 	initRetry retry.Retrier
 
-	clusterAgentAPIEndpoint       string          // ${SCHEME}://${clusterAgentHost}:${PORT}
+	clusterAgentAPIEndpoints      []string        // ${SCHEME}://${clusterAgentHost}:${PORT}
 	ClusterAgentVersion           version.Version // Version of the cluster-agent we're connected to
 	clusterAgentAPIClient         *http.Client
 	clusterAgentAPIRequestHeaders http.Header
+	lastSuccessfulAPIEndpoint     int
 	leaderClient                  *leaderClient
 }
 
@@ -96,10 +97,11 @@ func GetClusterAgentClient() (DCAClientInterface, error) {
 func (c *DCAClient) init() error {
 	var err error
 
-	c.clusterAgentAPIEndpoint, err = getClusterAgentEndpoint()
+	c.clusterAgentAPIEndpoints, err = getClusterAgentEndpoints()
 	if err != nil {
 		return err
 	}
+	c.lastSuccessfulAPIEndpoint = 0
 
 	authToken, err := security.GetClusterAgentAuthToken()
 	if err != nil {
@@ -123,7 +125,8 @@ func (c *DCAClient) init() error {
 	log.Infof("Successfully connected to the Datadog Cluster Agent %s", c.ClusterAgentVersion.String())
 
 	// Clone the http client in a new client with built-in redirect handler
-	c.leaderClient = newLeaderClient(c.clusterAgentAPIClient, c.clusterAgentAPIEndpoint)
+	// TODO: is this useful in any way?
+	c.leaderClient = newLeaderClient(c.clusterAgentAPIClient, c.clusterAgentAPIEndpoints[0])
 
 	return nil
 }
@@ -133,46 +136,54 @@ func (c *DCAClient) Version() version.Version {
 	return c.ClusterAgentVersion
 }
 
-// ClusterAgentAPIEndpoint returns the Agent API Endpoint URL as a string
+// ClusterAgentAPIEndpoint returns the last successfully contacted Agent API Endpoint URL as a string
+// if no endpoint has been contacted successfully, it will return the first configured
 func (c *DCAClient) ClusterAgentAPIEndpoint() string {
-	return c.clusterAgentAPIEndpoint
+	return c.clusterAgentAPIEndpoints[c.lastSuccessfulAPIEndpoint]
 }
 
-// getClusterAgentEndpoint provides a validated https endpoint from configuration keys in datadog.yaml:
+// getClusterAgentEndpoints provides list of validated https endpoints from configuration keys in datadog.yaml:
 // 1st. configuration key "cluster_agent.url" (or the DD_CLUSTER_AGENT_URL environment variable),
-//      add the https prefix if the scheme isn't specified
+//      add the https prefix if the scheme isn't specified, multiple URLs can be separated by semicolon
 // 2nd. environment variables associated with "cluster_agent.kubernetes_service_name"
-//      ${dcaServiceName}_SERVICE_HOST and ${dcaServiceName}_SERVICE_PORT
-func getClusterAgentEndpoint() (string, error) {
+//      ${dcaServiceName}_SERVICE_HOST and ${dcaServiceName}_SERVICE_PORT (not possible to specify multiple URLs)
+func getClusterAgentEndpoints() ([]string, error) {
 	const configDcaURL = "cluster_agent.url"
 	const configDcaSvcName = "cluster_agent.kubernetes_service_name"
 
 	dcaURL := config.Datadog.GetString(configDcaURL)
+	// The following part is primarily (but not only) used on Cloud Foundry where we might have multiple DCA endpoints
 	if dcaURL != "" {
-		if strings.HasPrefix(dcaURL, "http://") {
-			return "", fmt.Errorf("cannot get cluster agent endpoint, not a https scheme: %s", dcaURL)
+		urls := strings.Split(dcaURL, ";")
+		results := make([]string, 0, len(urls))
+		for i, oneURL := range urls {
+			if strings.HasPrefix(oneURL, "http://") {
+				return nil, fmt.Errorf("cannot get cluster agent endpoint on position %d, not a https scheme: %s", i, oneURL)
+			}
+			if strings.Contains(oneURL, "://") == false {
+				log.Tracef("Adding https scheme to URL %s on position %d: https://%s", oneURL, i, oneURL)
+				oneURL = fmt.Sprintf("https://%s", oneURL)
+			}
+			u, err := url.Parse(oneURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing URL %s on position %d: %s", oneURL, i, err.Error())
+			}
+			if u.Scheme != "https" {
+				return nil, fmt.Errorf("cannot get cluster agent endpoint on position %d, not a https scheme: %s", i, u.Scheme)
+			}
+			log.Debugf("Will attempt connecting to the configured URL for the Datadog Cluster Agent: %s", oneURL)
+			results = append(results, u.String())
 		}
-		if strings.Contains(dcaURL, "://") == false {
-			log.Tracef("Adding https scheme to %s: https://%s", dcaURL, dcaURL)
-			dcaURL = fmt.Sprintf("https://%s", dcaURL)
-		}
-		u, err := url.Parse(dcaURL)
-		if err != nil {
-			return "", err
-		}
-		if u.Scheme != "https" {
-			return "", fmt.Errorf("cannot get cluster agent endpoint, not a https scheme: %s", u.Scheme)
-		}
-		log.Debugf("Connecting to the configured URL for the Datadog Cluster Agent: %s", dcaURL)
-		return u.String(), nil
+		return results, nil
 	}
 
+	// The following part is Kubernetes specific and will always return exactly one endpoint (or none if there's error)
 	// Construct the URL with the Kubernetes service environment variables
 	// *_SERVICE_HOST and *_SERVICE_PORT
 	dcaSvc := config.Datadog.GetString(configDcaSvcName)
 	log.Debugf("Identified service for the Datadog Cluster Agent: %s", dcaSvc)
 	if dcaSvc == "" {
-		return "", fmt.Errorf("cannot get a cluster agent endpoint, both %s and %s are empty", configDcaURL, configDcaSvcName)
+		return nil, fmt.Errorf("cannot get a cluster agent endpoint, both %s and %s are empty", configDcaURL, configDcaSvcName)
 	}
 
 	dcaSvc = strings.ToUpper(dcaSvc)
@@ -182,23 +193,68 @@ func getClusterAgentEndpoint() (string, error) {
 	dcaSvcHostEnv := fmt.Sprintf("%s_SERVICE_HOST", dcaSvc)
 	dcaSvcHost := os.Getenv(dcaSvcHostEnv)
 	if dcaSvcHost == "" {
-		return "", fmt.Errorf("cannot get a cluster agent endpoint for kubernetes service %s, env %s is empty", dcaSvc, dcaSvcHostEnv)
+		return nil, fmt.Errorf("cannot get a cluster agent endpoint for kubernetes service %s, env %s is empty", dcaSvc, dcaSvcHostEnv)
 	}
 
 	// port
 	dcaSvcPort := os.Getenv(fmt.Sprintf("%s_SERVICE_PORT", dcaSvc))
 	if dcaSvcPort == "" {
-		return "", fmt.Errorf("cannot get a cluster agent endpoint for kubernetes service %s, env %s is empty", dcaSvc, dcaSvcPort)
+		return nil, fmt.Errorf("cannot get a cluster agent endpoint for kubernetes service %s, env %s is empty", dcaSvc, dcaSvcPort)
 	}
 
 	// validate the URL
 	dcaURL = fmt.Sprintf("https://%s:%s", dcaSvcHost, dcaSvcPort)
 	u, err := url.Parse(dcaURL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return u.String(), nil
+	return []string{u.String()}, nil
+}
+
+func (c *DCAClient) httpDo(method, urlPath string) (*http.Response, error) {
+	var response *http.Response
+	var err error
+	lastSuccess := c.clusterAgentAPIEndpoints[c.lastSuccessfulAPIEndpoint]
+	response, err = c.httpDoOne(method, lastSuccess, urlPath)
+	if err == nil && response.StatusCode != http.StatusMisdirectedRequest {
+		return response, err
+	}
+
+	for i, url := range c.clusterAgentAPIEndpoints {
+		if url == lastSuccess {
+			continue
+		} else if response != nil {
+			// close the response body from last loop iteration, as we'll get a new response
+			// (and either return that or close it here in the next iteration)
+			response.Body.Close()
+		}
+		response, err = c.httpDoOne(method, url, urlPath)
+		// only break if there's no error *and* we didn't get StatusMisdirectedRequest, IOW the request went ok and
+		// was aimed at the current leader; otherwise just continue the loop
+		if err == nil && response.StatusCode != http.StatusMisdirectedRequest {
+			log.Infof("Successfully requested data from DCA at %s, will use it next time", url)
+			c.lastSuccessfulAPIEndpoint = i
+			break
+		} else {
+			errStr := "not a leader (code 421)"
+			if err != nil {
+				errStr = err.Error()
+			}
+			log.Debugf("Failed requesting data from DCA at %s: %s", url, errStr)
+		}
+	}
+	return response, err
+}
+
+func (c *DCAClient) httpDoOne(method, url, urlPath string) (*http.Response, error) {
+	log.Debugf("Trying DCA at %s", url)
+	request, err := http.NewRequest(method, fmt.Sprintf("%s/%s", url, urlPath), nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header = c.clusterAgentAPIRequestHeaders
+	return c.clusterAgentAPIClient.Do(request)
 }
 
 // GetVersion fetches the version of the Cluster Agent. Used in the agent status command.
@@ -208,15 +264,7 @@ func (c *DCAClient) GetVersion() (version.Version, error) {
 	var err error
 
 	// https://host:port/version
-	rawURL := fmt.Sprintf("%s/%s", c.clusterAgentAPIEndpoint, dcaVersionPath)
-
-	req, err := http.NewRequest("GET", rawURL, nil)
-	if err != nil {
-		return version, err
-	}
-	req.Header = c.clusterAgentAPIRequestHeaders
-
-	resp, err := c.clusterAgentAPIClient.Do(req)
+	resp, err := c.httpDo("GET", dcaVersionPath)
 	if err != nil {
 		return version, err
 	}
@@ -243,15 +291,8 @@ func (c *DCAClient) GetNodeLabels(nodeName string) (map[string]string, error) {
 	var labels map[string]string
 
 	// https://host:port/api/v1/tags/node/{nodeName}
-	rawURL := fmt.Sprintf("%s/%s/%s", c.clusterAgentAPIEndpoint, dcaNodeMeta, nodeName)
-
-	req, err := http.NewRequest("GET", rawURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header = c.clusterAgentAPIRequestHeaders
-
-	resp, err := c.clusterAgentAPIClient.Do(req)
+	rawURL := fmt.Sprintf("%s/%s", dcaNodeMeta, nodeName)
+	resp, err := c.httpDo("GET", rawURL)
 	if err != nil {
 		return nil, err
 	}
@@ -300,14 +341,8 @@ func (c *DCAClient) GetPodsMetadataForNode(nodeName string) (apiv1.NamespacesPod
 		}
 	}
 	*/
-	rawURL := fmt.Sprintf("%s/%s/%s", c.clusterAgentAPIEndpoint, dcaMetadataPath, nodeName)
-	req, err := http.NewRequest("GET", rawURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header = c.clusterAgentAPIRequestHeaders
-
-	resp, err := c.clusterAgentAPIClient.Do(req)
+	rawURL := fmt.Sprintf("%s/%s", dcaMetadataPath, nodeName)
+	resp, err := c.httpDo("GET", rawURL)
 	if err != nil {
 		return nil, err
 	}
@@ -346,14 +381,8 @@ func (c *DCAClient) GetKubernetesMetadataNames(nodeName, ns, podName string) ([]
 	}
 
 	// https://host:port/api/v1/metadata/{nodeName}/{ns}/{pod-[0-9a-z]+}
-	rawURL := fmt.Sprintf("%s/%s/%s/%s/%s", c.clusterAgentAPIEndpoint, dcaMetadataPath, nodeName, ns, podName)
-	req, err := http.NewRequest("GET", rawURL, nil)
-	if err != nil {
-		return metadataNames, err
-	}
-	req.Header = c.clusterAgentAPIRequestHeaders
-
-	resp, err := c.clusterAgentAPIClient.Do(req)
+	rawURL := fmt.Sprintf("%s/%s/%s/%s", dcaMetadataPath, nodeName, ns, podName)
+	resp, err := c.httpDo("GET", rawURL)
 	if err != nil {
 		return metadataNames, err
 	}

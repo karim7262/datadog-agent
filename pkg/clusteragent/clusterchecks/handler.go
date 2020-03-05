@@ -51,12 +51,13 @@ type Handler struct {
 	m                    sync.RWMutex // Below fields protected by the mutex
 	state                state
 	leaderIP             string
+	leaderRedirectable   bool
 	port                 int
 }
 
 // NewHandler returns a populated Handler
 // It will hook on the specified AutoConfig instance at Start
-func NewHandler(ac pluggableAutoConfig) (*Handler, error) {
+func NewHandler(ac pluggableAutoConfig, getLeaderIPCallback func() (types.LeaderIPCallback, error)) (*Handler, error) {
 	if ac == nil {
 		return nil, errors.New("empty autoconfig object")
 	}
@@ -202,19 +203,20 @@ func (h *Handler) updateLeaderIP() error {
 	defer h.m.Unlock()
 
 	var newState state
-	h.leaderIP = newIP
+	h.leaderIP = newIP.IP
+	h.leaderRedirectable = newIP.Redirectable
 
 	switch h.state {
 	case leader:
-		if newIP != "" {
+		if newIP.IP != "" {
 			newState = follower
 		}
 	case follower:
-		if newIP == "" {
+		if newIP.IP == "" {
 			newState = leader
 		}
 	case unknown:
-		if newIP == "" {
+		if newIP.IP == "" {
 			newState = leader
 		} else {
 			newState = follower

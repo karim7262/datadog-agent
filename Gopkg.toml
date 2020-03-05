@@ -277,5 +277,9 @@
   revision = "d0518a556b8f5320812b7d26d20ef0a71f058d44"
 
 [[constraint]]
+  name = "code.cloudfoundry.org/locket"
+  revision = "67fd0a0fdf2daa5b675778fd85c757a9506bd401"
+
+[[constraint]]
   name = "github.com/bhmj/jsonslice"
   revision = "882a55fa931cb1034965bd34d2366b6b5fb012ae"

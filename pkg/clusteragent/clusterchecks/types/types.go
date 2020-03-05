@@ -56,7 +56,7 @@ type Stats struct {
 
 // LeaderIPCallback describes the leader-election method we
 // need and allows to inject a custom one for tests
-type LeaderIPCallback func() (string, error)
+type LeaderIPCallback func() (LeaderIPResult, error)
 
 // CLCRunnersStats is used to unmarshall the CLC Runners stats payload
 type CLCRunnersStats map[string]CLCRunnerStats
@@ -66,4 +66,10 @@ type CLCRunnerStats struct {
 	AverageExecutionTime int  `json:"AverageExecutionTime"`
 	MetricSamples        int  `json:"MetricSamples"`
 	IsClusterCheck       bool `json:"IsClusterCheck"`
+}
+
+// LeaderIPResult is a return value for clusterchecks.Handler.leaderStatusCallback
+type LeaderIPResult struct {
+	IP           string
+	Redirectable bool
 }

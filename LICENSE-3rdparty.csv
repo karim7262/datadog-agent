@@ -166,6 +166,14 @@ core,code.cloudfoundry.org/bbs,Apache-2.0
 core,github.com/tedsuo/rata,MIT
 core,github.com/bmizerany/pat,MIT
 core,code.cloudfoundry.org/tlsconfig,Apache-2.0
+core,code.cloudfoundry.org/go-diodes,Apache-2.0
+core,github.com/nu7hatch/gouuid,MIT
+core,code.cloudfoundry.org/rfc5424,BSD-2-Clause
+core,code.cloudfoundry.org/consuladapter,Apache-2.0
+core,code.cloudfoundry.org/go-loggregator,Apache-2.0
+core,code.cloudfoundry.org/locket,Apache-2.0
+core,code.cloudfoundry.org/diego-logging-client,Apache-2.0
+core,code.cloudfoundry.org/clock,Apache-2.0
 process,github.com/DataDog/gopsutil,BSD-3-Clause
 network,github.com/iovisor/gobpf,Apache-2.0
 network,github.com/florianl/go-conntrack,MIT

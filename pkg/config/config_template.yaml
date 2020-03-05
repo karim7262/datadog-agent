@@ -1495,6 +1495,11 @@ api_key:
   #
   # url: https://bbs.service.cf.internal:8889
 
+  ## @param locket_api_location - string - optional - default: locket.service.cf.internal:8891
+  ## Location of the Locket API.
+  #
+  # locket_api_location: locket.service.cf.internal:8891
+
   ## @param poll_interval - integer - optional - default: 15
   ## How often to refresh data from BBS API, in seconds. Values lower than 10 might influence
   ## performance of other operations in the cluster.

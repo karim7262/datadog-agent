@@ -22,6 +22,7 @@ import (
 
 	"context"
 
+	"github.com/DataDog/datadog-agent/pkg/clusteragent/clusterchecks/types"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/apiserver"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/apiserver/common"
@@ -208,7 +209,7 @@ func (le *LeaderEngine) GetLeader() string {
 // GetLeaderIP returns the IP the leader can be reached at, assuming its
 // identity is its pod name. Returns empty if we are the leader.
 // The result is not cached.
-func (le *LeaderEngine) GetLeaderIP() (string, error) {
+func (le *LeaderEngine) GetLeaderIP() (types.LeaderIPCallback, error) {
 	leaderName := le.GetLeader()
 	if leaderName == "" || leaderName == le.HolderIdentity {
 		return "", nil
@@ -222,7 +223,10 @@ func (le *LeaderEngine) GetLeaderIP() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return target.IP, nil
+	return types.LeaderIPCallback{
+		IP: target.IP,
+		Redirectable: true,
+	}, nil
 }
 
 // IsLeader returns true if the last observed leader was this client else returns false.

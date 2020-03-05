@@ -8,7 +8,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/DataDog/datadog-agent/pkg/util/cloudfoundry"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,11 +23,13 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/api/healthprobe"
 	"github.com/DataDog/datadog-agent/pkg/clusteragent"
 	"github.com/DataDog/datadog-agent/pkg/clusteragent/clusterchecks"
+	"github.com/DataDog/datadog-agent/pkg/clusteragent/clusterchecks/types"
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/status/health"
 	"github.com/DataDog/datadog-agent/pkg/util"
+	"github.com/DataDog/datadog-agent/pkg/util/cloudfoundry"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/DataDog/datadog-agent/pkg/version"
 )
@@ -184,14 +185,12 @@ func run(cmd *cobra.Command, args []string) error {
 	common.StartAutoConfig()
 
 	var clusterCheckHandler *clusterchecks.Handler
-	clusterCheckHandler, err = setupClusterCheck(mainCtx)
+	clusterCheckHandler, err = setupClusterCheck(mainCtx, hostname)
 	if err != nil {
-		log.Errorf("Error while setting up cluster check Autodiscovery %v", err)
+		return fmt.Errorf("Error while setting up cluster check Autodiscovery: %v", err)
 	}
 
 	// Start the cmd HTTPS server
-	// We always need to start it, even with nil clusterCheckHandler
-	// as it's also used to perform the agent commands (e.g. agent status)
 	sc := clusteragent.ServerContext{
 		ClusterCheckHandler: clusterCheckHandler,
 	}
@@ -250,8 +249,8 @@ func initializeBBSCache(ctx context.Context) error {
 	}
 }
 
-func setupClusterCheck(ctx context.Context) (*clusterchecks.Handler, error) {
-	handler, err := clusterchecks.NewHandler(common.AC)
+func setupClusterCheck(ctx context.Context, hostname string) (*clusterchecks.Handler, error) {
+	handler, err := clusterchecks.NewHandler(common.AC, getLeaderIPCallback(ctx, hostname))
 	if err != nil {
 		return nil, err
 	}
@@ -259,4 +258,23 @@ func setupClusterCheck(ctx context.Context) (*clusterchecks.Handler, error) {
 
 	log.Info("Started cluster check Autodiscovery")
 	return handler, nil
+}
+
+func getLeaderIPCallback(ctx context.Context, hostname string) func() (types.LeaderIPCallback, error) {
+	return func() (types.LeaderIPCallback, error) {
+		result, err := cloudfoundry.RunGlobalLeaderElector(
+			ctx,
+			config.Datadog.GetString("cloud_foundry_bbs.locket_api_location"),
+			config.Datadog.GetString("cloud_foundry_bbs.ca_file"),
+			config.Datadog.GetString("cloud_foundry_bbs.cert_file"),
+			config.Datadog.GetString("cloud_foundry_bbs.key_file"),
+			hostname,
+			time.Second * time.Duration(config.Datadog.GetInt("cloud_foundry_bbs.poll_interval")),
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed setting up leader election mechanism: %s", err.Error())
+		}
+		return result, nil
+	}
 }

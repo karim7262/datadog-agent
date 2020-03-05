@@ -274,7 +274,7 @@ func start(cmd *cobra.Command, args []string) error {
 }
 
 func setupClusterCheck(ctx context.Context) (*clusterchecks.Handler, error) {
-	handler, err := clusterchecks.NewHandler(common.AC)
+	handler, err := clusterchecks.NewHandler(common.AC, getLeaderIPCallback)
 	if err != nil {
 		return nil, err
 	}
@@ -282,4 +282,15 @@ func setupClusterCheck(ctx context.Context) (*clusterchecks.Handler, error) {
 
 	log.Info("Started cluster check Autodiscovery")
 	return handler, nil
+}
+
+func getLeaderIPCallback() (types.LeaderIPCallback, error) {
+	engine, err := leaderelection.GetLeaderEngine()
+	if err != nil {
+		return nil, err
+	}
+
+	engine.StartLeaderElectionRun()
+
+	return engine.GetLeaderIP, nil
 }

@@ -29,7 +29,11 @@ func (h *Handler) ShouldHandle() (int, string) {
 	case leader:
 		return http.StatusOK, ""
 	case follower:
-		return http.StatusFound, fmt.Sprintf("%s:%d", h.leaderIP, h.port)
+		if h.leaderRedirectable {
+			return http.StatusFound, fmt.Sprintf("%s:%d", h.leaderIP, h.port)
+		} else {
+			return http.StatusMisdirectedRequest, "not the leader"
+		}
 	default:
 		return http.StatusServiceUnavailable, notReadyReason
 	}
