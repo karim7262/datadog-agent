@@ -187,6 +187,15 @@ func (ku *KubeUtil) GetLocalPodList() ([]*Pod, error) {
 			tmpSlice = append(tmpSlice, pod)
 		}
 	}
+	for _, pod := range tmpSlice {
+		missingID := false
+		for _, container := range pod.Status.Containers {
+			if container.ID == "" {
+				missingID = true
+			}
+		}
+		log.Warnf("[TAGMISSING] Pod: %s, missing container ID: %v", pod.Metadata.Name, missingID)
+	}
 	pods.Items = tmpSlice
 
 	// cache the podList to reduce pressure on the kubelet
