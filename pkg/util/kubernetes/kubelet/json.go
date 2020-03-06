@@ -14,7 +14,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // jsoniterConfig mirrors jsoniter.ConfigFastest
@@ -64,16 +63,6 @@ func (pu *podUnmarshaller) filteringDecoder(ptr unsafe.Pointer, iter *jsoniter.I
 	podCallback := func(iter *jsoniter.Iterator) bool {
 		pod := &Pod{}
 		iter.ReadVal(pod)
-
-		log.Warnf("[TAGMISSING] filteringDecoder decode pod.Name %s", pod.Metadata.Name)
-		for _, container := range pod.Status.Containers {
-			if container.ID == "" {
-				log.Warnf("[TAGMISSING] filteringDecoder decode pod.Name %s, nil containerID container:'%#v'", pod.Metadata.Name, container)
-			} else {
-				log.Warnf("[TAGMISSING] filteringDecoder decode pod.Name %s, containerID:'%s'", pod.Metadata.Name, container.ID)
-			}
-
-		}
 
 		// Quick exit for running/pending containers
 		if pod.Status.Phase == "Running" || pod.Status.Phase == "Pending" {

@@ -101,17 +101,14 @@ func (w *PodWatcher) computeChanges(podList []*Pod) ([]*Pod, error) {
 			// We don't check container readiness as init containers are never ready
 			// We check if the container has an ID instead (has run or is running)
 			if !container.IsPending() {
-				log.Warnf("[MISSINGTAG] pod %s container not empty container.ID:%s", pod.Metadata.Name, container.ID)
 				// new container are always sent ignoring the pod state
 				if _, found := w.lastSeen[container.ID]; !found {
-					log.Warnf("[MISSINGTAG] pod %s container updated (not found lastSeen) container.ID:%s ", pod.Metadata.Name, container.ID)
 					updatedContainer = true
 				}
 				w.lastSeen[container.ID] = now
 
 				// for existing ones we look at the readiness state
 				if _, found := w.lastSeenReady[container.ID]; !found && isPodReady {
-					log.Warnf("[MISSINGTAG] pod %s container updated (not found lastSeenReady) container.ID:%s ", pod.Metadata.Name, container.ID)
 					// the pod has never been seen ready or was removed when
 					// reaching the unreadinessTimeout
 					updatedContainer = true
@@ -121,8 +118,6 @@ func (w *PodWatcher) computeChanges(podList []*Pod) ([]*Pod, error) {
 				if isPodReady {
 					w.lastSeenReady[container.ID] = now
 				}
-			} else {
-				log.Warnf("[MISSINGTAG] pod %s container empty container.ID", pod.Metadata.Name)
 			}
 		}
 

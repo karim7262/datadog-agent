@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
@@ -25,6 +26,7 @@ type entityTags struct {
 	cachedOrchestrator   []string // Low + orchestrator (subslice of cachedAll)
 	cachedLow            []string // Sub-slice of cachedAll
 	tagsHash             string
+	cacheMissSince       *time.Time
 }
 
 // tagStore stores entity tags in memory and handles search and collation.
@@ -90,6 +92,13 @@ func (s *tagStore) processTagInfo(info *collectors.TagInfo) error {
 	storedTags.highCardTags[info.Source] = info.HighCardTags
 	storedTags.cacheValid = false
 
+	if info.CacheMiss && storedTags.cacheMissSince == nil {
+		now := time.Now()
+		storedTags.cacheMissSince = &now
+	} else if !info.CacheMiss {
+		storedTags.cacheMissSince = nil
+	}
+
 	return nil
 }
 
@@ -111,15 +120,21 @@ func computeTagsHash(tags []string) string {
 // prune will lock the store and delete tags for the entity previously
 // passed as delete. This is to be called regularly from the user class.
 func (s *tagStore) prune() error {
+	now := time.Now()
+	s.storeMutex.Lock()
+	defer s.storeMutex.Unlock()
 	s.toDeleteMutex.Lock()
 	defer s.toDeleteMutex.Unlock()
+	for entityID, entityTags := range s.store {
+		if entityTags.cacheMissSince != nil && entityTags.cacheMissSince.Add(5*time.Minute).Before(now) {
+			log.Warnf("[MISSINGTAG] cache misse since 2min for entityID:%s", entityID)
+			s.toDelete[entityID] = struct{}{}
+		}
+	}
 
 	if len(s.toDelete) == 0 {
 		return nil
 	}
-
-	s.storeMutex.Lock()
-	defer s.storeMutex.Unlock()
 	for entity := range s.toDelete {
 		delete(s.store, entity)
 	}
