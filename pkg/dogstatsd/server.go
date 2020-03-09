@@ -275,7 +275,7 @@ func nextMessage(packet *[]byte) (message []byte) {
 
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
 	for _, packet := range packets {
-		originTagger := originTags{origin: packet.Origin}
+		originTags := findOriginTags(packet.Origin)
 		log.Tracef("Dogstatsd receive: %q", packet.Contents)
 		for {
 			message := nextMessage(&packet.Contents)
@@ -292,21 +292,23 @@ func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*liste
 
 			switch messageType {
 			case serviceCheckType:
-				serviceCheck, err := s.parseServiceCheckMessage(parser, message, originTagger.getTags)
+				serviceCheck, err := s.parseServiceCheckMessage(parser, message)
 				if err != nil {
 					log.Errorf("Dogstatsd: error parsing service check %q: %s", message, err)
 					continue
 				}
+				serviceCheck.Tags = append(serviceCheck.Tags, originTags...)
 				batcher.appendServiceCheck(serviceCheck)
 			case eventType:
-				event, err := s.parseEventMessage(parser, message, originTagger.getTags)
+				event, err := s.parseEventMessage(parser, message)
 				if err != nil {
 					log.Errorf("Dogstatsd: error parsing event %q: %s", message, err)
 					continue
 				}
+				event.Tags = append(event.Tags, originTags...)
 				batcher.appendEvent(event)
 			case metricSampleType:
-				sample, err := s.parseMetricMessage(parser, message, originTagger.getTags)
+				sample, err := s.parseMetricMessage(parser, message)
 				if err != nil {
 					log.Errorf("Dogstatsd: error parsing metric message %q: %s", message, err)
 					continue
@@ -314,6 +316,7 @@ func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*liste
 				if s.debugMetricsStats {
 					s.storeMetricStats(sample.Name)
 				}
+				sample.Tags = append(sample.Tags, originTags...)
 				batcher.appendSample(sample)
 				if s.histToDist && sample.Mtype == metrics.HistogramType {
 					distSample := sample.Copy()
@@ -328,7 +331,7 @@ func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*liste
 	batcher.flush()
 }
 
-func (s *Server) parseMetricMessage(parser *parser, message []byte, originTagsFunc func() []string) (metrics.MetricSample, error) {
+func (s *Server) parseMetricMessage(parser *parser, message []byte) (metrics.MetricSample, error) {
 	sample, err := parser.parseMetricSample(message)
 	if err != nil {
 		dogstatsdMetricParseErrors.Add(1)
@@ -342,7 +345,7 @@ func (s *Server) parseMetricMessage(parser *parser, message []byte, originTagsFu
 			sample.tags = append(sample.tags, mapResult.Tags...)
 		}
 	}
-	metricSample := enrichMetricSample(sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, originTagsFunc)
+	metricSample := enrichMetricSample(sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname)
 	metricSample.Tags = append(metricSample.Tags, s.extraTags...)
 	dogstatsdMetricPackets.Add(1)
 	// FIXME (arthur): remove this check and s.telemetryEnabled once we don't
@@ -353,32 +356,45 @@ func (s *Server) parseMetricMessage(parser *parser, message []byte, originTagsFu
 	return metricSample, nil
 }
 
-func (s *Server) parseEventMessage(parser *parser, message []byte, originTagsFunc func() []string) (*metrics.Event, error) {
+func (s *Server) parseEventMessage(parser *parser, message []byte) (*metrics.Event, error) {
 	sample, err := parser.parseEvent(message)
 	if err != nil {
 		dogstatsdEventParseErrors.Add(1)
 		tlmProcessed.Inc("events", "error")
 		return nil, err
 	}
-	event := enrichEvent(sample, s.defaultHostname, originTagsFunc)
+	event := enrichEvent(sample, s.defaultHostname)
 	event.Tags = append(event.Tags, s.extraTags...)
 	tlmProcessed.Inc("events", "ok")
 	dogstatsdEventPackets.Add(1)
 	return event, nil
 }
 
-func (s *Server) parseServiceCheckMessage(parser *parser, message []byte, originTagsFunc func() []string) (*metrics.ServiceCheck, error) {
+func (s *Server) parseServiceCheckMessage(parser *parser, message []byte) (*metrics.ServiceCheck, error) {
 	sample, err := parser.parseServiceCheck(message)
 	if err != nil {
 		dogstatsdServiceCheckParseErrors.Add(1)
 		tlmProcessed.Inc("service_checks", "error")
 		return nil, err
 	}
-	serviceCheck := enrichServiceCheck(sample, s.defaultHostname, originTagsFunc)
+	serviceCheck := enrichServiceCheck(sample, s.defaultHostname)
 	serviceCheck.Tags = append(serviceCheck.Tags, s.extraTags...)
 	dogstatsdServiceCheckPackets.Add(1)
 	tlmProcessed.Inc("service_checks", "ok")
 	return serviceCheck, nil
+}
+
+func findOriginTags(origin string) []string {
+	var tags []string
+	if origin != listeners.NoOrigin {
+		originTags, err := tagger.Tag(origin, tagger.DogstatsdCardinality)
+		if err != nil {
+			log.Errorf(err.Error())
+		} else {
+			tags = append(tags, originTags...)
+		}
+	}
+	return tags
 }
 
 // Stop stops a running Dogstatsd server
@@ -447,32 +463,4 @@ func FormatDebugStats(stats []byte) (string, error) {
 	}
 
 	return buf.String(), nil
-}
-
-func findOriginTags(origin string) []string {
-	var tags []string
-	if origin != listeners.NoOrigin {
-		originTags, err := tagger.Tag(origin, tagger.DogstatsdCardinality)
-		if err != nil {
-			log.Errorf(err.Error())
-		} else {
-			tags = append(tags, originTags...)
-		}
-	}
-	return tags
-}
-
-type originTags struct {
-	origin string
-	tags   []string
-	// we don't use "sync.Once" here because we know only on one goroutine can call the function `getTags()`
-	alreadyRun bool
-}
-
-func (o *originTags) getTags() []string {
-	if !o.alreadyRun {
-		o.tags = findOriginTags(o.origin)
-		o.alreadyRun = true
-	}
-	return o.tags
 }
