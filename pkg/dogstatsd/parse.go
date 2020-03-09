@@ -3,9 +3,8 @@ package dogstatsd
 import (
 	"bytes"
 	"strconv"
+	"strings"
 	"unsafe"
-
-	"github.com/DataDog/datadog-agent/pkg/config"
 )
 
 type messageType int
@@ -23,24 +22,9 @@ var (
 	fieldSeparator = []byte("|")
 	colonSeparator = []byte(":")
 	commaSeparator = []byte(",")
+
+	commaSeparatorString = ","
 )
-
-// parser parses dogstatsd messages
-// not safe for concurent use
-type parser struct {
-	interner *stringInterner
-}
-
-func newParser() *parser {
-	stringInternerCacheSize := config.Datadog.GetInt("dogstatsd_string_interner_size")
-	if stringInternerCacheSize == 0 {
-		stringInternerCacheSize = 4096
-	}
-
-	return &parser{
-		interner: newStringInterner(stringInternerCacheSize),
-	}
-}
 
 func findMessageType(message []byte) messageType {
 	if bytes.HasPrefix(message, eventPrefix) {
@@ -64,25 +48,11 @@ func nextField(message []byte) ([]byte, []byte) {
 	return message[:sepIndex], message[sepIndex+1:]
 }
 
-func (p *parser) parseTags(rawTags []byte) []string {
+func parseTags(rawTags []byte) []string {
 	if len(rawTags) == 0 {
 		return nil
 	}
-	tagsCount := bytes.Count(rawTags, commaSeparator)
-	tagsList := make([]string, tagsCount+1)
-
-	i := 0
-	for i < tagsCount {
-		tagPos := bytes.Index(rawTags, commaSeparator)
-		if tagPos < 0 {
-			break
-		}
-		tagsList[i] = p.interner.LoadOrStore(rawTags[:tagPos])
-		rawTags = rawTags[tagPos+len(commaSeparator):]
-		i++
-	}
-	tagsList[i] = p.interner.LoadOrStore(rawTags)
-	return tagsList
+	return strings.Split(string(rawTags), commaSeparatorString)
 }
 
 // the std API does not have methods to do []byte => float parsing
