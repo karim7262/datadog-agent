@@ -13,51 +13,43 @@ import (
 type tagRetriever func(entity string, cardinality collectors.TagCardinality) ([]string, error)
 
 var (
-	hostTagPrefix       = "host:"
-	entityIDTagPrefix   = "dd.internal.entity_id:"
-	entityIDIgnoreValue = "none"
+	hostTagPrefix     = "host:"
+	entityIDTagPrefix = "dd.internal.entity_id:"
 
 	getTags tagRetriever = tagger.Tag
 )
 
-func enrichTags(tags []string, defaultHostname string, originTagsFunc func() []string) ([]string, string) {
+func enrichTags(tags []string, defaultHostname string) ([]string, string) {
 	if len(tags) == 0 {
 		return nil, defaultHostname
 	}
 
+	extraTags := make([]string, 0, 8)
 	host := defaultHostname
 
 	n := 0
-	entityIDValue := ""
 	for _, tag := range tags {
 		if strings.HasPrefix(tag, hostTagPrefix) {
 			host = tag[len(hostTagPrefix):]
 		} else if strings.HasPrefix(tag, entityIDTagPrefix) {
-			entityIDValue = tag[len(entityIDTagPrefix):]
+			// currently only supported for pods
+			entity := kubelet.KubePodTaggerEntityPrefix + tag[len(entityIDTagPrefix):]
+			entityTags, err := getTags(entity, tagger.DogstatsdCardinality)
+			if err != nil {
+				log.Tracef("Cannot get tags for entity %s: %s", entity, err)
+				continue
+			}
+			extraTags = append(extraTags, entityTags...)
 		} else {
 			tags[n] = tag
 			n++
 		}
 	}
 	tags = tags[:n]
-	if entityIDValue == "" {
-		// Add origin tags only if the entity id tags is not provided
-		tags = append(tags, originTagsFunc()...)
-	} else if entityIDValue != entityIDIgnoreValue {
-		// Check if the value is not "none" in order to avoid calling
-		// the tagger for entity that doesn't exist.
-
-		// currently only supported for pods
-		entity := kubelet.KubePodTaggerEntityPrefix + entityIDValue
-		entityTags, err := getTags(entity, tagger.DogstatsdCardinality)
-		if err != nil {
-			log.Tracef("Cannot get tags for entity %s: %s", entity, err)
-		} else {
-			tags = append(tags, entityTags...)
-		}
-	}
+	tags = append(tags, extraTags...)
 	return tags, host
 }
+
 func enrichMetricType(dogstatsdMetricType metricType) metrics.MetricType {
 	switch dogstatsdMetricType {
 	case gaugeType:
@@ -76,24 +68,21 @@ func enrichMetricType(dogstatsdMetricType metricType) metrics.MetricType {
 	return metrics.GaugeType
 }
 
-func isBlacklisted(metricName, namespace string, namespaceBlacklist []string) bool {
+func enrichMetricSample(metricSample dogstatsdMetricSample, namespace string, namespaceBlacklist []string, defaultHostname string) metrics.MetricSample {
+	metricName := metricSample.name
 	if namespace != "" {
+		blacklisted := false
 		for _, prefix := range namespaceBlacklist {
 			if strings.HasPrefix(metricName, prefix) {
-				return true
+				blacklisted = true
 			}
 		}
+		if !blacklisted {
+			metricName = namespace + metricName
+		}
 	}
-	return false
-}
 
-func enrichMetricSample(metricSample dogstatsdMetricSample, namespace string, namespaceBlacklist []string, defaultHostname string, originTagsFunc func() []string) metrics.MetricSample {
-	metricName := metricSample.name
-	tags, hostname := enrichTags(metricSample.tags, defaultHostname, originTagsFunc)
-
-	if !isBlacklisted(metricName, namespace, namespaceBlacklist) {
-		metricName = namespace + metricName
-	}
+	tags, hostname := enrichTags(metricSample.tags, defaultHostname)
 
 	return metrics.MetricSample{
 		Host:       hostname,
@@ -130,8 +119,8 @@ func enrichEventAlertType(dogstatsdAlertType alertType) metrics.EventAlertType {
 	return metrics.EventAlertTypeSuccess
 }
 
-func enrichEvent(event dogstatsdEvent, defaultHostname string, originTagsFunc func() []string) *metrics.Event {
-	tags, hostFromTags := enrichTags(event.tags, defaultHostname, originTagsFunc)
+func enrichEvent(event dogstatsdEvent, defaultHostname string) *metrics.Event {
+	tags, hostFromTags := enrichTags(event.tags, defaultHostname)
 
 	enrichedEvent := &metrics.Event{
 		Title:          event.title,
@@ -166,8 +155,8 @@ func enrichServiceCheckStatus(status serviceCheckStatus) metrics.ServiceCheckSta
 	return metrics.ServiceCheckUnknown
 }
 
-func enrichServiceCheck(serviceCheck dogstatsdServiceCheck, defaultHostname string, originTagsFunc func() []string) *metrics.ServiceCheck {
-	tags, hostFromTags := enrichTags(serviceCheck.tags, defaultHostname, originTagsFunc)
+func enrichServiceCheck(serviceCheck dogstatsdServiceCheck, defaultHostname string) *metrics.ServiceCheck {
+	tags, hostFromTags := enrichTags(serviceCheck.tags, defaultHostname)
 
 	enrichedServiceCheck := &metrics.ServiceCheck{
 		CheckName: serviceCheck.name,
