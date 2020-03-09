@@ -54,29 +54,28 @@ func init() {
 
 // Server represent a Dogstatsd server
 type Server struct {
-	listeners                 []listeners.StatsdListener
-	packetsIn                 chan listeners.Packets
-	samplePool                *metrics.MetricSamplePool
-	samplesOut                chan<- []metrics.MetricSample
-	eventsOut                 chan<- []*metrics.Event
-	servicesCheckOut          chan<- []*metrics.ServiceCheck
-	Statistics                *util.Stats
-	Started                   bool
-	packetPool                *listeners.PacketPool
-	stopChan                  chan bool
-	health                    *health.Handle
-	metricPrefix              string
-	metricPrefixBlacklist     []string
-	defaultHostname           string
-	histToDist                bool
-	histToDistPrefix          string
-	extraTags                 []string
-	debugMetricsStats         bool
-	metricsStats              map[string]metricStat
-	statsLock                 sync.Mutex
-	mapper                    *mapper.MetricMapper
-	telemetryEnabled          bool
-	entityIDPrecedenceEnabled bool
+	listeners             []listeners.StatsdListener
+	packetsIn             chan listeners.Packets
+	samplePool            *metrics.MetricSamplePool
+	samplesOut            chan<- []metrics.MetricSample
+	eventsOut             chan<- []*metrics.Event
+	servicesCheckOut      chan<- []*metrics.ServiceCheck
+	Statistics            *util.Stats
+	Started               bool
+	packetPool            *listeners.PacketPool
+	stopChan              chan bool
+	health                *health.Handle
+	metricPrefix          string
+	metricPrefixBlacklist []string
+	defaultHostname       string
+	histToDist            bool
+	histToDistPrefix      string
+	extraTags             []string
+	debugMetricsStats     bool
+	metricsStats          map[string]metricStat
+	statsLock             sync.Mutex
+	mapper                *mapper.MetricMapper
+	telemetryEnabled      bool
 }
 
 // metricStat holds how many times a metric has been
@@ -148,30 +147,27 @@ func NewServer(samplePool *metrics.MetricSamplePool, samplesOut chan<- []metrics
 
 	extraTags := config.Datadog.GetStringSlice("dogstatsd_tags")
 
-	entityIDPrecedenceEnabled := config.Datadog.GetBool("dogstatsd_entity_id_precedence")
-
 	s := &Server{
-		Started:                   true,
-		Statistics:                stats,
-		samplePool:                samplePool,
-		packetsIn:                 packetsChannel,
-		samplesOut:                samplesOut,
-		eventsOut:                 eventsOut,
-		servicesCheckOut:          servicesCheckOut,
-		listeners:                 tmpListeners,
-		packetPool:                packetPool,
-		stopChan:                  make(chan bool),
-		health:                    health.Register("dogstatsd-main"),
-		metricPrefix:              metricPrefix,
-		metricPrefixBlacklist:     metricPrefixBlacklist,
-		defaultHostname:           defaultHostname,
-		histToDist:                histToDist,
-		histToDistPrefix:          histToDistPrefix,
-		extraTags:                 extraTags,
-		debugMetricsStats:         metricsStats,
-		metricsStats:              make(map[string]metricStat),
-		telemetryEnabled:          telemetry.IsEnabled(),
-		entityIDPrecedenceEnabled: entityIDPrecedenceEnabled,
+		Started:               true,
+		Statistics:            stats,
+		samplePool:            samplePool,
+		packetsIn:             packetsChannel,
+		samplesOut:            samplesOut,
+		eventsOut:             eventsOut,
+		servicesCheckOut:      servicesCheckOut,
+		listeners:             tmpListeners,
+		packetPool:            packetPool,
+		stopChan:              make(chan bool),
+		health:                health.Register("dogstatsd-main"),
+		metricPrefix:          metricPrefix,
+		metricPrefixBlacklist: metricPrefixBlacklist,
+		defaultHostname:       defaultHostname,
+		histToDist:            histToDist,
+		histToDistPrefix:      histToDistPrefix,
+		extraTags:             extraTags,
+		debugMetricsStats:     metricsStats,
+		metricsStats:          make(map[string]metricStat),
+		telemetryEnabled:      telemetry.IsEnabled(),
 	}
 
 	forwardHost := config.Datadog.GetString("statsd_forward_host")
@@ -346,7 +342,7 @@ func (s *Server) parseMetricMessage(parser *parser, message []byte, originTagsFu
 			sample.tags = append(sample.tags, mapResult.Tags...)
 		}
 	}
-	metricSample := enrichMetricSample(sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, originTagsFunc, s.entityIDPrecedenceEnabled)
+	metricSample := enrichMetricSample(sample, s.metricPrefix, s.metricPrefixBlacklist, s.defaultHostname, originTagsFunc)
 	metricSample.Tags = append(metricSample.Tags, s.extraTags...)
 	dogstatsdMetricPackets.Add(1)
 	// FIXME (arthur): remove this check and s.telemetryEnabled once we don't
@@ -364,7 +360,7 @@ func (s *Server) parseEventMessage(parser *parser, message []byte, originTagsFun
 		tlmProcessed.Inc("events", "error")
 		return nil, err
 	}
-	event := enrichEvent(sample, s.defaultHostname, originTagsFunc, s.entityIDPrecedenceEnabled)
+	event := enrichEvent(sample, s.defaultHostname, originTagsFunc)
 	event.Tags = append(event.Tags, s.extraTags...)
 	tlmProcessed.Inc("events", "ok")
 	dogstatsdEventPackets.Add(1)
@@ -378,7 +374,7 @@ func (s *Server) parseServiceCheckMessage(parser *parser, message []byte, origin
 		tlmProcessed.Inc("service_checks", "error")
 		return nil, err
 	}
-	serviceCheck := enrichServiceCheck(sample, s.defaultHostname, originTagsFunc, s.entityIDPrecedenceEnabled)
+	serviceCheck := enrichServiceCheck(sample, s.defaultHostname, originTagsFunc)
 	serviceCheck.Tags = append(serviceCheck.Tags, s.extraTags...)
 	dogstatsdServiceCheckPackets.Add(1)
 	tlmProcessed.Inc("service_checks", "ok")
