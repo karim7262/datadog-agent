@@ -14,19 +14,23 @@ type batcher struct {
 	events        []*metrics.Event
 	serviceChecks []*metrics.ServiceCheck
 
+	shardedAgg *aggregator.ShardedAggregator
+
 	// output channels
 	choutSamples       chan<- []metrics.MetricSample
 	choutEvents        chan<- []*metrics.Event
 	choutServiceChecks chan<- []*metrics.ServiceCheck
 }
 
-func newBatcher(aggregator *aggregator.BufferedAggregator) *batcher {
-	s, e, sc := aggregator.GetBufferedChannels()
+func newBatcher(aggregator *aggregator.ShardedAggregator) *batcher {
+	s, e, sc := aggregator.First().GetBufferedChannels()
 	return &batcher{
 		samples:            metrics.GlobalMetricSamplePool.GetBatch(),
 		choutSamples:       s,
 		choutEvents:        e,
 		choutServiceChecks: sc,
+		// XXX(remy):
+		shardedAgg: aggregator,
 	}
 }
 
@@ -48,7 +52,10 @@ func (b *batcher) appendServiceCheck(serviceCheck *metrics.ServiceCheck) {
 
 func (b *batcher) flushSamples() {
 	if b.samplesCount > 0 {
-		b.choutSamples <- b.samples[:b.samplesCount]
+		//	// XXX(remy): very costly to do that with a BufferedAggregator
+		//	b.choutSamples <- b.samples[:b.samplesCount]
+		b.shardedAgg.PushSamples(b.samples[:b.samplesCount])
+
 		b.samplesCount = 0
 		b.samples = metrics.GlobalMetricSamplePool.GetBatch()
 	}

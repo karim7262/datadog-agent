@@ -1243,6 +1243,14 @@
   revision = "0ceca61e4d75b92ab59d094a7502921aba0051a2"
 
 [[projects]]
+  digest = "1:0af6c54e81d2b2f3054b6f49ed98a098258d52758a012af935ff3c5a0733d963"
+  name = "github.com/segmentio/fasthash"
+  packages = ["fnv1a"]
+  pruneopts = ""
+  revision = "f3727d1efd1ebf7ce313d35dea4ad7096d92e72d"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:02135a4151567d48ebff6cf36f73b5d8dee566855df84ffd96111d5225848bb7"
   name = "github.com/shirou/gopsutil"
   packages = [
@@ -2111,7 +2119,7 @@
   revision = "b3a7cee44a305be0a69e1b9ac03018307287e1b0"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:f27698f7ae7864893ebcfb843e44d821263ac1dcf0ba1d5c2353f9d319a2f28d"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/kubelet/remote/fake",
@@ -2280,6 +2288,7 @@
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/samuel/go-zookeeper/zk",
+    "github.com/segmentio/fasthash/fnv1a",
     "github.com/shirou/gopsutil/cpu",
     "github.com/shirou/gopsutil/disk",
     "github.com/shirou/gopsutil/host",

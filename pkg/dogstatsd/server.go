@@ -59,7 +59,7 @@ type Server struct {
 	listeners []listeners.StatsdListener
 	// aggregator is a pointer to the aggregator that the dogstatsd daemon
 	// will send the the metrics samples, events and service checks to.
-	aggregator *aggregator.BufferedAggregator
+	aggregator *aggregator.ShardedAggregator
 
 	packetsIn                 chan listeners.Packets
 	Statistics                *util.Stats
@@ -88,7 +88,7 @@ type metricStat struct {
 }
 
 // NewServer returns a running Dogstatsd server
-func NewServer(aggregator *aggregator.BufferedAggregator) (*Server, error) {
+func NewServer(aggregator *aggregator.ShardedAggregator) (*Server, error) {
 	var stats *util.Stats
 	if config.Datadog.GetBool("dogstatsd_stats_enable") == true {
 		buff := config.Datadog.GetInt("dogstatsd_stats_buffer")
@@ -256,6 +256,9 @@ func (s *Server) worker() {
 	// the flushing logic to the aggreagtor is actually in the batcher.
 	batcher := newBatcher(s.aggregator)
 
+	// here's the main loop of the worker, the listener is sending packets to the
+	// worker through the `packetsIn` channel, which are then sent to the
+	// parser here.
 	parser := newParser()
 	for {
 		select {
@@ -263,6 +266,8 @@ func (s *Server) worker() {
 			return
 		case <-s.health.C:
 		case packets := <-s.packetsIn:
+			// send the packet for parsing; the batcher will take care of the flushing part.
+
 			s.parsePackets(batcher, parser, packets)
 		}
 	}
