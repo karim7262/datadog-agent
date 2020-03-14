@@ -2901,7 +2901,7 @@ latest_release_7:
 # - set the IMAGE and TAG envvars
 # - in the gitlab pipeline view, trigger the step (in the first column)
 #
-.delete_docker_tag:
+delete_docker_tag:
   tags: [ "runner:docker", "size:large" ]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker-notary:0.6.1
   before_script:
@@ -2915,8 +2915,8 @@ latest_release_7:
   when: manual
   variables:
     <<: *docker_hub_variables
-    IMAGE: ""  # image name, for example "agent"
-    TAG: ""  # tag name, for example "6.9.0"
+    IMAGE: "agent"  # image name, for example "agent"
+    TAG: "6.17.0-rc.2"  # tag name, for example "6.9.0"
     ORGANIZATION: "datadog"
   script:
     - if [[ -z "$IMAGE" ]]; then echo "Need an image"; exit 1; fi
