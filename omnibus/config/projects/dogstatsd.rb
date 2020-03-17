@@ -112,7 +112,9 @@ end
 # ------------------------------------
 
 # creates required build directories
-dependency 'datadog-agent-prepare'
+if windows?
+  dependency 'datadog-agent-prepare-windows'
+end
 
 # version manifest file
 dependency 'version-manifest'
