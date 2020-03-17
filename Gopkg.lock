@@ -2,15 +2,52 @@
 
 
 [[projects]]
-  digest = "1:e2fc614bdd3a92702f18c139dc28bf99c96296d89d3c7076ec8f7b3562c094a9"
+  digest = "1:1260c7a2fa91d5a7d5e515fb36e695491d341bff65e9299d0bd16cf2f6539c88"
+  name = "code.cloudfoundry.org/bbs"
+  packages = [
+    ".",
+    "encryption",
+    "events",
+    "format",
+    "models",
+  ]
+  pruneopts = ""
+  revision = "d0518a556b8f5320812b7d26d20ef0a71f058d44"
+
+[[projects]]
+  digest = "1:2c620dd8ec51475b61f876e9ec1dac8a06e3a4f81b5ffb5cb28d1ce9725b4c52"
+  name = "code.cloudfoundry.org/cfhttp"
+  packages = ["v2"]
+  pruneopts = ""
+  revision = "96f7a23cbfc6b07fdc47b5b51ed7ca6215dfeb0c"
+  version = "v2.0.0"
+
+[[projects]]
+  digest = "1:673cab9bb26a0011fbc34255ec4a6695ecb31cf6338860263959c415e3aa3dd1"
+  name = "code.cloudfoundry.org/lager"
+  packages = ["."]
+  pruneopts = ""
+  revision = "b152b7147a2a0154109a5194fcc7f4a933283abb"
+  version = "v2.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:940a615bfcfa3879421b3150f6dbec81219884e627b7d60f4a7406b2d1ec0e9a"
+  name = "code.cloudfoundry.org/tlsconfig"
+  packages = ["."]
+  pruneopts = ""
+  revision = "bbe0f8da39b3c59d42217afcc79019c754dabdfb"
+
+[[projects]]
+  digest = "1:46337a04ab9148268e903eb0c6efd7c725e6014915a246fb83992cf0235d1122"
   name = "github.com/DataDog/agent-payload"
   packages = [
     "gogen",
     "process",
   ]
   pruneopts = ""
-  revision = "a50316bb3ffc06088cdfa8c2a7eda3fd19d2d0cc"
-  version = "4.19.0"
+  revision = "bb8077c41d55d46a54e498d3f24a82c1dc0a5d66"
+  version = "4.26.0"
 
 [[projects]]
   digest = "1:e9846ece10d1701db72a5add936bb9edc81353cdccb19be27078ca32f6c3f5d8"
@@ -2209,6 +2246,7 @@
     "k8s.io/apimachinery/pkg/api/meta",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
+    "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",

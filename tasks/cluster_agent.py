@@ -22,6 +22,7 @@ DEFAULT_BUILD_TAGS = [
     "kubeapiserver",
     "clusterchecks",
     "secrets",
+    "orchestrator",
 ]
 
 
