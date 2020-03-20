@@ -322,7 +322,9 @@ run_tests_ebpf:
     - $S3_CP_CMD $S3_ARTIFACTS_URI/libbcc-amd64.tar.xz /tmp/libbcc.tar.xz
     - mkdir /opt/libbcc
     - tar -xvf /tmp/libbcc.tar.xz -C /opt/libbcc
+    - cp ./pkg/ebpf/tracer-ebpf.go $CI_PROJECT_DIR/.tmp/binary-ebpf/
     - inv -e system-probe.build
+    - cp ./pkg/ebpf/tracer-ebpf.go $CI_PROJECT_DIR/.tmp/binary-ebpf/tracer-ebpf-after.go
     - cp ./pkg/ebpf/c/tracer-ebpf.o $CI_PROJECT_DIR/.tmp/binary-ebpf/
   tags: [ "runner:main", "size:large" ]
   script:
