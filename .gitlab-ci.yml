@@ -313,6 +313,7 @@ run_tests_ebpf:
   needs: ["fail_on_non_triggered_tag", "build_libbcc_x64"]
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_x64:$DATADOG_AGENT_BUILDIMAGES
   before_script:
+    - clang --version
     - cd $SRC_PATH
     - pip3 install distro -c requirements.txt # needed for some of our invoke tasks until the builders image contain it
     - inv -e deps --verbose --dep-vendor-only
