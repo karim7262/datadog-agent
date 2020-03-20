@@ -321,7 +321,9 @@ run_tests_ebpf:
     - mkdir /opt/libbcc
     - tar -xvf /tmp/libbcc.tar.xz -C /opt/libbcc
     - mkdir -p $CI_PROJECT_DIR/.tmp/binary-ebpf/
+    - cp ./pkg/ebpf/tracer-ebpf.go $CI_PROJECT_DIR/.tmp/binary-ebpf/
     - inv -e system-probe.build
+    - cp ./pkg/ebpf/tracer-ebpf.go $CI_PROJECT_DIR/.tmp/binary-ebpf/tracer-ebpf-after.go
     - cp ./pkg/ebpf/c/tracer-ebpf.o $CI_PROJECT_DIR/.tmp/binary-ebpf/
   tags: [ "runner:main", "size:large" ]
   script:
