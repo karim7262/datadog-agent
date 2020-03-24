@@ -13,6 +13,10 @@ import (
 )
 
 /*
+#cgo CFLAGS: -I../../include -I../../common -Wno-deprecated-declarations
+#cgo !windows LDFLAGS: -L../../rtloader/ -ldatadog-agent-rtloader -ldl
+#cgo windows LDFLAGS: -L../../rtloader/ -ldatadog-agent-rtloader -lstdc++ -static
+
 #include "rtloader_mem.h"
 #include "datadog_agent_rtloader.h"
 
