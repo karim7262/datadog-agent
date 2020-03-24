@@ -107,6 +107,6 @@ type ContainerImplementation interface {
 	ContainerIDForPID(pid int) (string, error)
 	GetDefaultGateway() (net.IP, error)
 	GetDefaultHostIPs() ([]string, error)
-
+	GetContainerEnvVars(containerID string) ([]string, error)
 	metrics.ContainerMetricsProvider
 }

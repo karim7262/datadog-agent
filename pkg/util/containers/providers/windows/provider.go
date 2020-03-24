@@ -12,15 +12,16 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/DataDog/datadog-agent/pkg/util/winutil/iphelper"
-	"github.com/docker/docker/pkg/sysinfo"
-	"golang.org/x/sys/windows"
 	"math"
 	"net"
 	"os/exec"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/util/winutil/iphelper"
+	"github.com/docker/docker/pkg/sysinfo"
+	"golang.org/x/sys/windows"
 
 	"github.com/Microsoft/hcsshim"
 	"github.com/docker/docker/api/types"
@@ -284,6 +285,12 @@ func (mp *provider) GetDefaultHostIPs() ([]string, error) {
 	}
 	//
 	return []string{fields[3]}, nil
+}
+
+// GetContainerEnvVars returns the environment variables of the processes running in the container.
+func (mp *provider) GetContainerEnvVars(containerID string) ([]string, error) {
+	// FIXME: Figure out how to list PIDs from containers on Windows
+	return nil, fmt.Errorf("not supported on windows")
 }
 
 // Output from route print 0.0.0.0:

@@ -9,10 +9,13 @@ package collectors
 
 import (
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/DataDog/datadog-agent/pkg/util/containers"
+	"github.com/DataDog/datadog-agent/pkg/util/containers/metrics"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/kubelet"
 )
 
@@ -854,6 +857,7 @@ func TestParsePods(t *testing.T) {
 			collector := &KubeletCollector{
 				labelsAsTags:      tc.labelsAsTags,
 				annotationsAsTags: tc.annotationsAsTags,
+				containerProvider: dummyProvider{},
 			}
 			infos, err := collector.parsePods([]*kubelet.Pod{tc.pod})
 			assert.Nil(t, err)
@@ -911,4 +915,44 @@ func TestParseCronJobForJob(t *testing.T) {
 			assert.Equal(t, out, parseCronJobForJob(in))
 		})
 	}
+}
+
+type dummyProvider struct {
+	metrics.ContainerMetricsProvider
+}
+
+func (p dummyProvider) Prefetch() error {
+	return nil
+}
+
+func (p dummyProvider) ContainerExists(containerID string) bool {
+	return true
+}
+
+func (p dummyProvider) GetContainerStartTime(containerID string) (int64, error) {
+	return 0, nil
+}
+
+func (p dummyProvider) DetectNetworkDestinations(pid int) ([]containers.NetworkDestination, error) {
+	return nil, nil
+}
+
+func (p dummyProvider) GetAgentCID() (string, error) {
+	return "", nil
+}
+
+func (p dummyProvider) ContainerIDForPID(pid int) (string, error) {
+	return "", nil
+}
+
+func (p dummyProvider) GetDefaultGateway() (net.IP, error) {
+	return nil, nil
+}
+
+func (p dummyProvider) GetDefaultHostIPs() ([]string, error) {
+	return nil, nil
+}
+
+func (p dummyProvider) GetContainerEnvVars(containerID string) ([]string, error) {
+	return nil, nil
 }

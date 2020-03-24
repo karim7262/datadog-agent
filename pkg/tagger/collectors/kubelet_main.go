@@ -13,6 +13,8 @@ import (
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/errors"
+	"github.com/DataDog/datadog-agent/pkg/util/containers"
+	"github.com/DataDog/datadog-agent/pkg/util/containers/providers"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/kubelet"
 )
 
@@ -26,6 +28,7 @@ const (
 // the apiserver.
 type KubeletCollector struct {
 	watcher           *kubelet.PodWatcher
+	containerProvider containers.ContainerImplementation
 	infoOut           chan<- []*TagInfo
 	lastExpire        time.Time
 	expireFreq        time.Duration
@@ -43,6 +46,7 @@ func (c *KubeletCollector) Detect(out chan<- []*TagInfo) (CollectionMode, error)
 	c.infoOut = out
 	c.lastExpire = time.Now()
 	c.expireFreq = kubeletExpireFreq
+	c.containerProvider = providers.ContainerImpl()
 
 	// We lower-case the values collected by viper as well as the ones from inspecting the labels of containers.
 	labelsList := config.Datadog.GetStringMapString("kubernetes_pod_labels_as_tags")

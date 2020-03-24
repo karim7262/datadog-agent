@@ -8,8 +8,11 @@
 package cgroup
 
 import (
+	"io/ioutil"
 	"os"
 	"strconv"
+
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // hostProcFunc allows hostProc to be overridden for ease of mock testing
@@ -34,4 +37,16 @@ func GetFileDescriptorLen(pid int) (int, error) {
 	}
 
 	return len(names), nil
+}
+
+// GetEnvVars gets the environment variables of a process with a given pid
+func GetEnvVars(pid int) (string, error) {
+	envPath := hostProcFunc(strconv.Itoa(pid), "environ")
+	log.Infof("path %s", envPath)
+	content, err := ioutil.ReadFile(envPath)
+	log.Infof("content %s", content)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }

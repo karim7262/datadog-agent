@@ -141,6 +141,9 @@ func (c *KubeletCollector) parsePods(pods []*kubelet.Pod) ([]*TagInfo, error) {
 			output = append(output, podInfo)
 		}
 
+		// update the container provider
+		c.containerProvider.Prefetch()
+
 		// container tags
 		for _, container := range pod.Status.GetAllContainers() {
 			cTags := tags.Copy()
@@ -202,6 +205,13 @@ func (c *KubeletCollector) parsePods(pods []*kubelet.Pod) ([]*TagInfo, error) {
 					cTags.AddLow("image_tag", imageTag)
 					break
 				}
+			}
+
+			envVars, err := c.containerProvider.GetContainerEnvVars(kubelet.TrimRuntimeFromCID(container.ID))
+			if err != nil {
+				log.Errorf("Cannot get envs for container %s: %v", container.ID, err)
+			} else {
+				log.Infof("Envs for container %s: %v", container.ID, envVars)
 			}
 
 			cLow, cOrch, cHigh := cTags.Compute()

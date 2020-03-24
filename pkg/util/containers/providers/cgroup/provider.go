@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/util/containers"
@@ -22,6 +23,7 @@ import (
 // provider is a Cgroup implementation of the ContainerImplementation interface
 type provider struct {
 	cgroups map[string]*ContainerCgroup
+	sync.Mutex
 }
 
 func init() {
@@ -31,6 +33,8 @@ func init() {
 // Prefetch gets data from all cgroups in one go
 // If not successful all other calls will fail
 func (mp *provider) Prefetch() error {
+	mp.Lock()
+	defer mp.Unlock()
 	var err error
 	mp.cgroups, err = scrapeAllCgroups()
 	return err
@@ -127,9 +131,9 @@ func (mp *provider) GetContainerLimits(containerID string) (*metrics.ContainerLi
 
 // GetNetworkMetrics return network metrics for all PIDs in container
 func (mp *provider) GetNetworkMetrics(containerID string, networks map[string]string) (metrics.ContainerNetStats, error) {
-	cg, ok := mp.cgroups[containerID]
-	if !ok || cg == nil {
-		return nil, fmt.Errorf("Cgroup not found for container: %s", containerID[:12])
+	cg, err := mp.getCgroup(containerID)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(cg.Pids) == 0 {
@@ -185,6 +189,30 @@ func (mp *provider) GetDefaultGateway() (net.IP, error) {
 // by parsing the routing table file in the proc file system.
 func (mp *provider) GetDefaultHostIPs() ([]string, error) {
 	return defaultHostIPs()
+}
+
+// GetContainerEnvVars returns the environment variables of the processes
+// running in the container by parsing {/host}/proc/<pid>/environ
+func (mp *provider) GetContainerEnvVars(containerID string) ([]string, error) {
+	cg, err := mp.getCgroup(containerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(cg.Pids) == 0 {
+		return nil, errors.New("no pid for this container")
+	}
+
+	envVars := []string{}
+	for _, pid := range cg.Pids {
+		envString, err := GetEnvVars(int(pid))
+		if err != nil {
+			return nil, err
+		}
+		envVars = append(envVars, envString)
+	}
+
+	return envVars, nil
 }
 
 func (mp *provider) getCgroup(containerID string) (*ContainerCgroup, error) {
