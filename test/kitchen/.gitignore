@@ -7,7 +7,6 @@
 Berksfile.lock
 cookbooks/
 .kitchen.yml
-kitchen.yml
 ssh-key
 ssh-key.pub
 azureid.sh

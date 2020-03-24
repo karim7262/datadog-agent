@@ -1,0 +1,51 @@
+---
+
+provisioner:
+  name: chef_solo
+  product_name: chef
+  product_version: 13.6.4
+
+driver:
+  name: local
+transport:
+  name: local
+platforms:
+- name: windows
+
+<%
+  api_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  application_key = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  url = "https://app.datad0g.com"
+  agent_major_version = "#{ENV['MAJOR_VERSION']}"
+  windows_agent_url = "https://dd-agent-mstesting.s3.amazonaws.com/builds/master/"
+  dd_agent_config = {
+    'agent_major_version': "7",
+    'api_key': api_key,
+    'application_key': application_key,
+    'url': url,
+    'windows_agent_url': windows_agent_url
+  }
+%>
+
+suites:
+
+# Install the latest release candidate using Chef
+- name: dd-agent
+  run_list:
+    - "recipe[dd-agent-install]"
+  attributes:
+    datadog:
+      <% dd_agent_config.each do |key, value| %>
+      <%= key %>: <%= value %>
+      <% end %>
+    dd-agent-install:
+      agent_major_version: <%= agent_major_version %>
+      <% if ENV['AGENT_VERSION'] %>
+      windows_version: "<%= ENV['AGENT_VERSION'] %>"
+      <% end %>
+      <% if ENV['WINDOWS_AGENT_FILE'] %>
+      windows_agent_filename: "<%= ENV['WINDOWS_AGENT_FILE'] %>"
+      <% end %>
+      windows_agent_url: <%= windows_agent_url %>
+    dd-agent-rspec:
+      skip_windows_signing_test: true
