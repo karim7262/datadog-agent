@@ -294,6 +294,14 @@
   version = "v3.0.0"
 
 [[projects]]
+  digest = "1:d25acc7560ed91f825cb9b01a1e945bb1117cdcaba19077137e2d9ffc9cf6d05"
+  name = "github.com/cespare/xxhash"
+  packages = ["."]
+  pruneopts = ""
+  revision = "d7df74196a9e781ede915320c11c378c1b2f3a1f"
+  version = "v2.1.1"
+
+[[projects]]
   digest = "1:9897221091d9b3ca7d1a8d350bd8ce709118b5134d68f6315b2010736d3e9378"
   name = "github.com/cihub/seelog"
   packages = ["."]
@@ -1364,14 +1372,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:1127282cb88e5c41a212d0c56cb892be494ae315822eb7d1f32ba9e47163a277"
-  name = "github.com/twmb/murmur3"
-  packages = ["."]
-  pruneopts = ""
-  revision = "b0c3ada27de84fabb1f036561c0c8c03b1115b77"
-  version = "v1.0.0"
-
-[[projects]]
   digest = "1:444c05e2a216066b0def62df62e3cef74d51f5ea0ecd6547a100daa2281547ff"
   name = "github.com/ugorji/go"
   packages = ["codec"]
@@ -2111,7 +2111,7 @@
   revision = "b3a7cee44a305be0a69e1b9ac03018307287e1b0"
 
 [[projects]]
-  digest = "1:f27698f7ae7864893ebcfb843e44d821263ac1dcf0ba1d5c2353f9d319a2f28d"
+  digest = "0:"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/kubelet/remote/fake",
@@ -2221,6 +2221,7 @@
     "github.com/benesch/cgosymbolizer",
     "github.com/bhmj/jsonslice",
     "github.com/cenkalti/backoff",
+    "github.com/cespare/xxhash",
     "github.com/cihub/seelog",
     "github.com/clbanning/mxj",
     "github.com/containerd/cgroups",
@@ -2296,7 +2297,6 @@
     "github.com/stretchr/testify/require",
     "github.com/stretchr/testify/suite",
     "github.com/tinylib/msgp/msgp",
-    "github.com/twmb/murmur3",
     "github.com/urfave/negroni",
     "github.com/vishvananda/netns",
     "golang.org/x/mobile/asset",

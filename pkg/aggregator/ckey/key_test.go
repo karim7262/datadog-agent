@@ -25,7 +25,7 @@ func TestGenerateReproductible(t *testing.T) {
 	generator := NewKeyGenerator()
 
 	firstKey := generator.Generate(name, hostname, tags)
-	assert.Equal(t, ContextKey(0x5a2b4635eb90c410), firstKey)
+	assert.Equal(t, ContextKey(0xeb84d00400523c01), firstKey)
 
 	for n := 0; n < 10; n++ {
 		t.Run(fmt.Sprintf("iteration %d:", n), func(t *testing.T) {
@@ -36,7 +36,7 @@ func TestGenerateReproductible(t *testing.T) {
 
 	otherKey := generator.Generate("othername", hostname, tags)
 	assert.NotEqual(t, firstKey, otherKey)
-	assert.Equal(t, ContextKey(0x90352c032ca3bcd), otherKey)
+	assert.Equal(t, ContextKey(0x3c1c8baeaa04ae2f), otherKey)
 }
 
 func TestCompare(t *testing.T) {

@@ -8,7 +8,7 @@ package ckey
 import (
 	"sort"
 
-	"github.com/twmb/murmur3"
+	"github.com/cespare/xxhash"
 )
 
 // ContextKey is a non-cryptographic hash that allows to
@@ -40,6 +40,31 @@ func NewKeyGenerator() *KeyGenerator {
 
 // Generate returns the ContextKey hash for the given parameters.
 // The tags array is sorted in place to avoid heap allocations.
+// func (g *KeyGenerator) Generate(name, hostname string, tags []string) ContextKey {
+// 	g.buf = g.buf[:0]
+//
+// 	// Sort the tags in place. For typical tag slices, we use
+// 	// the in-place section sort to avoid heap allocations.
+// 	// We default to stdlib's sort package for longer slices.
+// 	if len(tags) < 20 {
+// 		selectionSort(tags)
+// 	} else {
+// 		sort.Strings(tags)
+// 	}
+//
+// 	g.buf = append(g.buf, name...)
+// 	g.buf = append(g.buf, ',')
+// 	for i := 0; i < len(tags); i++ {
+// 		g.buf = append(g.buf, tags[i]...)
+// 		g.buf = append(g.buf, ',')
+// 	}
+// 	g.buf = append(g.buf, hostname...)
+//
+// 	return ContextKey(murmur3.Sum64(g.buf))
+// }
+
+// Generate returns the ContextKey hash for the given parameters.
+// The tags array is sorted in place to avoid heap allocations.
 func (g *KeyGenerator) Generate(name, hostname string, tags []string) ContextKey {
 	g.buf = g.buf[:0]
 
@@ -60,33 +85,8 @@ func (g *KeyGenerator) Generate(name, hostname string, tags []string) ContextKey
 	}
 	g.buf = append(g.buf, hostname...)
 
-	return ContextKey(murmur3.Sum64(g.buf))
+	return ContextKey(xxhash.Sum64(g.buf))
 }
-
-// Generate returns the ContextKey hash for the given parameters.
-// The tags array is sorted in place to avoid heap allocations.
-//func (g *KeyGenerator) Generate(name, hostname string, tags []string) ContextKey {
-//	g.buf = g.buf[:0]
-//
-//	// Sort the tags in place. For typical tag slices, we use
-//	// the in-place section sort to avoid heap allocations.
-//	// We default to stdlib's sort package for longer slices.
-//	if len(tags) < 20 {
-//		selectionSort(tags)
-//	} else {
-//		sort.Strings(tags)
-//	}
-//
-//	g.buf = append(g.buf, name...)
-//	g.buf = append(g.buf, ',')
-//	for i := 0; i < len(tags); i++ {
-//		g.buf = append(g.buf, tags[i]...)
-//		g.buf = append(g.buf, ',')
-//	}
-//	g.buf = append(g.buf, hostname...)
-//
-//	return ContextKey(xxhash.Sum64(g.buf))
-//}
 
 // func (g *KeyGenerator) Generate(name, hostname string, tags []string) ContextKey {
 // 	// Sort the tags in place. For typical tag slices, we use

@@ -11,6 +11,10 @@
   branch = "master"
 
 [[constraint]]
+  name = "github.com/cespare/xxhash"
+  version = "~v2.1.1"
+
+[[constraint]]
   name = "github.com/DataDog/zstd.v1.3"
   source = "github.com/DataDog/zstd"
   version = "~v1.3.0"
