@@ -586,6 +586,16 @@ func initConfig(config Config) {
 	config.SetKnown("system_probe_config.dest_excludes")
 	config.SetKnown("system_probe_config.closed_channel_size")
 
+	// System probe windows
+	config.SetKnown("system_probe_config.system_probe_windows_listener")
+	config.SetKnown("system_probe_config.tracer_read_buffers")
+	config.SetKnown("system_probe_config.tracer_read_buffer_size")
+	config.SetKnown("system_probe_config.max_data_per_packet")
+	config.SetKnown("system_probe_config.transfer_buffers")
+	config.SetKnown("system_probe_config.transfer_buffer_size")
+	config.SetKnown("system_probe_config.driver_buffers")
+	config.SetKnown("system_probe_config.driver_buffer_size")
+
 	// Network
 	config.BindEnv("network.id")
 
