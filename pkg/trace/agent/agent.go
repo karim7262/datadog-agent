@@ -37,6 +37,7 @@ type Agent struct {
 	Blacklister        *filters.Blacklister
 	Replacer           *filters.Replacer
 	ErrorsScoreSampler *Sampler
+	ExceptionSampler   *sampler.ExceptionSampler
 	PrioritySampler    *Sampler
 	EventProcessor     *event.Processor
 	TraceWriter        *writer.TraceWriter
@@ -69,6 +70,7 @@ func NewAgent(ctx context.Context, conf *config.AgentConfig) *Agent {
 		Concentrator:       stats.NewConcentrator(conf.ExtraAggregators, conf.BucketInterval.Nanoseconds(), statsChan),
 		Blacklister:        filters.NewBlacklister(conf.Ignore["resource"]),
 		Replacer:           filters.NewReplacer(conf.ReplaceTags),
+		ExceptionSampler:   sampler.NewExceptionSampler(),
 		ErrorsScoreSampler: NewErrorsSampler(conf),
 		PrioritySampler:    NewPrioritySampler(conf, dynConf),
 		EventProcessor:     newEventProcessor(conf),
@@ -87,6 +89,7 @@ func (a *Agent) Run() {
 	for _, starter := range []interface{ Start() }{
 		a.Receiver,
 		a.Concentrator,
+		a.ExceptionSampler,
 		a.ErrorsScoreSampler,
 		a.PrioritySampler,
 		a.EventProcessor,
@@ -128,6 +131,7 @@ func (a *Agent) loop() {
 			a.Concentrator.Stop()
 			a.TraceWriter.Stop()
 			a.StatsWriter.Stop()
+			a.ExceptionSampler.Stop()
 			a.ErrorsScoreSampler.Stop()
 			a.PrioritySampler.Stop()
 			a.EventProcessor.Stop()
@@ -269,6 +273,10 @@ func (a *Agent) runSamplers(pt ProcessedTrace) (sampled bool, rate float64) {
 	if traceContainsError(pt.Trace) {
 		errorSampled, errorRate := a.ErrorsScoreSampler.Add(pt)
 		return errorSampled || prioritySampled, sampler.CombineRates(errorRate, priorityRate)
+	}
+
+	if sampled := a.ExceptionSampler.Add(time.Now(), pt.Env, pt.Root, pt.Trace); sampled {
+		return sampled, 1
 	}
 	return prioritySampled, priorityRate
 }
