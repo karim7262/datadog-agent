@@ -12,8 +12,8 @@ if node['platform_family'] != 'windows'
 else
     ruby_block "list-after-files" do
         block do
-            File.open("C:/after-files.txt", "w") do |out|
-                Dir.glob("C:/windows/**/*").each { |file| out.puts(file) }
+            File.open("c:/after-files.txt", "w") do |out|
+                list_files().each { |f| out.puts(f) }
             end
         end
         action :run
