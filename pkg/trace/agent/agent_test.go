@@ -233,12 +233,36 @@ func TestSampling(t *testing.T) {
 		wantRate    float64
 		wantSampled bool
 	}{
+		"score only rate": {
+			scoreRate:    0.5,
+			priorityRate: 0.1,
+			wantRate:     0.5,
+		},
 		"error and priority rate": {
 			hasErrors:      true,
 			hasPriority:    true,
 			scoreErrorRate: 0.8,
 			priorityRate:   0.2,
 			wantRate:       sampler.CombineRates(0.8, 0.2),
+		},
+		"score not sampled decision": {
+			scoreSampled: false,
+			wantSampled:  false,
+		},
+		"score sampled decision": {
+			scoreSampled: true,
+			wantSampled:  true,
+		},
+		"sampled priority sampled": {
+			hasPriority:     true,
+			prioritySampled: true,
+			wantSampled:     true,
+		},
+		"priority not sampled": {
+			hasPriority:     true,
+			scoreSampled:    false,
+			prioritySampled: false,
+			wantSampled:     false,
 		},
 		"error not sampled decision": {
 			hasErrors:         true,
@@ -281,6 +305,7 @@ func TestSampling(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			a := &Agent{
+				ScoreSampler:       newMockSampler(tt.scoreSampled, tt.scoreRate),
 				ErrorsScoreSampler: newMockSampler(tt.scoreErrorSampled, tt.scoreErrorRate),
 				PrioritySampler:    newMockSampler(tt.prioritySampled, tt.priorityRate),
 			}

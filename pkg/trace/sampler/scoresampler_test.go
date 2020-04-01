@@ -25,7 +25,7 @@ func getTestScoreEngine() *ScoreEngine {
 	extraRate := 1.0
 	maxTPS := 0.0
 
-	return NewErrorsEngine(extraRate, maxTPS)
+	return NewScoreEngine(extraRate, maxTPS)
 }
 
 func getTestTrace() (pb.Trace, *pb.Span) {
