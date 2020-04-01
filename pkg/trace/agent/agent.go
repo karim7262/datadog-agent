@@ -275,7 +275,7 @@ func (a *Agent) runSamplers(pt ProcessedTrace) (sampled bool, rate float64) {
 		return errorSampled || prioritySampled, sampler.CombineRates(errorRate, priorityRate)
 	}
 
-	if sampled := a.ExceptionSampler.Add(time.Now(), pt.Env, pt.Root, pt.Trace); sampled {
+	if sampled := a.ExceptionSampler.Add(pt.Env, pt.Root, pt.Trace); sampled {
 		return sampled, 1
 	}
 	return prioritySampled, priorityRate
