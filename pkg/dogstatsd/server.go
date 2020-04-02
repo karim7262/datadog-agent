@@ -297,7 +297,6 @@ func nextMessage(packet *[]byte) (message []byte) {
 func (s *Server) parsePackets(batcher *batcher, parser *parser, packets []*listeners.Packet) {
 	for _, packet := range packets {
 		originTagger := originTags{origin: packet.Origin}
-		log.Tracef("Dogstatsd receive: %q", packet.Contents)
 		for {
 			message := nextMessage(&packet.Contents)
 			if message == nil {
