@@ -17,6 +17,7 @@
 #include "stringutils.h"
 #include "tagger.h"
 #include "util.h"
+#include "log.h"
 
 #include <algorithm>
 #include <sstream>
@@ -74,6 +75,7 @@ bool Three::init()
 
     // add custom builtins init funcs to Python inittab, one by one
     // Unlinke its py2 counterpart, these need to be called before Py_Initialize
+    agent_log(DATADOG_AGENT_DEBUG, (char*)"Adding custom builtins to python inittab...");
     PyImport_AppendInittab(AGGREGATOR_MODULE_NAME, PyInit_aggregator);
     PyImport_AppendInittab(DATADOG_AGENT_MODULE_NAME, PyInit_datadog_agent);
     PyImport_AppendInittab(UTIL_MODULE_NAME, PyInit_util);
@@ -81,16 +83,20 @@ bool Three::init()
     PyImport_AppendInittab(TAGGER_MODULE_NAME, PyInit_tagger);
     PyImport_AppendInittab(KUBEUTIL_MODULE_NAME, PyInit_kubeutil);
     PyImport_AppendInittab(CONTAINERS_MODULE_NAME, PyInit_containers);
+    agent_log(DATADOG_AGENT_DEBUG, (char*)"Custom builtins added successfully.");
 
+    agent_log(DATADOG_AGENT_DEBUG, (char*)"Initializing python interpreter...");
     Py_Initialize();
 
     if (!Py_IsInitialized()) {
+        agent_log(DATADOG_AGENT_DEBUG, (char*)"Failed to initialize python interpreter.");
         setError("Python not initialized");
         return false;
     }
 
     // Set PYTHONPATH
     if (!_pythonPaths.empty()) {
+        agent_log(DATADOG_AGENT_DEBUG, (char*)"Adding python paths...");
         char pathchr[] = "path";
         PyObject *path = PySys_GetObject(pathchr); // borrowed
         if (path == NULL) {
@@ -114,12 +120,14 @@ bool Three::init()
         }
     }
 
+    agent_log(DATADOG_AGENT_DEBUG, (char*)"initializing stringutils....");
     if (init_stringutils() != EXIT_SUCCESS) {
         setError("error initializing string utils: " + _fetchPythonError());
         goto done;
     }
 
     // import the base class
+    agent_log(DATADOG_AGENT_DEBUG, (char*)"importing the base class....");
     _baseClass = _importFrom("datadog_checks.checks", "AgentCheck");
     if (_baseClass == NULL) {
         setError("could not import base class: " + std::string(getError()));
@@ -127,6 +135,7 @@ bool Three::init()
 
 done:
     // save thread state and release the GIL
+    agent_log(DATADOG_AGENT_DEBUG, (char*)"saving thread state...");
     _threadState = PyEval_SaveThread();
 
     return _baseClass != NULL;
