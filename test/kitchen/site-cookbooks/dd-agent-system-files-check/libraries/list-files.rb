@@ -8,5 +8,5 @@ def list_files()
     'c:/windows/winsxs',
     'c:/windows/servicing/'
   ].each { |e| e.downcase! }
-  return Find.find('c:/windows/').reject { |f| f.downcase.start_with?(exclude) }
+  return Find.find('c:/windows/').reject { |f| f.downcase.start_with?(*exclude) }
 end
