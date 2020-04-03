@@ -13,7 +13,7 @@ import (
 	"github.com/DataDog/agent-payload/process"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
-	ct "github.com/florianl/go-conntrack"
+	ct "github.com/DataDog/go-conntrack"
 	"github.com/mdlayher/netlink"
 	"github.com/pkg/errors"
 )

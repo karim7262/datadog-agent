@@ -227,8 +227,8 @@
   revision = "6763fd92fd3f414961878bfc5d7a9e1ebcd360d8"
 
 [[constraint]]
-  name = "github.com/florianl/go-conntrack"
-  revision = "06743d3a59db658e0e9aaddc9acff6d01ce643fb"
+  name = "github.com/DataDog/go-conntrack"
+  branch = "pedro/nat-optimizations"
 
 [[override]]
   name = "golang.org/x/sys"

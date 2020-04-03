@@ -58,6 +58,14 @@
   version = "v2.2.0"
 
 [[projects]]
+  branch = "pedro/nat-optimizations"
+  digest = "1:bdf9fd0aab0fbe891d1cfd1ccfe8c78bf23958e38b1cdab9f9e8bd1e220f784e"
+  name = "github.com/DataDog/go-conntrack"
+  packages = ["."]
+  pruneopts = ""
+  revision = "fc00437a003c2c027f59f44143e861020d156fc8"
+
+[[projects]]
   branch = "master"
   digest = "1:a59f3622f110cd6dbb8675a21aa4882dd4163445985b6f0c1abf18a22bc7e837"
   name = "github.com/DataDog/gohai"
@@ -581,13 +589,6 @@
   pruneopts = ""
   revision = "5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4"
   version = "v1.7.0"
-
-[[projects]]
-  digest = "1:31ce89581517f1d39a7486caca6e689b44f6ada079f23ce8f15cd7876174ced7"
-  name = "github.com/florianl/go-conntrack"
-  packages = ["."]
-  pruneopts = ""
-  revision = "06743d3a59db658e0e9aaddc9acff6d01ce643fb"
 
 [[projects]]
   digest = "1:eb53021a8aa3f599d29c7102e65026242bdedce998a54837dc67f14b6a97c5fd"
@@ -2111,7 +2112,7 @@
   revision = "b3a7cee44a305be0a69e1b9ac03018307287e1b0"
 
 [[projects]]
-  digest = "0:"
+  digest = "1:f27698f7ae7864893ebcfb843e44d821263ac1dcf0ba1d5c2353f9d319a2f28d"
   name = "k8s.io/kubernetes"
   packages = [
     "pkg/kubelet/remote/fake",
@@ -2194,6 +2195,7 @@
     "github.com/DataDog/agent-payload/gogen",
     "github.com/DataDog/agent-payload/process",
     "github.com/DataDog/datadog-go/statsd",
+    "github.com/DataDog/go-conntrack",
     "github.com/DataDog/gohai/cpu",
     "github.com/DataDog/gohai/filesystem",
     "github.com/DataDog/gohai/memory",
@@ -2249,7 +2251,6 @@
     "github.com/docker/go-connections/nat",
     "github.com/dustin/go-humanize",
     "github.com/fatih/color",
-    "github.com/florianl/go-conntrack",
     "github.com/go-ini/ini",
     "github.com/go-ole/go-ole",
     "github.com/godbus/dbus",

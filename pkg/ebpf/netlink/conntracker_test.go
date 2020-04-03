@@ -10,7 +10,7 @@ import (
 
 	"github.com/DataDog/agent-payload/process"
 	"github.com/DataDog/datadog-agent/pkg/process/util"
-	ct "github.com/florianl/go-conntrack"
+	ct "github.com/DataDog/go-conntrack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
