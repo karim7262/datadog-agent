@@ -313,6 +313,9 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("dogstatsd_entity_id_precedence", false)
 	// Sends Dogstatsd parse errors to the Debug level instead of the Error level
 	config.BindEnvAndSetDefault("dogstatsd_disable_verbose_logs", false)
+	// Configure how many parallel works can parse packets and send them to the aggregato
+	// 0 means that we will use: min(GOMAXPROCS - 2, 2)
+	config.BindEnvAndSetDefault("dogstatsd_workers_count", 0)
 	config.SetKnown("dogstatsd_mapper_profiles")
 
 	config.BindEnvAndSetDefault("statsd_forward_host", "")

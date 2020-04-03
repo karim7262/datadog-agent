@@ -234,12 +234,21 @@ func (s *Server) handleMessages() {
 
 	// Run min(2, GoMaxProcs-2) workers, we dedicate a core to the
 	// listener goroutine and another to aggregator + forwarder
-	workers := runtime.GOMAXPROCS(-1) - 2
-	if workers < 2 {
-		workers = 2
+	workersCount := config.Datadog.GetInt("dogstatsd_workers_count")
+	if workersCount == 0 {
+		workersCount = runtime.GOMAXPROCS(-1) - 2
+		if workersCount < 2 {
+			workersCount = 2
+		}
+	} else {
+		// even if manually set, we at least want one!
+		if workersCount < 1 {
+			log.Warn("dogstatsd_workers_count configured < 1, forcing to 1 because we at least need one")
+			workersCount = 1
+		}
 	}
 
-	for i := 0; i < workers; i++ {
+	for i := 0; i < workersCount; i++ {
 		go s.worker()
 	}
 }
