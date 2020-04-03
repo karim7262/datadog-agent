@@ -168,7 +168,7 @@ core,github.com/bmizerany/pat,MIT
 core,code.cloudfoundry.org/tlsconfig,Apache-2.0
 process,github.com/DataDog/gopsutil,BSD-3-Clause
 network,github.com/iovisor/gobpf,Apache-2.0
-network,github.com/florianl/go-conntrack,MIT
+network,github.com/DataDog/go-conntrack,MIT
 network,github.com/mdlayher/netlink,MIT
 network,github.com/google/gopacket,BSD-3-Clause
 network,github.com/DataDog/mmh3,MIT
