@@ -127,7 +127,7 @@ def get_payload_version():
     current = {}
 
     # parse the TOML file line by line
-    with open("Gopkg.lock") as toml:
+    """with open("Gopkg.lock") as toml:
         for line in toml.readlines():
             # skip empty lines and comments
             if not line or line[0] == "#":
@@ -151,7 +151,7 @@ def get_payload_version():
                 # strip whitespaces and quotes
                 value = toks[-1].replace('"', '').strip()
                 current[key] = value
-
+    """
     return ""
 
 def get_version_ldflags(ctx, prefix=None, major_version='7'):

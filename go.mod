@@ -22,7 +22,6 @@ require (
 	github.com/DataDog/gohai v0.0.0-20200124154531-8cbe900337f1
 	github.com/DataDog/gopsutil v0.0.0-20191127151039-7e1a4eadb59e
 	github.com/DataDog/mmh3 v0.0.0-20200316233529-f5b682d8c981 // indirect
-	github.com/DataDog/viper v1.7.1
 	github.com/DataDog/watermarkpodautoscaler v0.1.0
 	github.com/DataDog/zstd v1.4.5
 	github.com/Microsoft/go-winio v0.4.11
@@ -84,6 +83,7 @@ require (
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.6.2
 	github.com/stretchr/testify v1.4.0
 	github.com/tedsuo/ifrit v0.0.0-20191009134036-9a97d0632f00 // indirect
 	github.com/tinylib/msgp v1.1.2
@@ -110,6 +110,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/component-base v0.17.3 // indirect
 	k8s.io/cri-api v0.0.0
+	k8s.io/kubernetes v1.16.2
 	k8s.io/metrics v0.17.3
 	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f // indirect
 )
