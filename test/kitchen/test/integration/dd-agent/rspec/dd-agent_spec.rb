@@ -6,8 +6,7 @@ end
 
 
 if os == :windows
-
-  describe 'system-files-intact' do
+  describe 'system-files' do
 
     before_files = File.readlines('c:/before-files.txt')
     after_files = File.readlines('c:/after-files.txt')
@@ -21,9 +20,9 @@ if os == :windows
     puts "Missing files:"
     missing_files.each { |f| puts(f) }
 
-    expect(missing_files).to be_empty
-    expect(new_files).to be_empty
+    it "didn't remove any previously present files" do
+      expect(missing_files).to be_empty
+    end
 
   end
-
 end
