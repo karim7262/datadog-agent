@@ -267,8 +267,7 @@ def deps(ctx, no_checks=False, core_dir=None, verbose=False, android=False, dep_
         print("calling dep ensure")
         start = datetime.datetime.now()
         verbosity = ' -v' if verbose else ''
-        vendor_only = ' --vendor-only' if dep_vendor_only else ''
-        ctx.run("dep ensure{}{}".format(verbosity, vendor_only))
+        ctx.run("go mod vendor{}{}".format(verbosity))
         dep_done = datetime.datetime.now()
 
         # If github.com/DataDog/datadog-agent gets vendored too - nuke it

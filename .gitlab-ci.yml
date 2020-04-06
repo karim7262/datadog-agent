@@ -382,8 +382,8 @@ run_dep_check_lock:
     - pip install -r requirements.txt
     - inv -e deps --no-dep-ensure --no-checks
   script:
-    # Print a message and fail if dep check fails
-    - dep check --skip-vendor || (echo "Gopkg.lock is out of sync with Gopkg.toml and project imports. Please run 'inv deps' and commit the change on Gopkg.lock." && false)
+    # Print a message and fail if go mod verify fails
+    - go mod verify || (echo "go.sum is out of sync with go.mod and project imports. Please run 'inv deps' and commit the change on go.sum." && false)
 
 #
 # binary_build
