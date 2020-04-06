@@ -76,7 +76,8 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.4.1
+	github.com/prometheus/client_golang v1.5.1
+	github.com/prometheus/common v0.9.1
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da
 	github.com/shirou/gopsutil v2.20.3+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4
@@ -141,3 +142,11 @@ replace (
 )
 
 replace github.com/spf13/viper v1.6.2 => github.com/DataDog/viper v1.7.1
+
+replace github.com/coreos/etcd v3.3.15+incompatible => github.com/coreos/etcd v3.2.0+incompatible
+
+replace github.com/florianl/go-conntrack v0.1.0 => github.com/florianl/go-conntrack v0.1.1-0.20191002182014-06743d3a59db
+
+replace github.com/prometheus/common v0.9.1 => github.com/prometheus/common v0.6.0
+
+replace github.com/prometheus/client_golang v1.5.1 => github.com/prometheus/client_golang v1.1.0
