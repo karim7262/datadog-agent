@@ -144,7 +144,7 @@ def test(ctx, targets=None, coverage=False, build_include=None, build_exclude=No
     nocache = '-count=1' if not cache else ''
 
     build_tags.append("test")
-    cmd = 'gotestsum --format testname -- {verbose} -vet=off -timeout {timeout}s -tags "{go_build_tags}" -gcflags="{gcflags}" '
+    cmd = 'gotestsum --format dots -- {verbose} -vet=off -timeout {timeout}s -tags "{go_build_tags}" -gcflags="{gcflags}" '
     cmd += '-ldflags="{ldflags}" {build_cpus} {race_opt} -short {covermode_opt} {coverprofile} {nocache} {pkg_folder}'
     args = {
         "go_build_tags": " ".join(build_tags),
