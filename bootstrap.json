@@ -10,6 +10,7 @@
             "golang.org/x/tools/go/internal",
             "golang.org/x/tools/go/gcexportdata",
             "github.com/golangci/golangci-lint",
+            "https://github.com/frapposelli/wwhrd",
             "github.com/shuLhan/go-bindata/cmd/go-bindata"
         ],
         "golang.org/x/tools/go/ast/astutil": {
@@ -53,6 +54,11 @@
         "github.com/shuLhan/go-bindata/cmd/go-bindata" : {
             "version": "v3.4.0",
             "type": "go"
+        },
+        "https://github.com/frapposelli/wwhrd": {
+            "version": "0.2.4",
+            "cmd": "./hack/install-wwhrd.sh $BOOTSTRAPPED_VERSION",
+            "type": "shell"
         }
     }
 }

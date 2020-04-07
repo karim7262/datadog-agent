@@ -318,27 +318,29 @@ def deps(ctx, no_checks=False, core_dir=None, verbose=False, android=False, dep_
 @task
 def lint_licenses(ctx):
     """
-    Checks that the LICENSE-3rdparty.csv file is up-to-date with contents of Gopkg.lock
+    Checks that the LICENSE-3rdparty.csv file is up-to-date with contents of go.sum
     """
-    import csv
-    import toml
+    print("Verify licenses")
+    ctx.run("hack/verify-license.sh")
 
-    # non-go deps that should be listed in the license file, but not in Gopkg.lock
+
+@task
+def lint_licenses_old(ctx):
+    # non-go deps that should be listed in the license file, but not in go.sum
     NON_GO_DEPS = set([
         'github.com/codemirror/CodeMirror',
         'github.com/FortAwesome/Font-Awesome',
         'github.com/jquery/jquery',
     ])
 
-    # Read all dep names from Gopkg.lock
+    # Read all dep names from go.sum
     go_deps = set()
-    gopkg_lock = toml.load('Gopkg.lock')
-    for project in gopkg_lock['projects']:
-        # FIXME: this conditional is necessary because of the issue introduced by DEPPROJECTROOT
-        # (for some reason `datadog-agent` gets added to Gopkg.lock and vendored), see comment in `deps`
-        # task for details
-        if project['name'] != 'github.com/DataDog/datadog-agent':
-            go_deps.add(project['name'])
+    with open('go.sum') as f:
+        for line in f:
+            gopkg = line.split(" ")
+            if len(gopkg) != 3:
+                continue
+            go_deps.add(gopkg[0])
 
     deps = go_deps | NON_GO_DEPS
 
@@ -348,12 +350,15 @@ def lint_licenses(ctx):
     for entry in licenses:
         if len(entry['License']) == 0:
             raise Exit(message="LICENSE-3rdparty entry '{}' has an empty license".format(entry['Origin']), code=1)
-        license_deps.add(entry['Origin'])
+        entrysplit = entry['Origin'].split("/")
+        entrysplit = entrysplit[0:3]
+        print('/'.join(entrysplit))
+        license_deps.add('/'.join(entrysplit))
 
     if deps != license_deps:
-        raise Exit(message="LICENSE-3rdparty.csv is outdated compared to deps listed in Gopkg.lock:\n" +
+        raise Exit(message="LICENSE-3rdparty.csv is outdated compared to deps listed in go.sum:\n" +
                            "missing from LICENSE-3rdparty.csv: {}\n".format(deps - license_deps) +
-                           "listed in LICENSE-3rdparty.csv but not in Gopkg.lock: {}".format(license_deps - deps),
+                           "listed in LICENSE-3rdparty.csv but not in go.sum: {}".format(license_deps - deps),
                    code=1)
 
 @task

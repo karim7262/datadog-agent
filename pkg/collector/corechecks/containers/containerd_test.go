@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/containerd/cgroups"
 	v1 "github.com/containerd/cgroups/stats/v1"
 	"github.com/containerd/containerd/api/types"
 	"github.com/containerd/containerd/containers"
@@ -308,36 +307,36 @@ func TestComputeUptime(t *testing.T) {
 
 // TestConvertTaskToMetrics checks the convertTasktoMetrics
 func TestConvertTaskToMetrics(t *testing.T) {
-	typeurl.Register(&cgroups.Metrics{}, "io.containerd.cgroups.v1.Metrics") // Need to register the type to be used in UnmarshalAny later on.
+	typeurl.Register(&v1.Metrics{}, "io.containerd.cgroups.v1.Metrics") // Need to register the type to be used in UnmarshalAny later on.
 
 	tests := []struct {
 		name     string
 		typeURL  string
-		values   cgroups.Metrics
+		values   v1.Metrics
 		error    string
-		expected *cgroups.Metrics
+		expected *v1.Metrics
 	}{
 		{
 			"unregistered type",
 			"io.containerd.cgroups.v1.Doge",
-			cgroups.Metrics{},
+			v1.Metrics{},
 			"type with url io.containerd.cgroups.v1.Doge: not found",
 			nil,
 		},
 		{
 			"missing values",
 			"io.containerd.cgroups.v1.Metrics",
-			cgroups.Metrics{},
+			v1.Metrics{},
 			"",
-			&cgroups.Metrics{},
+			&v1.Metrics{},
 		},
 		{
 			"fully functional",
 			"io.containerd.cgroups.v1.Metrics",
-			cgroups.Metrics{Memory: &cgroups.MemoryStat{Cache: 100}},
+			v1.Metrics{Memory: &v1.MemoryStat{Cache: 100}},
 			"",
-			&cgroups.Metrics{
-				Memory: &cgroups.MemoryStat{
+			&v1.Metrics{
+				Memory: &v1.MemoryStat{
 					Cache: 100,
 				},
 			},
