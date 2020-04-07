@@ -30,7 +30,7 @@ replace (
 
 replace github.com/spf13/viper v1.6.2 => github.com/DataDog/viper v1.7.1
 
-replace github.com/coreos/etcd v3.3.15+incompatible => github.com/coreos/etcd v3.2.19-0.20180413020001-8f59849ca2a8+incompatible
+replace github.com/coreos/etcd v3.2.23+incompatible => github.com/coreos/etcd v3.2.23+incompatible
 
 replace github.com/florianl/go-conntrack v0.1.0 => github.com/florianl/go-conntrack v0.1.1-0.20191002182014-06743d3a59db
 
@@ -41,6 +41,16 @@ replace github.com/mholt/archiver v3.1.1+incompatible => github.com/mholt/archiv
 replace github.com/prometheus/client_golang v1.5.1 => github.com/prometheus/client_golang v0.9.2
 
 replace github.com/ugorji/go v0.0.0 => github.com/ugorji/go v0.0.0-20170107133203-ded73eae5db7
+
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.2.13
+
+replace github.com/containerd/cgroups => github.com/containerd/cgroups v0.0.0-20200327175542-b44481373989
+
+replace github.com/docker/distribution => github.com/docker/distribution v2.7.1-0.20190104202606-0ac367fd6bee+incompatible
+
+replace github.com/docker/docker => github.com/docker/docker v17.12.0-ce-rc1.0.20200309214505-aa6a9891b09c+incompatible
+
+replace github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180202092358-40e2722dffea
 
 require (
 	code.cloudfoundry.org/bbs v0.0.0-20200403215808-d7bc971db0db
@@ -73,15 +83,15 @@ require (
 	github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
 	github.com/clbanning/mxj v1.8.4
 	github.com/cockroachdb/cmux v0.0.0-20170110192607-30d10be49292 // indirect
-	github.com/containerd/cgroups v0.0.0-20200404012852-53ba5634dc0f
-	github.com/containerd/containerd v1.0.2
+	github.com/containerd/cgroups v0.0.0
+	github.com/containerd/containerd v1.2.13
 	github.com/containerd/continuity v0.0.0-20200228182428-0f16d7a0959c // indirect
 	github.com/containerd/fifo v0.0.0-20191213151349-ff969a566b00 // indirect
 	github.com/containerd/typeurl v0.0.0-20190228175220-2a93cfde8c20
 	github.com/coreos/etcd v3.3.15+incompatible
 	github.com/coreos/go-semver v0.3.0
-	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
-	github.com/docker/docker v0.7.3-0.20190409004836-2e1cfbca03da
+	github.com/coreos/go-systemd v0.0.0
+	github.com/docker/docker v17.12.0-ce-rc1.0.20200309214505-aa6a9891b09c+incompatible
 	github.com/docker/go-connections v0.3.0
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
@@ -93,6 +103,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4
 	github.com/go-test/deep v1.0.5 // indirect
 	github.com/godbus/dbus v0.0.0-20151105175453-c7fdd8b5cd55
+	github.com/gogo/googleapis v1.3.2 // indirect
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/gopacket v1.1.17
@@ -153,3 +164,5 @@ require (
 	k8s.io/kubernetes v1.15.4
 	k8s.io/metrics v0.17.3
 )
+
+require github.com/opencontainers/runtime-spec v1.0.2 // indirect

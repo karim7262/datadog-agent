@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/containerd/cgroups"
+	v1 "github.com/containerd/cgroups/stats/v1"
 	"github.com/containerd/containerd/api/types"
 	"github.com/containerd/containerd/containers"
 	"github.com/containerd/typeurl"
@@ -178,7 +179,7 @@ func TestComputeMem(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		mem      *cgroups.MemoryStat
+		mem      *v1.MemoryStat
 		expected map[string]float64
 	}{
 		{
@@ -188,19 +189,19 @@ func TestComputeMem(t *testing.T) {
 		},
 		{
 			name:     "nothing",
-			mem:      &cgroups.MemoryStat{},
+			mem:      &v1.MemoryStat{},
 			expected: map[string]float64{},
 		},
 		{
 			name: "missing one of the MemoryEntries, missing entries in the others",
-			mem: &cgroups.MemoryStat{
-				Usage: &cgroups.MemoryEntry{
+			mem: &v1.MemoryStat{
+				Usage: &v1.MemoryEntry{
 					Usage: 1,
 				},
-				Kernel: &cgroups.MemoryEntry{
+				Kernel: &v1.MemoryEntry{
 					Max: 2,
 				},
-				Swap: &cgroups.MemoryEntry{
+				Swap: &v1.MemoryEntry{
 					Limit: 3,
 				},
 			},
@@ -212,20 +213,20 @@ func TestComputeMem(t *testing.T) {
 		},
 		{
 			name: "full MemoryEntries, some regular metrics",
-			mem: &cgroups.MemoryStat{
-				Usage: &cgroups.MemoryEntry{
+			mem: &v1.MemoryStat{
+				Usage: &v1.MemoryEntry{
 					Usage:   1,
 					Max:     2,
 					Limit:   3,
 					Failcnt: 0,
 				},
-				Kernel: &cgroups.MemoryEntry{
+				Kernel: &v1.MemoryEntry{
 					Usage:   1,
 					Max:     2,
 					Limit:   3,
 					Failcnt: 0,
 				},
-				Swap: &cgroups.MemoryEntry{
+				Swap: &v1.MemoryEntry{
 					Usage:   1,
 					Max:     2,
 					Limit:   3,
