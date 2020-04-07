@@ -70,7 +70,7 @@ def get_build_flags(ctx, static=False, prefix=None, embedded_path=None,
     """
     gcflags = ""
     ldflags = get_version_ldflags(ctx, prefix, major_version=major_version)
-    env = {}
+    env = {"GO111MODULE":"on"}
 
     if sys.platform == 'win32':
         env["CGO_LDFLAGS_ALLOW"] = "-Wl,--allow-multiple-definition"
