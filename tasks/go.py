@@ -264,10 +264,10 @@ def deps(ctx, no_checks=False, core_dir=None, verbose=False, android=False, dep_
 
     if not no_dep_ensure:
         # source level deps
-        print("calling dep ensure")
+        print("calling go mod vendor")
         start = datetime.datetime.now()
         verbosity = ' -v' if verbose else ''
-        ctx.run("go mod vendor{}{}".format(verbosity))
+        ctx.run("go mod vendor{}".format(verbosity))
         dep_done = datetime.datetime.now()
 
         # If github.com/DataDog/datadog-agent gets vendored too - nuke it
@@ -282,7 +282,7 @@ def deps(ctx, no_checks=False, core_dir=None, verbose=False, android=False, dep_
             print("Removing vendored github.com/DataDog/datadog-agent")
             shutil.rmtree('vendor/github.com/DataDog/datadog-agent')
 
-        # make sure PSUTIL is gone on windows; the dep ensure above will vendor it
+        # make sure PSUTIL is gone on windows; the go mod above will vendor it
         # in because it's necessary on other platforms
         if not android and sys.platform == 'win32':
             print("Removing PSUTIL on Windows")
@@ -312,7 +312,7 @@ def deps(ctx, no_checks=False, core_dir=None, verbose=False, android=False, dep_
     checks_done = datetime.datetime.now()
 
     if not no_dep_ensure:
-        print("dep ensure, elapsed:    {}".format(dep_done - start))
+        print("go mod vendor, elapsed: {}".format(dep_done - start))
     print("checks install elapsed: {}".format(checks_done - checks_start))
 
 @task
