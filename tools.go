@@ -14,4 +14,6 @@ import (
 	_ "golang.org/x/tools/go/gcexportdata",
 	_ "github.com/golangci/golangci-lint",
 	_ "github.com/shuLhan/go-bindata/cmd/go-bindata"
+
+	_ "github.com/ugorji/go"
 )
