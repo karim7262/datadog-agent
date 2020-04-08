@@ -46,6 +46,9 @@ const (
 
 	// ClusterIDCacheKey is the key name for the orchestrator cluster id in the agent in-mem cache
 	ClusterIDCacheKey = "orchestratorClusterID"
+
+	// defaultSystemProbeSocketPath is the default unix socket path to be used for connecting to the system probe
+	defaultSystemProbeSocketPath = "/opt/datadog-agent/run/sysprobe.sock"
 )
 
 var overrideVars = make(map[string]interface{})
@@ -220,10 +223,18 @@ func initConfig(config Config) {
 
 	// Agent GUI access port
 	config.BindEnvAndSetDefault("GUI_port", defaultGuiPort)
+
 	if IsContainerized() {
-		config.SetDefault("procfs_path", "/host/proc")
-		config.SetDefault("container_proc_root", "/host/proc")
-		config.SetDefault("container_cgroup_root", "/host/sys/fs/cgroup/")
+		// In serverless-containerized environments (e.g Fargate)
+		// it's impossible to mount host volumes.
+		// Make sure the paths exist before setting-up the default values.
+		if pathExists("/host/proc") {
+			config.SetDefault("procfs_path", "/host/proc")
+			config.SetDefault("container_proc_root", "/host/proc")
+		}
+		if pathExists("/host/sys/fs/cgroup/") {
+			config.SetDefault("container_cgroup_root", "/host/sys/fs/cgroup/")
+		}
 	} else {
 		config.SetDefault("container_proc_root", "/proc")
 		// for amazon linux the cgroup directory on host is /cgroup/
@@ -473,7 +484,8 @@ func initConfig(config Config) {
 	config.BindEnvAndSetDefault("logs_config.run_path", defaultRunPath)
 	config.BindEnv("logs_config.dd_url")
 	config.BindEnvAndSetDefault("logs_config.use_http", false)
-	config.BindEnvAndSetDefault("logs_config.use_compression", false)
+	config.BindEnvAndSetDefault("logs_config.use_tcp", false)
+	config.BindEnvAndSetDefault("logs_config.use_compression", true)
 	config.BindEnvAndSetDefault("logs_config.compression_level", 6) // Default level for the gzip/deflate algorithm
 	config.BindEnvAndSetDefault("logs_config.batch_wait", DefaultBatchWait)
 	config.BindEnvAndSetDefault("logs_config.dd_port", 10516)
@@ -578,7 +590,7 @@ func initConfig(config Config) {
 	config.SetKnown("system_probe_config.collect_local_dns")
 	config.SetKnown("system_probe_config.use_local_system_probe")
 	config.SetKnown("system_probe_config.enable_conntrack")
-	config.SetKnown("system_probe_config.sysprobe_socket")
+	config.BindEnvAndSetDefault("system_probe_config.sysprobe_socket", defaultSystemProbeSocketPath)
 	config.SetKnown("system_probe_config.conntrack_short_term_buffer_size")
 	config.SetKnown("system_probe_config.max_conns_per_message")
 	config.SetKnown("system_probe_config.max_tracked_connections")
@@ -1014,6 +1026,12 @@ func IsKubernetes() bool {
 		return true
 	}
 	return false
+}
+
+// pathExists returns true if the given path exists
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }
 
 // AddOverrides provides an externally accessible method for

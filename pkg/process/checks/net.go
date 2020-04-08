@@ -39,7 +39,7 @@ func (c *ConnectionsCheck) Init(cfg *config.AgentConfig, _ *model.SystemInfo) {
 	c.tracerClientID = fmt.Sprintf("%d", os.Getpid())
 
 	// Calling the remote tracer will cause it to initialize and check connectivity
-	net.SetSystemProbeSocketPath(cfg.SystemProbeSocketPath)
+	net.SetSystemProbePath(cfg.SystemProbeSocketPath)
 	_, _ = net.GetRemoteSystemProbeUtil()
 
 	networkID, err := util.GetNetworkID()
@@ -54,9 +54,6 @@ func (c *ConnectionsCheck) Init(cfg *config.AgentConfig, _ *model.SystemInfo) {
 
 // Name returns the name of the ConnectionsCheck.
 func (c *ConnectionsCheck) Name() string { return "connections" }
-
-// Endpoint returns the endpoint where this check is submitted.
-func (c *ConnectionsCheck) Endpoint() string { return "/api/v1/collector" }
 
 // RealTime indicates if this check only runs in real-time mode.
 func (c *ConnectionsCheck) RealTime() bool { return false }
@@ -140,13 +137,14 @@ func batchConnections(
 		ctrIDForPID := getCtrIDsByPIDs(connectionPIDs(batchConns))
 
 		batches = append(batches, &model.CollectorConnections{
-			HostName:        cfg.HostName,
-			NetworkId:       networkID,
-			Connections:     batchConns,
-			GroupId:         groupID,
-			GroupSize:       groupSize,
-			ContainerForPid: ctrIDForPID,
-			EncodedDNS:      dnsEncoder.Encode(batchDNS),
+			HostName:          cfg.HostName,
+			NetworkId:         networkID,
+			Connections:       batchConns,
+			GroupId:           groupID,
+			GroupSize:         groupSize,
+			ContainerForPid:   ctrIDForPID,
+			EncodedDNS:        dnsEncoder.Encode(batchDNS),
+			ContainerHostType: cfg.ContainerHostType,
 		})
 		cxs = cxs[batchSize:]
 	}

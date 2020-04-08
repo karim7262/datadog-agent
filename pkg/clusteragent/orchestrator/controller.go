@@ -8,17 +8,21 @@
 package orchestrator
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
+	"github.com/DataDog/datadog-agent/pkg/forwarder"
 	processcfg "github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/process/util/api"
 	"github.com/DataDog/datadog-agent/pkg/process/util/orchestrator"
+	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/clustername"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 
+	model "github.com/DataDog/agent-payload/process"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
@@ -45,7 +49,8 @@ type Controller struct {
 	groupID                 int32
 	hostName                string
 	clusterName             string
-	apiClient               api.Client
+	clusterID               string
+	forwarder               forwarder.Forwarder
 	processConfig           *processcfg.AgentConfig
 	IsLeaderFunc            func() bool
 }
@@ -60,7 +65,11 @@ func StartController(ctx ControllerContext) error {
 		log.Warn("Orchestrator explorer enabled but no cluster name set: disabling")
 		return nil
 	}
-	orchestratorController := newController(ctx)
+	orchestratorController, err := newController(ctx)
+	if err != nil {
+		log.Errorf("Error retrieving Kubernetes cluster ID: %v", err)
+		return err
+	}
 
 	go orchestratorController.Run(ctx.StopCh)
 
@@ -69,31 +78,48 @@ func StartController(ctx ControllerContext) error {
 	return nil
 }
 
-func newController(ctx ControllerContext) *Controller {
+func newController(ctx ControllerContext) (*Controller, error) {
 	podInformer := ctx.UnassignedPodInformerFactory.Core().V1().Pods()
+	clusterID, err := clustername.GetClusterID()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := processcfg.NewDefaultAgentConfig(true)
+	if err := cfg.LoadProcessYamlConfig(ctx.ConfigPath); err != nil {
+		log.Errorf("Error loading the process config: %s", err)
+	}
+
+	keysPerDomain := make(map[string][]string)
+	for _, ep := range cfg.OrchestratorEndpoints {
+		keysPerDomain[ep.Endpoint.String()] = []string{ep.APIKey}
+	}
+
 	oc := &Controller{
 		unassignedPodLister:     podInformer.Lister(),
 		unassignedPodListerSync: podInformer.Informer().HasSynced,
 		groupID:                 rand.Int31(),
 		hostName:                ctx.Hostname,
 		clusterName:             ctx.ClusterName,
-		apiClient: api.NewClient(
-			http.Client{Timeout: 20 * time.Second, Transport: processcfg.NewDefaultTransport()},
-			30*time.Second),
-		IsLeaderFunc: ctx.IsLeaderFunc,
+		clusterID:               clusterID,
+		processConfig:           cfg,
+		forwarder:               forwarder.NewDefaultForwarder(keysPerDomain),
+		IsLeaderFunc:            ctx.IsLeaderFunc,
 	}
-	cfg := processcfg.NewDefaultAgentConfig(true)
-	if err := cfg.LoadProcessYamlConfig(ctx.ConfigPath); err != nil {
-		log.Errorf("Error loading the process config: %s", err)
-	}
+
 	oc.processConfig = cfg
-	return oc
+	return oc, nil
 }
 
 // Run starts the orchestrator controller
 func (o *Controller) Run(stopCh <-chan struct{}) {
 	log.Infof("Starting orchestrator controller")
 	defer log.Infof("Stopping orchestrator controller")
+
+	if err := o.forwarder.Start(); err != nil {
+		log.Errorf("error starting pod forwarder: %s", err)
+		return
+	}
 
 	if !cache.WaitForCacheSync(stopCh, o.unassignedPodListerSync) {
 		return
@@ -102,6 +128,8 @@ func (o *Controller) Run(stopCh <-chan struct{}) {
 	go wait.Until(o.processPods, 10*time.Second, stopCh)
 
 	<-stopCh
+
+	o.forwarder.Stop()
 }
 
 func (o *Controller) processPods() {
@@ -116,18 +144,48 @@ func (o *Controller) processPods() {
 	}
 
 	// we send an empty hostname for unassigned pods
-	msg, err := orchestrator.ProcessPodlist(podList, atomic.AddInt32(&o.groupID, 1), o.processConfig, "", o.clusterName)
+	msg, err := orchestrator.ProcessPodlist(podList, atomic.AddInt32(&o.groupID, 1), o.processConfig, "", o.clusterName, o.clusterID)
 	if err != nil {
 		log.Errorf("Unable to process pod list: %v", err)
 		return
 	}
 
-	extraHeaders := map[string]string{
-		api.HostHeader:           o.hostName,
-		api.ContainerCountHeader: "0",
-	}
 	for _, m := range msg {
-		// TODO: handle failure & retries
-		o.apiClient.PostMessage(o.processConfig.OrchestratorEndpoints, "/api/v1/orchestrator", m, extraHeaders)
+		extraHeaders := make(http.Header)
+		extraHeaders.Set(api.HostHeader, o.hostName)
+		extraHeaders.Set(api.ClusterIDHeader, o.clusterID)
+
+		body, err := encodePayload(m)
+		if err != nil {
+			log.Errorf("Unable to encode message: %s", err)
+			continue
+		}
+
+		payloads := forwarder.Payloads{&body}
+		responses, err := o.forwarder.SubmitPodChecks(payloads, extraHeaders)
+		if err != nil {
+			log.Errorf("Unable to submit payload: %s", err)
+			continue
+		}
+
+		// Consume the responses so that writers to the channel do not become blocked
+		// we don't need the bodies here though
+		for range responses {
+
+		}
 	}
+}
+
+func encodePayload(m model.MessageBody) ([]byte, error) {
+	msgType, err := model.DetectMessageType(m)
+	if err != nil {
+		return nil, fmt.Errorf("unable to detect message type: %s", err)
+	}
+
+	return model.EncodeMessage(model.Message{
+		Header: model.MessageHeader{
+			Version:  model.MessageV3,
+			Encoding: model.MessageEncodingZstdPB,
+			Type:     msgType,
+		}, Body: m})
 }
