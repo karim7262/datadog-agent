@@ -1,7 +1,7 @@
 package kubestatemetrics
 
 import (
-	ksmbuilder "k8s.io/kube-state-metrics/pkg/builder"
+	ksmbuild "k8s.io/kube-state-metrics/pkg/builder"
 	"context"
 	ksmtypes "k8s.io/kube-state-metrics/pkg/builder/types"
 	"k8s.io/kube-state-metrics/pkg/options"
@@ -10,9 +10,10 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 
 	"k8s.io/kube-state-metrics/pkg/metric_generator"
-
+	"github.com/DataDog/datadog-agent/pkg/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/tools/cache"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // Builder struct represented the metric store generator
@@ -23,7 +24,7 @@ type Builder struct {
 	vpaClient      vpaclientset.Interface
 	namespaces     options.NamespaceList
 	ctx            context.Context
-	whiteBlackList ksmtypes.WhiteBlackLister
+	allowDenyList    ksmtypes.AllowDenyLister
 	metrics        *watch.ListWatchMetrics
 	shard          int32
 	totalShards    int
@@ -32,7 +33,7 @@ type Builder struct {
 // New returns new Builder instance
 func New() *Builder {
 	return &Builder{
-		ksmBuilder: ksmbuilder.NewBuilder(),
+		ksmBuilder: ksmbuild.NewBuilder(),
 	}
 }
 
@@ -43,11 +44,11 @@ func (b *Builder) WithNamespaces(nss options.NamespaceList) {
 	b.ksmBuilder.WithNamespaces(nss)
 }
 
-// WithWhiteBlackList configures the white or blacklisted metric to be exposed
+// WithAllowDenyList configures the white or blacklisted metric to be exposed
 // by the store build by the Builder.
-func (b *Builder) WithWhiteBlackList(l ksmtypes.WhiteBlackLister) {
-	b.whiteBlackList = l
-	b.ksmBuilder.WithWhiteBlackList(l)
+func (b *Builder) WithAllowDenyList(l ksmtypes.AllowDenyLister) {
+	b.allowDenyList = l
+	b.ksmBuilder.WithAllowDenyList(l)
 }
 
 // WithSharding sets the shard and totalShards property of a Builder.
@@ -85,10 +86,14 @@ func (b *Builder) WithContext(ctx context.Context) {
 	b.ksmBuilder.WithContext(ctx)
 	b.ctx = ctx
 }
-//
+
+func (b *Builder) DefaultGenerateStoreFunc() ksmtypes.BuildStoreFunc {
+	return b.GenerateStore
+}
+
 // WithCustomGenerateStoreFunc configures a constom generate store function
-func (b *Builder) WithCustomGenerateStoreFunc(f ksmtypes.BuildStoreFunc) {
-	b.ksmBuilder.WithCustomGenerateStoreFunc(f)
+func (b *Builder) WithGenerateStoreFunc(f ksmtypes.BuildStoreFunc) {
+	b.ksmBuilder.WithGenerateStoreFunc(f)
 }
 
 //
@@ -98,16 +103,19 @@ func (b *Builder) Build() []cache.Store{
 }
 
 // GenerateStore use to generate new Metrics Store for Metrics Families
-func (b *Builder) GenerateStore(metricFamilies []generator.FamilyGenerator, expectedType interface{}, listWatchFunc func(kubeClient clientset.Interface, ns string) cache.ListerWatcher, ) cache.Store {
-	filteredMetricFamilies := generator.FilterMetricFamilies(b.whiteBlackList, metricFamilies)
+func (b *Builder) GenerateStore(metricFamilies []generator.FamilyGenerator,
+	expectedType interface{},
+	listWatchFunc func(kubeClient clientset.Interface, ns string) cache.ListerWatcher,
+)cache.Store {
+	filteredMetricFamilies := generator.FilterMetricFamilies(b.allowDenyList, metricFamilies)
 	composedMetricGenFuncs := generator.ComposeMetricGenFuncs(filteredMetricFamilies)
 
-	store := NewMetricsStore(
+	store := store.NewMetricsStore(
 		composedMetricGenFuncs,
 	)
 	b.reflectorPerNamespace(expectedType, store, listWatchFunc)
-
-	return nil
+	log.Infof("returning store %#v", store)
+	return store
 }
 
 // reflectorPerNamespace creates a Kubernetes client-go reflector with the given

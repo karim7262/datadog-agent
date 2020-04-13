@@ -1,11 +1,14 @@
-package kubestatemetrics
+package store
 
 import (
 	"k8s.io/kube-state-metrics/pkg/metric"
 	"sync"
+	"k8s.io/apimachinery/pkg/types"
+
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 
@@ -19,17 +22,17 @@ type MetricsStore struct {
 	// metric families, containing a slice of metrics. We need to keep metrics
 	// grouped by metric families in order to zip families with their help text in
 	// MetricsStore.WriteAll().
-	metrics map[string]map[string]*metric.Family
+	metrics map[types.UID][][]byte
 	// generateMetricsFunc generates metrics based on a given Kubernetes object
 	// and returns them grouped by metric family.
-	generateMetricsFunc func(interface{}) []*metric.Family
+	generateMetricsFunc func(interface{}) []metric.FamilyInterface
 }
 
 // NewMetricsStore returns a new MetricsStore
-func NewMetricsStore(generateFunc func(interface{}) []*metric.Family) *MetricsStore {
+func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface) *MetricsStore {
 	return &MetricsStore{
 		generateMetricsFunc: generateFunc,
-		metrics:             make(map[string]map[string]*metric.Family),
+		metrics:             map[types.UID][][]byte{},
 	}
 }
 
@@ -48,19 +51,14 @@ func (s *MetricsStore) Add(obj interface{}) error {
 	defer s.mutex.Unlock()
 
 	families := s.generateMetricsFunc(obj)
+	familyStrings := make([][]byte, len(families))
 
-	uid := string(o.GetUID())
-	if _, ok := s.metrics[uid]; !ok {
-		s.metrics[uid] = make(map[string]*metric.Family)
+	for i, f := range families {
+		familyStrings[i] = f.ByteSlice()
 	}
 
-	var errs []error
-	for _, f := range families {
-		s.metrics[uid][f.Name] = f
-	}
-	if len(errs) > 0 {
-		return errs[0]
-	}
+	s.metrics[o.GetUID()] = familyStrings
+
 	return nil
 }
 
@@ -91,7 +89,7 @@ func (s *MetricsStore) Delete(obj interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	delete(s.metrics, string(o.GetUID()))
+	delete(s.metrics, o.GetUID())
 
 	return nil
 }
@@ -139,31 +137,32 @@ func (s *MetricsStore) Push(sender aggregator.Sender) error {
 	defer s.mutex.RUnlock()
 	var errs []error
 	for uid := range s.metrics {
-		for _, f := range s.metrics[uid] {
-			s.metrics[uid][f.Name] = f
-
-			switch f.Type {
-			case metric.Gauge:
-				for _, m := range f.Metrics {
-					tags, err := buildTags(uid, m)
-					if err != nil {
-						errs = append(errs, err)
-						continue
-					}
-					sender.Gauge(f.Name, m.Value, "", tags)
-				}
-			case metric.Counter:
-				for _, m := range f.Metrics {
-					tags, err := buildTags(uid, m)
-					if err != nil {
-						errs = append(errs, err)
-						continue
-					}
-					sender.Gauge(f.Name, m.Value, "", tags)
-				}
-			default:
-				errs = append(errs, fmt.Errorf("metric type: %s not supported", f.Type))
-			}
+		for uid, f := range s.metrics[uid] {
+			log.Infof("metric UID is %d, content %#v", uid, f)
+			//s.metrics[uid][f.Name] = f
+			//
+			//switch f.Type {
+			//case metric.Gauge:
+			//	for _, m := range f.Metrics {
+			//		tags, err := buildTags(uid, m)
+			//		if err != nil {
+			//			errs = append(errs, err)
+			//			continue
+			//		}
+			//		sender.Gauge(f.Name, m.Value, "", tags)
+			//	}
+			//case metric.Counter:
+			//	for _, m := range f.Metrics {
+			//		tags, err := buildTags(uid, m)
+			//		if err != nil {
+			//			errs = append(errs, err)
+			//			continue
+			//		}
+			//		sender.Gauge(f.Name, m.Value, "", tags)
+			//	}
+			//default:
+			//	errs = append(errs, fmt.Errorf("metric type: %s not supported", f.Type))
+			//}
 
 		}
 	}
