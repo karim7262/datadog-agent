@@ -13,7 +13,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/tools/cache"
-	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // Builder struct represented the metric store generator
@@ -114,7 +113,6 @@ func (b *Builder) GenerateStore(metricFamilies []generator.FamilyGenerator,
 		composedMetricGenFuncs,
 	)
 	b.reflectorPerNamespace(expectedType, store, listWatchFunc)
-	log.Infof("returning store %#v", store)
 	return store
 }
 
@@ -126,8 +124,7 @@ func (b *Builder) reflectorPerNamespace(
 	listWatchFunc func(kubeClient clientset.Interface, ns string) cache.ListerWatcher,
 ) {
 	for _, ns := range b.namespaces {
-		lw := listWatchFunc(b.kubeClient, ns)
-		//instrumentedListWatch := watch.NewInstrumentedListerWatcher(lw, g.metrics, reflect.TypeOf(expectedType).String())
+		lw := listWatchFunc(b.kubeClient, ns) //instrumentedListWatch := watch.NewInstrumentedListerWatcher(lw, g.metrics, reflect.TypeOf(expectedType).String())
 		reflector := cache.NewReflector(lw, expectedType, store, 0)
 		go reflector.Run(b.ctx.Done())
 	}

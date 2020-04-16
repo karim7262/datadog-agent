@@ -7,7 +7,6 @@ import (
 
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/meta"
-	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
@@ -22,7 +21,7 @@ type MetricsStore struct {
 	// metric families, containing a slice of metrics. We need to keep metrics
 	// grouped by metric families in order to zip families with their help text in
 	// MetricsStore.WriteAll().
-	metrics map[types.UID][][]byte
+	metrics map[types.UID][]DDMetricsFam
 	// generateMetricsFunc generates metrics based on a given Kubernetes object
 	// and returns them grouped by metric family.
 	generateMetricsFunc func(interface{}) []metric.FamilyInterface
@@ -32,10 +31,35 @@ type MetricsStore struct {
 func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface) *MetricsStore {
 	return &MetricsStore{
 		generateMetricsFunc: generateFunc,
-		metrics:             map[types.UID][][]byte{},
+		metrics:             map[types.UID][]DDMetricsFam{},
 	}
 }
 
+type DDMetric struct {
+	labels []string
+	Val float64
+}
+
+type DDMetricsFam struct {
+	Name string
+	listMetrics []DDMetric
+}
+
+func (d *DDMetricsFam) extract(f metric.Family) {
+	d.Name = f.Name
+	for _, m := range f.Metrics {
+		var err error
+		s := DDMetric{}
+		s.Val = m.Value
+		s.labels, err = buildTags(m)
+		if err != nil {
+			// TODO test how verbose that could be.
+			log.Errorf("Could not retrieve the labels for %s: %v", f.Name, err)
+			continue
+		}
+		d.listMetrics = append(d.listMetrics, s)
+	}
+}
 
 // Implementing k8s.io/client-go/tools/cache.Store interface
 
@@ -50,20 +74,21 @@ func (s *MetricsStore) Add(obj interface{}) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	families := s.generateMetricsFunc(obj)
-	familyStrings := make([][]byte, len(families))
-
-	for i, f := range families {
-		familyStrings[i] = f.ByteSlice()
+	metricsForUID := s.generateMetricsFunc(obj)
+	convertedMetricsForUID := make([]DDMetricsFam, len(metricsForUID))
+	for i, f := range metricsForUID {
+		metricConvertedList := DDMetricsFam{}
+		f.Inspect(metricConvertedList.extract)
+		convertedMetricsForUID[i] = metricConvertedList
 	}
 
-	s.metrics[o.GetUID()] = familyStrings
+	s.metrics[o.GetUID()] = convertedMetricsForUID
 
 	return nil
 }
 
-func buildTags(uid string, metrics *metric.Metric) ([]string, error) {
-	tags := []string{fmt.Sprintf("uid:%s", uid)}
+func buildTags(metrics *metric.Metric) ([]string, error) {
+	var tags []string
 	if len(metrics.LabelKeys) != len(metrics.LabelValues) {
 		return nil, fmt.Errorf("LabelKeys and LabelValues not same size")
 	}
@@ -132,42 +157,53 @@ func (s *MetricsStore) Resync() error {
 	return nil
 }
 
-func (s *MetricsStore) Push(sender aggregator.Sender) error {
+func (s *MetricsStore) Push() int {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	var errs []error
-	for uid := range s.metrics {
-		for uid, f := range s.metrics[uid] {
-			log.Infof("metric UID is %d, content %#v", uid, f)
-			//s.metrics[uid][f.Name] = f
-			//
-			//switch f.Type {
-			//case metric.Gauge:
-			//	for _, m := range f.Metrics {
-			//		tags, err := buildTags(uid, m)
-			//		if err != nil {
-			//			errs = append(errs, err)
-			//			continue
-			//		}
-			//		sender.Gauge(f.Name, m.Value, "", tags)
-			//	}
-			//case metric.Counter:
-			//	for _, m := range f.Metrics {
-			//		tags, err := buildTags(uid, m)
-			//		if err != nil {
-			//			errs = append(errs, err)
-			//			continue
-			//		}
-			//		sender.Gauge(f.Name, m.Value, "", tags)
-			//	}
-			//default:
-			//	errs = append(errs, fmt.Errorf("metric type: %s not supported", f.Type))
-			//}
+	map[string]
+	// to return 
+	for u := range s.metrics {
+		for _, m := range s.metrics[u] {
+			// Metrics of a specific object UID
 
+			log.Infof("UID %s", u)
+			log.Infof("metric name: %s list of DDMetrics %#v", m.Name, m.listMetrics)
 		}
 	}
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	return nil
+	//var errs []error
+	//log.Infof("metrics len %d", len(s.metrics))
+	//for uid := range s.metrics {
+	//	for uid := range s.metrics[uid] {
+	//		log.Infof("metric UID is %v", uid)
+	//		//s.metrics[uid][f.Name] = f
+	//
+	//		//switch f.Type {
+	//		//case metric.Gauge:
+	//		//	for _, m := range f.Metrics {
+	//		//		tags, err := buildTags(uid, m)
+	//		//		if err != nil {
+	//		//			errs = append(errs, err)
+	//		//			continue
+	//		//		}
+	//		//		sender.Gauge(f.Name, m.Value, "", tags)
+	//		//	}
+	//		//case metric.Counter:
+	//		//	for _, m := range f.Metrics {
+	//		//		tags, err := buildTags(uid, m)
+	//		//		if err != nil {
+	//		//			errs = append(errs, err)
+	//		//			continue
+	//		//		}
+	//		//		sender.Gauge(f.Name, m.Value, "", tags)
+	//		//	}
+	//		//default:
+	//		//	errs = append(errs, fmt.Errorf("metric type: %s not supported", f.Type))
+	//		//}
+	//
+	//	}
+	//}
+	//if len(errs) > 0 {
+	//	return errs[0]
+	//}
+	return len(s.metrics)
 }
