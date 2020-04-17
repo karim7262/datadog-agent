@@ -14,7 +14,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 	ksmstore "github.com/DataDog/datadog-agent/pkg/kubestatemetrics/store"
 	"k8s.io/kube-state-metrics/pkg/allowdenylist"
-	"strings"
 	"time"
 )
 
@@ -112,20 +111,27 @@ func (k *KSMCheck) Run() error {
 
 	for _, store := range k.store {
 
-		metrics :=  store.(*ksmstore.MetricsStore).Push()
-		processMetrics(sender, metrics)
+		_ =  store.(*ksmstore.MetricsStore).Push()
+
+		//processMetrics(sender, metrics)
 		// TODO identify how I can extrac tthe store name to convert later on.
 	}
 	return nil
 }
 
-func processMetrics(sender aggregator.Sender, metrics map[string][]ksmstore.DDMetric) {
-	for name, metric := range metrics {
-		for _, m := range metric {
-			sender.Gauge(strings.Replace(name, "_", ".", -1), m.Val, "", m.Labels)
-		}
-	}
-}
+//func processMetrics(sender aggregator.Sender, metrics map[types.UID][]store.DDMetricsFam) {
+//	for u := range metrics {
+//		for _, mfam := range metrics[u] {
+//			for _, m := range mfam. {
+//			}
+//		}
+//	}
+//	for name, metric := range metrics {
+//		for _, m := range metric {
+//			sender.Gauge(strings.Replace(name, "_", ".", -1), m.Val, "", m.Labels)
+//		}
+//	}
+//}
 
 func KubeStateMEtricsFactory() check.Check {
 	return newKSMCheck(core.NewCheckBase(kubeStateMetricsCheckName), &KSMConfig{})

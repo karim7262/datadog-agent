@@ -25,11 +25,14 @@ type MetricsStore struct {
 	// generateMetricsFunc generates metrics based on a given Kubernetes object
 	// and returns them grouped by metric family.
 	generateMetricsFunc func(interface{}) []metric.FamilyInterface
+
+	MetricsType string
 }
 
 // NewMetricsStore returns a new MetricsStore
-func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface) *MetricsStore {
+func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface, mt string) *MetricsStore {
 	return &MetricsStore{
+		MetricsType: mt,
 		generateMetricsFunc: generateFunc,
 		metrics:             map[types.UID][]DDMetricsFam{},
 	}
@@ -41,6 +44,7 @@ type DDMetric struct {
 }
 
 type DDMetricsFam struct {
+	Type string
 	Name string
 	listMetrics []DDMetric
 }
@@ -77,11 +81,12 @@ func (s *MetricsStore) Add(obj interface{}) error {
 	metricsForUID := s.generateMetricsFunc(obj)
 	convertedMetricsForUID := make([]DDMetricsFam, len(metricsForUID))
 	for i, f := range metricsForUID {
-		metricConvertedList := DDMetricsFam{}
+		metricConvertedList := DDMetricsFam{
+			Type: s.MetricsType,
+		}
 		f.Inspect(metricConvertedList.extract)
 		convertedMetricsForUID[i] = metricConvertedList
 	}
-
 	s.metrics[o.GetUID()] = convertedMetricsForUID
 
 	return nil
@@ -157,24 +162,54 @@ func (s *MetricsStore) Resync() error {
 	return nil
 }
 
-func (s *MetricsStore) Push() map[string][]DDMetric {
+func (s *MetricsStore) Push() map[string]map[string][]DDMetric {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	res := make(map[string][]DDMetric)
-	// to return f
 
-	for u := range s.metrics {
-		for _, m := range s.metrics[u] {
-			// Metrics of a specific object UID
-			for _, me := range m.listMetrics {
-				uidAdd := append(me.Labels, fmt.Sprintf("uid:%s", u))
-				res[m.Name] = append(res[m.Name], DDMetric{
-					Val: me.Val,
-					Labels: uidAdd,
-				})
+	res := make(map[string]map[string][]DDMetric)
+	// UID1: [metric1:[{val1, labels1}, {val2, labels2}], metric2, metric3]
+	// metric1 = [{val1, labels1}, {val2, labels2}]
+	// [metrics1:[{}]
+	// if the DDFam.Name is the same, append the DDMetrics
+	//
+	//
+	// in: map[types.UID][]DDMetricsFam   [ABC-123][kube_node_info: [{val1, LabelSet}, {val2, LabelSet}]
+	// out: [Node]: [ kube_node_info: [{val1, LabelSet}, {val2, LabelSet}], kube_node_foo: [{val4, LabelSet2}, {val1, LabelSet3}]]
+	for u, metricFamList := range s.metrics {
+		// u = UID1. Node = [kube_node_limit:[{val1, labels1}, {val2, labels2}], metric2, metric3]
+		log.Info("res1 is %v", res)
+		for _, metricFam := range metricFamList {
+			if _, ok := res[metricFam.Type]; !ok {
+				log.Info("No rentry in res for %s", metricFam.Type)
+				res[metricFam.Type] = make(map[string][]DDMetric)
 			}
+			//kube_node_limit = metric1:[{val1, labels1}
+			resMetric := []DDMetric{}
+			for _, metric := range metricFam.listMetrics {
+					uidAdd := append(metric.Labels, fmt.Sprintf("uid:%s", u))
+					resMetric = append(resMetric, DDMetric{
+						Val: metric.Val,
+						Labels: uidAdd,
+					})
+			}
+			res[metricFam.Type][metricFam.Name] = append(res[metricFam.Type][metricFam.Name], resMetric...)
 		}
+		//for _, mfam := range s.metrics[u] {
+		//
+		//	resMetric := make(map[string][]DDMetric, len(mfam.listMetrics))
+		//	for _, me := range mfam.listMetrics {
+		//
+		//		uidAdd := append(me.Labels, fmt.Sprintf("uid:%s", u))
+		//
+		//		resMetric[mfam.Name] = append(resMetric[mfam.Name], DDMetric{
+		//			Val: me.Val,
+		//			Labels: uidAdd,
+		//		})
+		//	}
+		//}
+		//res[mfam.Type] = resMetric
 	}
+	log.Info("FINAL res is %v", res)
 	return res
 
 }
