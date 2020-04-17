@@ -7,13 +7,15 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/collector/check"
 	"github.com/DataDog/datadog-agent/pkg/autodiscovery/integration"
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
-	"github.com/DataDog/datadog-agent/pkg/kubestatemetrics"
+	kubestatemetrics "github.com/DataDog/datadog-agent/pkg/kubestatemetrics/builder"
 	"k8s.io/client-go/tools/cache"
 	"github.com/DataDog/datadog-agent/pkg/util/kubernetes/apiserver"
 	"k8s.io/kube-state-metrics/pkg/options"
 	"github.com/DataDog/datadog-agent/pkg/util/log"
-	ksmstore "github.com/DataDog/datadog-agent/pkg/store"
+	ksmstore "github.com/DataDog/datadog-agent/pkg/kubestatemetrics/store"
 	"k8s.io/kube-state-metrics/pkg/allowdenylist"
+	"strings"
+	"time"
 )
 
 const (
@@ -22,14 +24,14 @@ const (
 
 type KSMConfig struct {
 	// TODO fill in all the configurations.
-	Collectors                             []string  `yaml:"collectors"` //options.CollectorSet
+	Collectors                             []string  `yaml:"collectors"`
 	//Namespaces                           kubestatemetrics.NamespaceList `yaml:"collectors"`
 	//Shard                                int32
 	//TotalShards                          int
 	//Pod                                  string
 	//Namespace                            string
 	//MetricBlacklist                      kubestatemetrics.MetricSet
-	MetricWhitelist                        []string  `yaml:"metrics"` //options.MetricSet
+	MetricWhitelist                        []string  `yaml:"metrics"`
 	//Version                              bool
 	//DisablePodNonGenericResourceMetrics  bool
 	//DisableNodeNonGenericResourceMetrics bool
@@ -40,6 +42,7 @@ type KSMCheck struct {
 	core.CheckBase
 	instance *KSMConfig
 	store []cache.Store
+	cancelF context.CancelFunc
 }
 
 func (k *KSMCheck) Configure(config, initConfig integration.Data, source string) error {
@@ -83,6 +86,9 @@ func (k *KSMCheck) Configure(config, initConfig integration.Data, source string)
 
 	builder.WithKubeClient(c.Cl)
 	builder.WithContext(context.Background())
+
+	builder.WithResync(30 * time.Second)  //k.instance.ResyncPeriod ? Even necessary ?
+
 	builder.WithGenerateStoreFunc(builder.GenerateStore)
 
 	k.store = builder.Build()
@@ -103,13 +109,22 @@ func (k *KSMCheck) Run() error {
 	}
 
 	defer sender.Commit()
+
 	for _, store := range k.store {
 
-		log.Info(" num of metric is %d", store.(*ksmstore.MetricsStore).Push())
+		metrics :=  store.(*ksmstore.MetricsStore).Push()
+		processMetrics(sender, metrics)
 		// TODO identify how I can extrac tthe store name to convert later on.
 	}
-
 	return nil
+}
+
+func processMetrics(sender aggregator.Sender, metrics map[string][]ksmstore.DDMetric) {
+	for name, metric := range metrics {
+		for _, m := range metric {
+			sender.Gauge(strings.Replace(name, "_", ".", -1), m.Val, "", m.Labels)
+		}
+	}
 }
 
 func KubeStateMEtricsFactory() check.Check {

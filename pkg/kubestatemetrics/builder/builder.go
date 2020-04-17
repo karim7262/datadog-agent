@@ -1,4 +1,4 @@
-package kubestatemetrics
+package builder
 
 import (
 	ksmbuild "k8s.io/kube-state-metrics/pkg/builder"
@@ -10,9 +10,10 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 
 	"k8s.io/kube-state-metrics/pkg/metric_generator"
-	"github.com/DataDog/datadog-agent/pkg/store"
+	"github.com/DataDog/datadog-agent/pkg/kubestatemetrics/store"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/tools/cache"
+	"time"
 )
 
 // Builder struct represented the metric store generator
@@ -27,6 +28,8 @@ type Builder struct {
 	metrics        *watch.ListWatchMetrics
 	shard          int32
 	totalShards    int
+
+	resync         time.Duration
 }
 
 // New returns new Builder instance
@@ -101,6 +104,10 @@ func (b *Builder) Build() []cache.Store{
 	return b.ksmBuilder.Build()
 }
 
+func (b *Builder) WithResync(r time.Duration) {
+	b.resync = r
+}
+
 // GenerateStore use to generate new Metrics Store for Metrics Families
 func (b *Builder) GenerateStore(metricFamilies []generator.FamilyGenerator,
 	expectedType interface{},
@@ -125,7 +132,7 @@ func (b *Builder) reflectorPerNamespace(
 ) {
 	for _, ns := range b.namespaces {
 		lw := listWatchFunc(b.kubeClient, ns) //instrumentedListWatch := watch.NewInstrumentedListerWatcher(lw, g.metrics, reflect.TypeOf(expectedType).String())
-		reflector := cache.NewReflector(lw, expectedType, store, 0)
+		reflector := cache.NewReflector(lw, expectedType, store, b.resync * time.Second)
 		go reflector.Run(b.ctx.Done())
 	}
 }

@@ -36,7 +36,7 @@ func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface) *M
 }
 
 type DDMetric struct {
-	labels []string
+	Labels []string
 	Val float64
 }
 
@@ -51,7 +51,7 @@ func (d *DDMetricsFam) extract(f metric.Family) {
 		var err error
 		s := DDMetric{}
 		s.Val = m.Value
-		s.labels, err = buildTags(m)
+		s.Labels, err = buildTags(m)
 		if err != nil {
 			// TODO test how verbose that could be.
 			log.Errorf("Could not retrieve the labels for %s: %v", f.Name, err)
@@ -157,53 +157,24 @@ func (s *MetricsStore) Resync() error {
 	return nil
 }
 
-func (s *MetricsStore) Push() int {
+func (s *MetricsStore) Push() map[string][]DDMetric {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	map[string]
-	// to return 
+	res := make(map[string][]DDMetric)
+	// to return f
+
 	for u := range s.metrics {
 		for _, m := range s.metrics[u] {
 			// Metrics of a specific object UID
-
-			log.Infof("UID %s", u)
-			log.Infof("metric name: %s list of DDMetrics %#v", m.Name, m.listMetrics)
+			for _, me := range m.listMetrics {
+				uidAdd := append(me.Labels, fmt.Sprintf("uid:%s", u))
+				res[m.Name] = append(res[m.Name], DDMetric{
+					Val: me.Val,
+					Labels: uidAdd,
+				})
+			}
 		}
 	}
-	//var errs []error
-	//log.Infof("metrics len %d", len(s.metrics))
-	//for uid := range s.metrics {
-	//	for uid := range s.metrics[uid] {
-	//		log.Infof("metric UID is %v", uid)
-	//		//s.metrics[uid][f.Name] = f
-	//
-	//		//switch f.Type {
-	//		//case metric.Gauge:
-	//		//	for _, m := range f.Metrics {
-	//		//		tags, err := buildTags(uid, m)
-	//		//		if err != nil {
-	//		//			errs = append(errs, err)
-	//		//			continue
-	//		//		}
-	//		//		sender.Gauge(f.Name, m.Value, "", tags)
-	//		//	}
-	//		//case metric.Counter:
-	//		//	for _, m := range f.Metrics {
-	//		//		tags, err := buildTags(uid, m)
-	//		//		if err != nil {
-	//		//			errs = append(errs, err)
-	//		//			continue
-	//		//		}
-	//		//		sender.Gauge(f.Name, m.Value, "", tags)
-	//		//	}
-	//		//default:
-	//		//	errs = append(errs, fmt.Errorf("metric type: %s not supported", f.Type))
-	//		//}
-	//
-	//	}
-	//}
-	//if len(errs) > 0 {
-	//	return errs[0]
-	//}
-	return len(s.metrics)
+	return res
+
 }
