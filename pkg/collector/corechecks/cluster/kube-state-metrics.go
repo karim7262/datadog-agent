@@ -15,13 +15,11 @@ import (
 	ksmstore "github.com/DataDog/datadog-agent/pkg/kubestatemetrics/store"
 	"k8s.io/kube-state-metrics/pkg/allowdenylist"
 	"time"
-	"k8s.io/apimachinery/pkg/types"
-	"github.com/clamoriniere/ddksm/pkg/store"
-	"strings"
+	"fmt"
 )
 
 const (
-	kubeStateMetricsCheckName = "kube-state-metrics"
+	kubeStateMetricsCheckName = "kube-state-metrics-alpha"
 )
 
 type KSMConfig struct {
@@ -45,6 +43,7 @@ type KSMCheck struct {
 	instance *KSMConfig
 	store []cache.Store
 	cancelF context.CancelFunc
+	labelsToJoin map[string]map[string][]string
 }
 
 func (k *KSMCheck) Configure(config, initConfig integration.Data, source string) error {
@@ -114,7 +113,7 @@ func (k *KSMCheck) Run() error {
 
 	for _, store := range k.store {
 
-		metrics =  store.(*ksmstore.MetricsStore).Push()
+		metrics :=  store.(*ksmstore.MetricsStore).Push()
 
 		processMetrics(sender, metrics)
 		// TODO identify how I can extrac tthe store name to convert later on.
@@ -122,18 +121,23 @@ func (k *KSMCheck) Run() error {
 	return nil
 }
 
-func processMetrics(sender aggregator.Sender, metrics map[types.UID][]store.DDMetricsFam) {
-	for u := range metrics {
-		for _, mfam := range metrics[u] {
-			for _, m := range mfam. {
+func processMetrics(sender aggregator.Sender, metrics map[string][]ksmstore.DDMetricsFam) {
+	// First loop could be removed if we do not add logic for the types (Node, Pods....)
+	for _, metricsList := range metrics {
+		for _, metricFamily := range metricsList {
+			// m.Name -> label join.
+			for _, m := range metricFamily.ListMetrics {
+				sender.Gauge(metricFamily.Name, m.Val, "",joinLabels( m.Labels))
 			}
 		}
 	}
-	for name, metric := range metrics {
-		for _, m := range metric {
-			sender.Gauge(strings.Replace(name, "_", ".", -1), m.Val, "", m.Labels)
-		}
+}
+
+func joinLabels(labels map[string]string) (tags []string) {
+	for k, v := range labels {
+		tags = append(tags, fmt.Sprint("%s:%s", k, v))
 	}
+	return tags
 }
 
 func KubeStateMEtricsFactory() check.Check {

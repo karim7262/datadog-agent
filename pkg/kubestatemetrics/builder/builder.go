@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/client-go/tools/cache"
 	"time"
+	"reflect"
 )
 
 // Builder struct represented the metric store generator
@@ -117,7 +118,7 @@ func (b *Builder) GenerateStore(metricFamilies []generator.FamilyGenerator,
 	composedMetricGenFuncs := generator.ComposeMetricGenFuncs(filteredMetricFamilies)
 	store := store.NewMetricsStore(
 		composedMetricGenFuncs,
-		//reflect.TypeOf(expectedType).String(),
+		reflect.TypeOf(expectedType).String(),
 	)
 	b.reflectorPerNamespace(expectedType, store, listWatchFunc)
 	return store
