@@ -30,9 +30,9 @@ type MetricsStore struct {
 }
 
 // NewMetricsStore returns a new MetricsStore
-func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface, mt string) *MetricsStore {
+func NewMetricsStore(generateFunc func(interface{}) []metric.FamilyInterface) *MetricsStore { // , mt string
 	return &MetricsStore{
-		MetricsType: mt,
+		//MetricsType: mt,
 		generateMetricsFunc: generateFunc,
 		metrics:             map[types.UID][]DDMetricsFam{},
 	}
@@ -51,6 +51,8 @@ type DDMetricsFam struct {
 
 func (d *DDMetricsFam) extract(f metric.Family) {
 	d.Name = f.Name
+	d.Type = string(f.Type)
+
 	for _, m := range f.Metrics {
 		var err error
 		s := DDMetric{}
@@ -82,11 +84,12 @@ func (s *MetricsStore) Add(obj interface{}) error {
 	convertedMetricsForUID := make([]DDMetricsFam, len(metricsForUID))
 	for i, f := range metricsForUID {
 		metricConvertedList := DDMetricsFam{
-			Type: s.MetricsType,
+			//Type: s.MetricsType,
 		}
 		f.Inspect(metricConvertedList.extract)
 		convertedMetricsForUID[i] = metricConvertedList
 	}
+	// We need to keep the store with UID as a key to handle the lifecycle of the objects and the metrics attached.
 	s.metrics[o.GetUID()] = convertedMetricsForUID
 
 	return nil
@@ -162,11 +165,11 @@ func (s *MetricsStore) Resync() error {
 	return nil
 }
 
-func (s *MetricsStore) Push() map[string]map[string][]DDMetric {
+func (s *MetricsStore) Push() []DDMetricsFam {//map[string]map[string][]DDMetric {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	res := make(map[string]map[string][]DDMetric)
+	res := []DDMetricsFam{} // make(map[string]map[string][]DDMetric)
 	// UID1: [metric1:[{val1, labels1}, {val2, labels2}], metric2, metric3]
 	// metric1 = [{val1, labels1}, {val2, labels2}]
 	// [metrics1:[{}]
@@ -179,10 +182,14 @@ func (s *MetricsStore) Push() map[string]map[string][]DDMetric {
 		// u = UID1. Node = [kube_node_limit:[{val1, labels1}, {val2, labels2}], metric2, metric3]
 		log.Info("res1 is %v", res)
 		for _, metricFam := range metricFamList {
-			if _, ok := res[metricFam.Type]; !ok {
-				log.Info("No rentry in res for %s", metricFam.Type)
-				res[metricFam.Type] = make(map[string][]DDMetric)
-			}
+
+			// makes sense when using the map of map
+			//if _, ok := res[metricFam.Type]; !ok {
+			//	log.Info("No rentry in res for %s", metricFam.Type)
+			//	res[metricFam.Type] = make(map[string][]DDMetric)
+			//}
+
+
 			//kube_node_limit = metric1:[{val1, labels1}
 			resMetric := []DDMetric{}
 			for _, metric := range metricFam.listMetrics {
@@ -192,7 +199,12 @@ func (s *MetricsStore) Push() map[string]map[string][]DDMetric {
 						Labels: uidAdd,
 					})
 			}
-			res[metricFam.Type][metricFam.Name] = append(res[metricFam.Type][metricFam.Name], resMetric...)
+			res = append(res, DDMetricsFam{
+				listMetrics: resMetric,
+				Type: metricFam.Type,
+				Name: metricFam.Name,
+			})
+			//res[metricFam.Type][metricFam.Name] = append(res[metricFam.Type][metricFam.Name], resMetric...)
 		}
 		//for _, mfam := range s.metrics[u] {
 		//
