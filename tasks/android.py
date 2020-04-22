@@ -7,7 +7,6 @@ import yaml
 import os
 import shutil
 import sys
-from distutils.dir_util import copy_tree
 
 import invoke
 from invoke import task

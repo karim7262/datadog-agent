@@ -6,8 +6,6 @@ import glob
 import os
 import shutil
 import sys
-import platform
-from distutils.dir_util import copy_tree
 
 import invoke
 from invoke import task

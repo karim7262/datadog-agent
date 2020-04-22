@@ -4,7 +4,6 @@ Miscellaneous functions, no tasks here
 from __future__ import print_function
 
 import os
-import platform
 import re
 import sys
 import json

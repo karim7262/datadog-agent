@@ -1,7 +1,5 @@
 import datetime
 import os
-import re
-import shutil
 import sys
 import shutil
 import tempfile

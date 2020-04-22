@@ -6,16 +6,12 @@ import glob
 import os
 import shutil
 import sys
-import platform
-from distutils.dir_util import copy_tree
 
 import invoke
 from invoke import task
 from invoke.exceptions import Exit
 
-from .utils import bin_name, get_build_flags, get_version_numeric_only, load_release_versions
-from .utils import REPO_PATH
-from .build_tags import get_build_tags, get_default_build_tags, LINUX_ONLY_TAGS
+from .utils import get_version_numeric_only
 from .go import deps
 
 # constants
