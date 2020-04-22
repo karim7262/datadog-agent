@@ -35,7 +35,6 @@ SET PATH=%PATH%;%GOPATH%/bin
 REM Equivalent to the "ridk enable" command, but without the exit
 if "%TARGET_ARCH%" == "x64" (
     @echo IN x64 BRANCH
-    @for /f %%p in ('where ridk') do set RIDK=%%p
     @for /f "delims=" %%x in ('"ruby" --disable-gems -x '%RIDK%' enable') do set "%%x"
 )
 
