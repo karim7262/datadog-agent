@@ -3,6 +3,12 @@ package dogstatsd
 import (
 	"github.com/DataDog/datadog-agent/pkg/aggregator"
 	"github.com/DataDog/datadog-agent/pkg/metrics"
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
+)
+
+var (
+	tlmBatcherFlush = telemetry.NewCounter("dogstatsd", "batcher_flush",
+		nil, "Count the number of flushes in the Dogstatsd metrics sample batcher")
 )
 
 // batcher batches multiple metrics before submission
@@ -67,4 +73,5 @@ func (b *batcher) flush() {
 		b.choutServiceChecks <- b.serviceChecks
 		b.serviceChecks = []*metrics.ServiceCheck{}
 	}
+	tlmBatcherFlush.Inc()
 }

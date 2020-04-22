@@ -8,6 +8,13 @@ package listeners
 import (
 	"sync"
 	"time"
+
+	"github.com/DataDog/datadog-agent/pkg/telemetry"
+)
+
+var (
+	tlmPacketsBufferFlush = telemetry.NewCounter("dogstatsd", "packets_buffer_flush",
+		nil, "Count the number of flushes in the Dogstatsd packets buffer")
 )
 
 // packetsBuffer is a buffer of packets that will automatically flush to the given
@@ -59,6 +66,7 @@ func (pb *packetsBuffer) flush() {
 	if len(pb.packets) > 0 {
 		pb.outputChannel <- pb.packets
 		pb.packets = make(Packets, 0, pb.bufferSize)
+		tlmPacketsBufferFlush.Inc()
 	}
 }
 
