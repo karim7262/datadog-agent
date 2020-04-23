@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 
 	"github.com/DataDog/datadog-agent/cmd/agent/api/agent"
@@ -52,8 +52,19 @@ func (s *server) GetTags(ctx context.Context, in *pb.TagRequest) (*pb.TagReply, 
 	return &pb.TagReply{Tags: tags}, nil
 }
 
-// StartServer creates the router and starts the HTTP server
-func StartServer() error {
+func serveGRPC(l net.Listener) error {
+
+	// do we need GRPC reflection?
+	grpcS := grpc.NewServer()
+	pb.RegisterAgentServer(grpcS, &server{})
+
+	grpcS.Serve(l)
+
+	return nil
+}
+
+func serveHTTPS(l net.Listener) error {
+
 	// create the root HTTP router
 	r := mux.NewRouter()
 
@@ -64,16 +75,7 @@ func StartServer() error {
 	// Validate token for every request
 	r.Use(validateToken)
 
-	// get the transport we're going to use under HTTP
-	var err error
-	listener, err = getListener()
-	if err != nil {
-		// we use the listener to handle commands for the Agent, there's
-		// no way we can recover from this error
-		return fmt.Errorf("Unable to create the api server: %v", err)
-	}
-
-	err = util.CreateAndSetAuthToken()
+	err := util.CreateAndSetAuthToken()
 	if err != nil {
 		return err
 	}
@@ -83,35 +85,6 @@ func StartServer() error {
 	if err != nil {
 		return fmt.Errorf("unable to start TLS server")
 	}
-
-	// grpc server
-	go func() {
-		lis, _ := net.Listen("tcp", ":50051")
-		s := grpc.NewServer()
-		pb.RegisterAgentServer(s, &server{})
-		if err := s.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
-
-	go func() {
-		// starting gateway
-		ctx := context.Background()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
-		mux := runtime.NewServeMux()
-		opts := []grpc.DialOption{grpc.WithInsecure()}
-		// pb.RegisterAgentServer(s, &server{})
-		err := pb.RegisterAgentHandlerFromEndpoint(ctx, mux, "localhost:50051", opts)
-		if err != nil {
-			panic(err)
-		}
-
-		if err := http.ListenAndServe(":8081", mux); err != nil {
-			panic(err)
-		}
-	}()
 
 	// PEM encode the private key
 	rootKeyPEM := pem.EncodeToMemory(&pem.Block{
@@ -128,17 +101,43 @@ func StartServer() error {
 		Certificates: []tls.Certificate{rootTLSCert},
 	}
 
-	srv := &http.Server{
+	tlsListener := tls.NewListener(l, &tlsConfig)
+
+	tlsS := &http.Server{
 		Handler: r,
 		ErrorLog: stdLog.New(&config.ErrorLogWriter{
 			AdditionalDepth: 4, // Use a stack depth of 4 on top of the default one to get a relevant filename in the stdlib
 		}, "Error from the agent http API server: ", 0), // log errors to seelog,
-		TLSConfig:    &tlsConfig,
 		WriteTimeout: config.Datadog.GetDuration("server_timeout") * time.Second,
 	}
-	tlsListener := tls.NewListener(listener, &tlsConfig)
 
-	go srv.Serve(tlsListener)
+	go tlsS.Serve(tlsListener)
+
+	return nil
+}
+
+// StartServer creates the router and starts the HTTP server
+func StartServer() error {
+	// get the transport we're going to use under HTTP
+	var err error
+	listener, err = getListener()
+	if err != nil {
+		// we use the listener to handle commands for the Agent, there's
+		// no way we can recover from this error
+		return fmt.Errorf("Unable to create the api server: %v", err)
+	}
+
+	// do multiplexing...
+	m := cmux.New(listener)
+	grpcL := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
+	tlsL := m.Match(cmux.Any())
+
+	// grpc server
+	go serveGRPC(grpcL)
+
+	// HTTPS server
+	go serveHTTPS(tlsL)
+
 	return nil
 }
 
