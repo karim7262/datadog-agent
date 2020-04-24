@@ -32,6 +32,7 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/config"
 	"github.com/DataDog/datadog-agent/pkg/tagger"
 	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
+	"github.com/DataDog/datadog-agent/pkg/util/log"
 	"github.com/gorilla/mux"
 )
 
@@ -52,13 +53,18 @@ func (s *server) GetTags(ctx context.Context, in *pb.TagRequest) (*pb.TagReply, 
 	return &pb.TagReply{Tags: tags}, nil
 }
 
+func cmuxErrorHandler(e error) bool {
+	log.Errorf("CMUX error: %v", e)
+	return true
+}
+
 func serveGRPC(l net.Listener) error {
 
 	// do we need GRPC reflection?
 	grpcS := grpc.NewServer()
 	pb.RegisterAgentServer(grpcS, &server{})
 
-	grpcS.Serve(l)
+	go grpcS.Serve(l)
 
 	return nil
 }
@@ -108,6 +114,7 @@ func serveHTTPS(l net.Listener) error {
 		ErrorLog: stdLog.New(&config.ErrorLogWriter{
 			AdditionalDepth: 4, // Use a stack depth of 4 on top of the default one to get a relevant filename in the stdlib
 		}, "Error from the agent http API server: ", 0), // log errors to seelog,
+		// TLSConfig:    &tlsConfig,
 		WriteTimeout: config.Datadog.GetDuration("server_timeout") * time.Second,
 	}
 
@@ -132,11 +139,21 @@ func StartServer() error {
 	grpcL := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
 	tlsL := m.Match(cmux.Any())
 
+	m.HandleError(cmuxErrorHandler)
+
 	// grpc server
-	go serveGRPC(grpcL)
+	err = serveGRPC(grpcL)
+	if err != nil {
+		return fmt.Errorf("Unable to CMUX the api server: %v", err)
+	}
 
 	// HTTPS server
-	go serveHTTPS(tlsL)
+	err = serveHTTPS(tlsL)
+	if err != nil {
+		return fmt.Errorf("Unable to CMUX the api server: %v", err)
+	}
+
+	go m.Serve()
 
 	return nil
 }
