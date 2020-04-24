@@ -243,11 +243,27 @@ func (ac *AutoConfig) GetAllConfigs() []integration.Config {
 
 // schedule takes a slice of configs and schedule them
 func (ac *AutoConfig) schedule(configs []integration.Config) {
+	for _, c := range configs {
+		log.Infof("AC: schedule check: %s entity: %s node_name: %s source: %s",
+			c.Name,
+			c.Entity,
+			c.NodeName,
+			c.Source,
+		)
+	}
 	ac.scheduler.Schedule(configs)
 }
 
 // unschedule takes a slice of configs and unschedule them
 func (ac *AutoConfig) unschedule(configs []integration.Config) {
+	for _, c := range configs {
+		log.Infof("AC: unschedule check: %s entity: %s node_name: %s source: %s",
+			c.Name,
+			c.Entity,
+			c.NodeName,
+			c.Source,
+		)
+	}
 	ac.scheduler.Unschedule(configs)
 }
 

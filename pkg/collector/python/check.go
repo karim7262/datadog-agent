@@ -173,6 +173,8 @@ func (c *PythonCheck) Configure(data integration.Data, initConfig integration.Da
 	// Generate check ID
 	c.id = check.Identify(c, data, initConfig)
 
+	log.Infof("Issued check ID: %s for data: [%s] initConfig [%s] source [%s]", c.id, string(data), string(initConfig), source)
+
 	commonGlobalOptions := integration.CommonGlobalConfig{}
 	if err := yaml.Unmarshal(initConfig, &commonGlobalOptions); err != nil {
 		log.Errorf("invalid init_config section for check %s: %s", string(c.id), err)
