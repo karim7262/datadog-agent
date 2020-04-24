@@ -97,6 +97,7 @@ func (s *CheckScheduler) Unschedule(configs []integration.Config) {
 		if len(stopped) == len(s.configToChecks[digest]) {
 			// we managed to stop all the checks for this config
 			delete(s.configToChecks, digest)
+			log.Infof("DELETED check from config %s from configToChecks of scheduler", digest)
 		} else {
 			// keep the checks we failed to stop in `configToChecks`
 			dangling := []check.ID{}
@@ -106,6 +107,7 @@ func (s *CheckScheduler) Unschedule(configs []integration.Config) {
 				}
 			}
 			s.configToChecks[digest] = dangling
+			log.Infof("FAILED to stop check from config %s from configToChecks of scheduler", digest)
 		}
 	}
 }

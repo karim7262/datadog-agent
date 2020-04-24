@@ -294,6 +294,7 @@ func (c *PythonCheck) ID() check.ID {
 func pythonCheckFinalizer(c *PythonCheck) {
 	// Run in a separate goroutine because acquiring the python lock might take some time,
 	// and we're in a finalizer
+	log.Warnf("STARTING FINALIZER")
 	go func(c *PythonCheck) {
 		glock := newStickyLock() // acquire lock to call DecRef
 		defer glock.unlock()
@@ -301,5 +302,6 @@ func pythonCheckFinalizer(c *PythonCheck) {
 		if c.instance != nil {
 			C.rtloader_decref(rtloader, c.instance)
 		}
+		log.Warnf("FINALIZATION DONE")
 	}(c)
 }

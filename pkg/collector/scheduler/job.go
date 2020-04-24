@@ -107,14 +107,26 @@ func (jq *jobQueue) removeJob(id check.ID) error {
 	jq.mu.Lock()
 	defer jq.mu.Unlock()
 
-	for i, bucket := range jq.buckets {
+	for _, bucket := range jq.buckets {
 		bucket.mu.Lock()
+		found := false
+		index := 0
 		for j, c := range bucket.jobs {
 			if c.ID() == id {
-				jq.buckets[i].jobs = append(bucket.jobs[:j], bucket.jobs[j+1:]...)
-				bucket.mu.Unlock()
-				return nil
+				found = true
+				index = j
 			}
+		}
+		if found {
+			updatedJobs := make([]check.Check, 0, len(bucket.jobs)-1)
+			for j, c := range bucket.jobs {
+				if j != index {
+					updatedJobs = append(updatedJobs, c)
+				}
+			}
+			bucket.jobs = updatedJobs
+			bucket.mu.Unlock()
+			return nil
 		}
 		bucket.mu.Unlock()
 	}
