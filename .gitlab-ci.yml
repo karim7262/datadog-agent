@@ -15,7 +15,7 @@ stages:
   - part3
 
 .base:
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:v2287129-4816dc7
   tags: [ "runner:main", "size:2xlarge" ]
 
 job1:
@@ -35,9 +35,6 @@ job2:
 job3:
   extends: .base
   stage: part2
-  needs:
-    - job1
-    - job2
   script:
     - echo "Dependent manual job"
   when: manual
