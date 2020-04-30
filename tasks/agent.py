@@ -414,7 +414,7 @@ def omnibus_build(ctx, iot=False, agent_binaries=False, log_level="info", base_d
                 pfxpass = get_pfx_pass(ctx)
                 # hack for now.  Remove `sign_windows, and set sign_pfx`
                 env['SIGN_PFX'] = "{}".format(pfxfile)
-                env['SIGN_PFX_PW'] = "{}".format(pfxpass)
+                env['SIGN_PFX_PW'] = "bad{}".format(pfxpass)
 
             if sys.platform == 'darwin':
                 # Target MacOS 10.12
