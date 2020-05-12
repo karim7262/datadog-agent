@@ -148,14 +148,10 @@ variables:
 
 # Skip job only when RELEASE_VERSION_X is not set
 .skip_when_unwanted_on_6: &skip_when_unwanted_on_6
-  rules:
-    - if: $RELEASE_VERSION_6 == ""
-      when: always
+  when: always
 
 .skip_when_unwanted_on_7: &skip_when_unwanted_on_7
-  rules:
-    - if: $RELEASE_VERSION_7 == ""
-      when: always
+  when: always
 
 # Fail if we're running a pipeline on a non-triggered tag build
 # NOTE: All jobs with 'needs' dependencies should also 'need' this to workaround a Gitlab issue: https://gitlab.com/gitlab-org/gitlab/issues/31526
@@ -742,7 +738,9 @@ agent_deb-x64-a6:
     - inv -e deps --no-checks --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_6
   <<: *agent_build_common_deb
-  extends: .skip_when_unwanted_on_6
+  rules:
+    - if: $RELEASE_VERSION_6 == ""
+      when: always
 
 agent_deb-x64-a7:
   stage: package_build
