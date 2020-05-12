@@ -125,12 +125,13 @@ variables:
   rules:
     # no  RELEASE_VERSION means a nightly build for omnibus
     - if: $CI_PIPELINE_SOURCE == "trigger" && $RELEASE_VERSION_6 != "nightly" && $RELEASE_VERSION_6 != ""
+      when: on_success
 
 .run_only_when_triggered_on_tag_7: &run_only_when_triggered_on_tag_7
   rules:
     # no  RELEASE_VERSION means a nightly build for omnibus
     - if: $CI_PIPELINE_SOURCE == "trigger" && $RELEASE_VERSION_7 != "nightly-a7" && $RELEASE_VERSION_7 != ""
-
+      when: on_success
 # run job only when triggered by an external tool (ex: Jenkins) and when
 # RELEASE_VERSION_X is "nightly". In this setting we build from master and update
 # the nightly build for windows, linux and docker.
@@ -138,22 +139,25 @@ variables:
 .run_only_when_triggered_on_nightly: &run_only_when_triggered_on_nightly
   rules:
     - if: $CI_PIPELINE_SOURCE == "trigger" && $RELEASE_VERSION_6 == "nightly" && $RELEASE_VERSION_7 == "nightly-a7"
+      when: on_success
 
 # run when not triggered (for jobs we don't want to run on release pipelines)
 .skip_when_triggered: &skip_when_triggered
   # TODO (with rules?): exclude triggered pipelines but not nightlies
   rules:
-    - if: $CI_PIPELINE_SOURCE == "trigger"
-      when: never
+    - if: $CI_PIPELINE_SOURCE != "trigger"
+      when: on_success
 
 # Skip job only when RELEASE_VERSION_X is not set
 .skip_when_unwanted_on_6: &skip_when_unwanted_on_6
   rules:
-    - when: always
+    - if: $RELEASE_VERSION_6 != ""
+      when: on_success
 
 .skip_when_unwanted_on_7: &skip_when_unwanted_on_7
   rules:
-    - when: always
+    - if: $RELEASE_VERSION_7 != ""
+      when: on_success
 
 # Fail if we're running a pipeline on a non-triggered tag build
 # NOTE: All jobs with 'needs' dependencies should also 'need' this to workaround a Gitlab issue: https://gitlab.com/gitlab-org/gitlab/issues/31526
@@ -740,9 +744,7 @@ agent_deb-x64-a6:
     - inv -e deps --no-checks --verbose --dep-vendor-only
     - export RELEASE_VERSION=$RELEASE_VERSION_6
   <<: *agent_build_common_deb
-  rules:
-    - if: $RELEASE_VERSION_6
-      when: always
+  extends: .skip_when_unwanted_on_7
 
 agent_deb-x64-a7:
   stage: package_build
