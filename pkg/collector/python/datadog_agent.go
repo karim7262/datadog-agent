@@ -8,7 +8,6 @@
 package python
 
 import (
-	"fmt"
 	"unsafe"
 
 	"github.com/DataDog/datadog-agent/pkg/trace/obfuscate"
@@ -198,7 +197,7 @@ func ObfuscateSql(rawQuery *C.char, errResult **C.char) *C.char {
 	obfuscatedQuery, err := obfuscator.ObfuscateSQLString(s)
 	if err != nil {
 		// memory will be freed by caller
-		*errResult = TrackedCString(fmt.Sprintf("%v", err))
+		*errResult = TrackedCString(err.Error())
 		return nil
 	}
 	// memory will be freed by caller
