@@ -86,6 +86,7 @@ void SetCheckMetadata(char *, char *, char *);
 void SetExternalTags(char *, char *, char **);
 void WritePersistentCache(char *, char *);
 bool TracemallocEnabled();
+char* ObfuscateSql(char *, char **);
 
 void initDatadogAgentModule(rtloader_t *rtloader) {
 	set_get_clustername_cb(rtloader, GetClusterName);
@@ -98,6 +99,7 @@ void initDatadogAgentModule(rtloader_t *rtloader) {
 	set_write_persistent_cache_cb(rtloader, WritePersistentCache);
 	set_read_persistent_cache_cb(rtloader, ReadPersistentCache);
 	set_tracemalloc_enabled_cb(rtloader, TracemallocEnabled);
+	set_obfuscate_sql_cb(rtloader, ObfuscateSql);
 }
 
 //
@@ -121,11 +123,9 @@ void initAggregatorModule(rtloader_t *rtloader) {
 //
 
 void GetSubprocessOutput(char **, int, char **, char **, int*, char **);
-char* ObfuscateSql(char *, char **);
 
 void initUtilModule(rtloader_t *rtloader) {
 	set_get_subprocess_output_cb(rtloader, GetSubprocessOutput);
-	set_obfuscate_sql_cb(rtloader, ObfuscateSql);
 }
 
 //
