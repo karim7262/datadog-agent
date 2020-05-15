@@ -696,9 +696,8 @@ static PyObject *obfuscate_sql(PyObject *self, PyObject *args)
     PyObject *retval = NULL;
     if (error_message != NULL) {
         PyErr_SetString(PyExc_RuntimeError, error_message);
-        cgo_free(err);
-    }
-    if (obfQuery != NULL) {
+        cgo_free(error_message);
+    } else if (obfQuery != NULL) {
         retval = PyStringFromCString(obfQuery);
         cgo_free(obfQuery);
     }
