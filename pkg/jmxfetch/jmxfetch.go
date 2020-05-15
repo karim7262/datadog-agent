@@ -66,6 +66,7 @@ type JMXFetch struct {
 	JavaToolsJarPath   string
 	JavaCustomJarPaths []string
 	LogLevel           string
+	LogFile            string
 	Command            string
 	Reporter           JMXReporter
 	Checks             []string
@@ -175,9 +176,14 @@ func (j *JMXFetch) setDefaults() {
 	if j.Output == nil {
 		j.Output = log.Info
 	}
+
+	if len(j.LogFile) == 0 {
+		j.LogFile = defaultLogFile
+	}
+
 }
 
-// Start starts the JMXFetch process
+// Start the JMXFetch process
 func (j *JMXFetch) Start(manage bool) error {
 	j.setDefaults()
 
@@ -252,6 +258,9 @@ func (j *JMXFetch) Start(manage bool) error {
 	if !ok {
 		jmxLogLevel = "INFO"
 	}
+	jmxLogFile := j.LogFile
+
+	log.Infof("Logging JMX checks at %s, the default is %s", jmxLogFile, defaultLogFile)
 
 	ipcHost := config.Datadog.GetString("cmd_host")
 	ipcPort := config.Datadog.GetInt("cmd_port")
@@ -274,6 +283,9 @@ func (j *JMXFetch) Start(manage bool) error {
 		"--reconnection_timeout", fmt.Sprintf("%v", config.Datadog.GetInt("jmx_reconnection_timeout")), // Timeout for instance reconnection in seconds
 		"--reconnection_thread_pool_size", fmt.Sprintf("%v", config.Datadog.GetInt("jmx_reconnection_thread_pool_size")), // Size for the JMXFetch reconnection thread pool
 		"--log_level", jmxLogLevel,
+		"--log_location", jmxLogFile,
+		// "--log_file_max_size", fmt.Sprintf("%v", config.Datadog.GetSizeInBytes("log_file_max_size")),
+		// "--log_file_max_rolls", fmt.Sprintf("v", config.Datadog.GetSizeInBytes("log_file_max_rolls")),
 		"--reporter", reporter, // Reporter to use
 	)
 

@@ -16,6 +16,8 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
+const defaultLogFile = "/var/log/datadog/jmxfetch.log"
+
 // Stop stops the JMXFetch process
 func (j *JMXFetch) Stop() error {
 	var stopChan chan struct{}
