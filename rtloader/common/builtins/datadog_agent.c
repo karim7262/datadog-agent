@@ -685,6 +685,7 @@ static PyObject *obfuscate_sql(PyObject *self, PyObject *args)
 
     char *rawQuery;
     if (!PyArg_ParseTuple(args, "s", &rawQuery)) {
+        PyGILState_Release(gstate);
         return NULL;
     }
 
