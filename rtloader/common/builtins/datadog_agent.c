@@ -48,7 +48,7 @@ static PyMethodDef methods[] = {
     { "set_external_tags", set_external_tags, METH_VARARGS, "Send external host tags." },
     { "write_persistent_cache", write_persistent_cache, METH_VARARGS, "Store a value for a given key." },
     { "read_persistent_cache", read_persistent_cache, METH_VARARGS, "Retrieve the value associated with a key." },
-    { "obfuscate_sql", (PyCFunction)obfuscate_sql, METH_VARARGS, "Obfuscate Sql." },
+    { "obfuscate_sql", (PyCFunction)obfuscate_sql, METH_VARARGS, "Obfuscate & normalize a SQL string." },
     { NULL, NULL } // guards
 };
 
