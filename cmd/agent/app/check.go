@@ -114,9 +114,17 @@ var checkCmd = &cobra.Command{
 			return err
 		}
 
+		// is this instance running as an iot agent
+		var iotAgent bool = config.Datadog.GetBool("iot_host")
+
+		agentName := aggregator.AgentName
+		if iotAgent {
+			agentName = aggregator.IotAgentName
+		}
+
 		s := serializer.NewSerializer(common.Forwarder)
 		// Initializing the aggregator with a flush interval of 0 (which disable the flush goroutine)
-		agg := aggregator.InitAggregatorWithFlushInterval(s, hostname, "agent", 0)
+		agg := aggregator.InitAggregatorWithFlushInterval(s, hostname, agentName, 0)
 		common.SetupAutoConfig(config.Datadog.GetString("confd_path"))
 
 		if config.Datadog.GetBool("inventories_enabled") {
@@ -155,6 +163,11 @@ var checkCmd = &cobra.Command{
 						continue
 					}
 					instances = append(instances, instance)
+				}
+
+				if len(instances) == 0 {
+					fmt.Printf("All instances of '%s' are JMXFetch instances, and have completed running\n", checkName)
+					return nil
 				}
 
 				conf.Instances = instances
