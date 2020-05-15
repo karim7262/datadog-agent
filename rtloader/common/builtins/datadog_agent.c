@@ -690,19 +690,18 @@ static PyObject *obfuscate_sql(PyObject *self, PyObject *args)
     }
 
     char *obfQuery = NULL;
-    char *err = NULL;
-    obfQuery = cb_obfuscate_sql(rawQuery, &err);
+    char *error_message = NULL;
+    obfQuery = cb_obfuscate_sql(rawQuery, &error_message);
 
     PyObject *retval = NULL;
-    if (err != NULL) {
-        PyErr_SetString(PyExc_RuntimeError, err);
+    if (error_message != NULL) {
+        PyErr_SetString(PyExc_RuntimeError, error_message);
         cgo_free(err);
     }
     if (obfQuery != NULL) {
         retval = PyStringFromCString(obfQuery);
         cgo_free(obfQuery);
     }
-
     PyGILState_Release(gstate);
     return retval;
 }
