@@ -8,8 +8,10 @@
 package python
 
 import (
+	"fmt"
 	"unsafe"
 
+	"github.com/DataDog/datadog-agent/pkg/trace/obfuscate"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/DataDog/datadog-agent/pkg/config"
@@ -184,4 +186,21 @@ func ReadPersistentCache(key *C.char) *C.char {
 		return nil
 	}
 	return TrackedCString(data)
+}
+
+var obfuscator = obfuscate.NewObfuscator(nil)
+
+// ObfuscateSql obfuscates & normalizes the provided SQL query, writing the error into errResult if the operation
+// fails
+//export ObfuscateSql
+func ObfuscateSql(rawQuery *C.char, errResult **C.char) *C.char {
+	s := C.GoString(rawQuery)
+	obfuscatedQuery, err := obfuscator.ObfuscateSQLString(s)
+	if err != nil {
+		// memory will be freed by caller
+		*errResult = TrackedCString(fmt.Sprintf("%v", err))
+		return nil
+	}
+	// memory will be freed by caller
+	return TrackedCString(obfuscatedQuery.Query)
 }

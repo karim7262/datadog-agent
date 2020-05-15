@@ -121,9 +121,11 @@ void initAggregatorModule(rtloader_t *rtloader) {
 //
 
 void GetSubprocessOutput(char **, int, char **, char **, int*, char **);
+char* ObfuscateSql(char *, char **);
 
 void initUtilModule(rtloader_t *rtloader) {
 	set_get_subprocess_output_cb(rtloader, GetSubprocessOutput);
+	set_obfuscate_sql_cb(rtloader, ObfuscateSql);
 }
 
 //

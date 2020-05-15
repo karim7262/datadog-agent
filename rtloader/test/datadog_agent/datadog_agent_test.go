@@ -436,3 +436,47 @@ func TestReadPersistentCache(t *testing.T) {
 		t.Errorf("Unexpected printed value: '%s'", out)
 	}
 }
+
+func TestObfuscateSql(t *testing.T) {
+	helpers.ResetMemoryStats()
+
+	code := fmt.Sprintf(`
+	result = datadog_agent.obfuscate_sql("ok")
+	with open(r'%s', 'w') as f:
+		f.write(str(result))
+	`, tmpfile.Name())
+
+	out, err := run(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "a-ok" {
+		t.Errorf("Incorrect response: '%s'", out)
+	}
+
+	helpers.AssertMemoryUsage(t)
+}
+
+func TestObfuscateSqlErr(t *testing.T) {
+	helpers.ResetMemoryStats()
+
+	// confirm that exception is thrown correctly
+	code := fmt.Sprintf(`
+	try:
+		result = datadog_agent.obfuscate_sql("fail")
+	except Exception as e:
+		with open(r'%s', 'w') as f:
+			f.write(str(e))
+	`, tmpfile.Name())
+
+	out, err := run(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if out != "not-ok-fail" {
+		t.Errorf("Incorrect response: '%s'", out)
+	}
+
+	helpers.AssertMemoryUsage(t)
+}
