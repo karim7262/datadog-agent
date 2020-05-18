@@ -167,7 +167,7 @@ func (f *groupingFilter) Reset() {
 // in strings and numbers by redacting them.
 func (o *Obfuscator) ObfuscateSQLString(in string) (*ObfuscatedQuery, error) {
 	if in == "" {
-		return nil, errors.New("cannot obfuscate empty query")
+		return nil, errors.New("empty input")
 	}
 	lesc := o.SQLLiteralEscapes()
 	tok := NewSQLTokenizer(in, lesc)

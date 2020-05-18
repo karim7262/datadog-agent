@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/rtloader/test/helpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -441,7 +442,7 @@ func TestObfuscateSql(t *testing.T) {
 	helpers.ResetMemoryStats()
 
 	code := fmt.Sprintf(`
-	result = datadog_agent.obfuscate_sql("ok")
+	result = datadog_agent.obfuscate_sql("select * from table where id = 1")
 	with open(r'%s', 'w') as f:
 		f.write(str(result))
 	`, tmpfile.Name())
@@ -450,33 +451,87 @@ func TestObfuscateSql(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out != "a-ok" {
+	if out != "select * from table where id = ?" {
 		t.Errorf("Incorrect response: '%s'", out)
 	}
 
 	helpers.AssertMemoryUsage(t)
 }
 
-func TestObfuscateSQLErr(t *testing.T) {
+func TestObfuscateSQLErrors(t *testing.T) {
 	helpers.ResetMemoryStats()
 
-	// confirm that exception is thrown correctly
-	code := fmt.Sprintf(`
+	testCases := []struct {
+		input string
+		result string
+	}{
+		{"\"!@\"", "at position 1: expected \"=\" after \"!\", got \"@\" (64)"},
+		{"\"\"", "empty input"},
+		{"{1: 2}", "argument 1 must be str, not dict"},
+	};
+
+	for _, c := range testCases {
+		code := fmt.Sprintf(`
 	try:
-		result = datadog_agent.obfuscate_sql("fail")
+		result = datadog_agent.obfuscate_sql(%s)
 	except Exception as e:
 		with open(r'%s', 'w') as f:
 			f.write(str(e))
-	`, tmpfile.Name())
-
-	out, err := run(code)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if out != "not-ok-fail" {
-		t.Errorf("Incorrect response: '%s'", out)
+		`, c.input, tmpfile.Name())
+		out, err := run(code)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, c.result, out)
 	}
 
 	helpers.AssertMemoryUsage(t)
 }
+
+//func TestObfuscateSQLEmptyErr(t *testing.T) {
+//	helpers.ResetMemoryStats()
+//
+//	// confirm that exception is thrown correctly
+//	code := fmt.Sprintf(`
+//	try:
+//		result = datadog_agent.obfuscate_sql("")
+//	except Exception as e:
+//		with open(r'%s', 'w') as f:
+//			f.write(str(e))
+//	`, tmpfile.Name())
+//
+//	out, err := run(code)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if out != "at position 1: expected \"=\" after \"!\", got \"@\" (64)" {
+//		t.Errorf("Incorrect response: '%s'", out)
+//	}
+//
+//	helpers.AssertMemoryUsage(t)
+//}
+//
+//func TestObfuscateSQLWrongTypeErr(t *testing.T) {
+//	helpers.ResetMemoryStats()
+//
+//	// confirm that exception is thrown correctly
+//	code := fmt.Sprintf(`
+//	try:
+//		result = datadog_agent.obfuscate_sql("")
+//	except Exception as e:
+//		with open(r'%s', 'w') as f:
+//			f.write(str(e))
+//	`, tmpfile.Name())
+//
+//	out, err := run(code)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if out != "at position 1: expected \"=\" after \"!\", got \"@\" (64)" {
+//		t.Errorf("Incorrect response: '%s'", out)
+//	}
+//
+//	helpers.AssertMemoryUsage(t)
+//}
