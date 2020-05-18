@@ -461,7 +461,7 @@ func TestObfuscateSQLErrors(t *testing.T) {
 		result string
 	}{
 		{"\"!@\"", "at position 1: expected \"=\" after \"!\", got \"@\" (64)"},
-		{"\"\"", "empty input"},
+		{"\"\"", "result is empty"},
 		{"{1: 2}", "argument 1 must be str, not dict"},
 		{"None", "argument 1 must be str, not None"},
 	};
