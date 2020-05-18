@@ -189,10 +189,10 @@ func ReadPersistentCache(key *C.char) *C.char {
 
 var obfuscator = obfuscate.NewObfuscator(nil)
 
-// ObfuscateSql obfuscates & normalizes the provided SQL query, writing the error into errResult if the operation
+// ObfuscateSQL obfuscates & normalizes the provided SQL query, writing the error into errResult if the operation
 // fails
-//export ObfuscateSql
-func ObfuscateSql(rawQuery *C.char, errResult **C.char) *C.char {
+//export ObfuscateSQL
+func ObfuscateSQL(rawQuery *C.char, errResult **C.char) *C.char {
 	s := C.GoString(rawQuery)
 	obfuscatedQuery, err := obfuscator.ObfuscateSQLString(s)
 	if err != nil {

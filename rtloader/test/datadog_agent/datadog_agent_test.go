@@ -457,7 +457,7 @@ func TestObfuscateSql(t *testing.T) {
 	helpers.AssertMemoryUsage(t)
 }
 
-func TestObfuscateSqlErr(t *testing.T) {
+func TestObfuscateSQLErr(t *testing.T) {
 	helpers.ResetMemoryStats()
 
 	// confirm that exception is thrown correctly

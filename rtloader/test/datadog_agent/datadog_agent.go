@@ -28,7 +28,7 @@ extern void setCheckMetadata(char*, char*, char*);
 extern void setExternalHostTags(char*, char*, char**);
 extern void writePersistentCache(char*, char*);
 extern char* readPersistentCache(char*);
-extern char* obfuscateSql(char*, char**);
+extern char* obfuscateSQL(char*, char**);
 
 
 static void initDatadogAgentTests(rtloader_t *rtloader) {
@@ -44,7 +44,7 @@ static void initDatadogAgentTests(rtloader_t *rtloader) {
    set_set_external_tags_cb(rtloader, setExternalHostTags);
    set_write_persistent_cache_cb(rtloader, writePersistentCache);
    set_read_persistent_cache_cb(rtloader, readPersistentCache);
-   set_obfuscate_sql_cb(rtloader, obfuscateSql);
+   set_obfuscate_sql_cb(rtloader, obfuscateSQL);
 }
 */
 import "C"
@@ -232,8 +232,8 @@ func readPersistentCache(key *C.char) *C.char {
 	return (*C.char)(helpers.TrackedCString("somevalue"))
 }
 
-//export obfuscateSql
-func obfuscateSql(rawQuery *C.char, errResult **C.char) *C.char {
+//export obfuscateSQL
+func obfuscateSQL(rawQuery *C.char, errResult **C.char) *C.char {
 	s := C.GoString(rawQuery)
 	if s != "ok" {
 		*errResult = (*C.char)(helpers.TrackedCString(fmt.Sprintf("not-ok-%s", s)))
