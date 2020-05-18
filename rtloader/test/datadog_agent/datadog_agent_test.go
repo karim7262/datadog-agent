@@ -448,13 +448,8 @@ func TestObfuscateSql(t *testing.T) {
 	`, tmpfile.Name())
 
 	out, err := run(code)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if out != "select * from table where id = ?" {
-		t.Errorf("Incorrect response: '%s'", out)
-	}
-
+	assert.NoError(t, err)
+	assert.Equal(t, "select * from table where id = ?", out)
 	helpers.AssertMemoryUsage(t)
 }
 
@@ -480,9 +475,7 @@ func TestObfuscateSQLErrors(t *testing.T) {
 			f.write(str(e))
 		`, c.input, tmpfile.Name())
 		out, err := run(code)
-		if err != nil {
-			t.Fatal(err)
-		}
+		assert.NoError(t, err)
 		assert.Equal(t, c.result, out)
 	}
 
