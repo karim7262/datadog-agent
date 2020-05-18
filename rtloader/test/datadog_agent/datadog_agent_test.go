@@ -468,6 +468,7 @@ func TestObfuscateSQLErrors(t *testing.T) {
 		{"\"!@\"", "at position 1: expected \"=\" after \"!\", got \"@\" (64)"},
 		{"\"\"", "empty input"},
 		{"{1: 2}", "argument 1 must be str, not dict"},
+		{"None", "argument 1 must be str, not None"},
 	};
 
 	for _, c := range testCases {
@@ -487,51 +488,3 @@ func TestObfuscateSQLErrors(t *testing.T) {
 
 	helpers.AssertMemoryUsage(t)
 }
-
-//func TestObfuscateSQLEmptyErr(t *testing.T) {
-//	helpers.ResetMemoryStats()
-//
-//	// confirm that exception is thrown correctly
-//	code := fmt.Sprintf(`
-//	try:
-//		result = datadog_agent.obfuscate_sql("")
-//	except Exception as e:
-//		with open(r'%s', 'w') as f:
-//			f.write(str(e))
-//	`, tmpfile.Name())
-//
-//	out, err := run(code)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if out != "at position 1: expected \"=\" after \"!\", got \"@\" (64)" {
-//		t.Errorf("Incorrect response: '%s'", out)
-//	}
-//
-//	helpers.AssertMemoryUsage(t)
-//}
-//
-//func TestObfuscateSQLWrongTypeErr(t *testing.T) {
-//	helpers.ResetMemoryStats()
-//
-//	// confirm that exception is thrown correctly
-//	code := fmt.Sprintf(`
-//	try:
-//		result = datadog_agent.obfuscate_sql("")
-//	except Exception as e:
-//		with open(r'%s', 'w') as f:
-//			f.write(str(e))
-//	`, tmpfile.Name())
-//
-//	out, err := run(code)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if out != "at position 1: expected \"=\" after \"!\", got \"@\" (64)" {
-//		t.Errorf("Incorrect response: '%s'", out)
-//	}
-//
-//	helpers.AssertMemoryUsage(t)
-//}
