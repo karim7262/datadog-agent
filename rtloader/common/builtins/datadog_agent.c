@@ -703,6 +703,9 @@ static PyObject *obfuscate_sql(PyObject *self, PyObject *args)
         cgo_free(error_message);
         // there shouldn't be any return value if there was an error, but null it out just in case
         retval = NULL;
+    } else if (retval == NULL) {
+        // no error message and a null response. this should never happen so the go code is likely misbehaving
+        PyErr_SetString(PyExc_RuntimeError, "internal error: empty cb_obfuscate_sql response");
     }
 
     PyGILState_Release(gstate);
