@@ -694,20 +694,17 @@ static PyObject *obfuscate_sql(PyObject *self, PyObject *args)
     obfQuery = cb_obfuscate_sql(rawQuery, &error_message);
 
     PyObject *retval = NULL;
-    if (obfQuery != NULL) {
-        retval = PyStringFromCString(obfQuery);
-        cgo_free(obfQuery);
-    }
     if (error_message != NULL) {
         PyErr_SetString(PyExc_RuntimeError, error_message);
-        cgo_free(error_message);
-        // there shouldn't be any return value if there was an error, but null it out just in case
-        retval = NULL;
-    } else if (retval == NULL) {
-        // no error message and a null response. this should never happen so the go code is likely misbehaving
+    } else if (obfQuery == NULL) {
+        // no error message and a null response. this should never happen so the go code is misbehaving
         PyErr_SetString(PyExc_RuntimeError, "internal error: empty cb_obfuscate_sql response");
+    } else {
+        retval = PyStringFromCString(obfQuery);
     }
 
+    cgo_free(error_message);
+    cgo_free(obfQuery);
     PyGILState_Release(gstate);
     return retval;
 }
