@@ -124,7 +124,6 @@ void _set_obfuscate_sql_cb(cb_obfuscate_sql_t cb)
     cb_obfuscate_sql = cb;
 }
 
-
 /*! \fn PyObject *get_version(PyObject *self, PyObject *args)
     \brief This function implements the `datadog-agent.get_version` method, collecting
     the agent version from the agent.
