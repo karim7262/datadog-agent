@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/DataDog/datadog-agent/pkg/trace/obfuscate"
 	common "github.com/DataDog/datadog-agent/rtloader/test/common"
 	"github.com/DataDog/datadog-agent/rtloader/test/helpers"
 	yaml "gopkg.in/yaml.v2"
@@ -236,12 +235,18 @@ func readPersistentCache(key *C.char) *C.char {
 //export obfuscateSQL
 func obfuscateSQL(rawQuery *C.char, errResult **C.char) *C.char {
 	s := C.GoString(rawQuery)
-	obfuscatedQuery, err := obfuscate.NewObfuscator(nil).ObfuscateSQLString(s)
-	if err != nil {
-		// memory will be freed by caller
-		*errResult = (*C.char)(helpers.TrackedCString(err.Error()))
+	switch s {
+	case "select * from table where id = 1":
+		return (*C.char)(helpers.TrackedCString("select * from table where id = ?"))
+	// expected error results from obfuscator
+	case "!@":
+		*errResult = (*C.char)(helpers.TrackedCString("at position 1: expected \"=\" after \"!\", got \"@\" (64)"))
+		return nil
+	case "":
+		*errResult = (*C.char)(helpers.TrackedCString("result is empty"))
+		return nil
+	default:
+		*errResult = (*C.char)(helpers.TrackedCString("unknown test case"))
 		return nil
 	}
-	// memory will be freed by caller
-	return (*C.char)(helpers.TrackedCString(obfuscatedQuery.Query))
 }

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/DataDog/datadog-agent/rtloader/test/helpers"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -448,8 +447,15 @@ func TestObfuscateSql(t *testing.T) {
 	`, tmpfile.Name())
 
 	out, err := run(code)
-	assert.NoError(t, err)
-	assert.Equal(t, "select * from table where id = ?", out)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "select * from table where id = ?"
+	if out != expected {
+		t.Fatalf("expected: '%s', found: '%s'", out, expected)
+	}
+
 	helpers.AssertMemoryUsage(t)
 }
 
@@ -457,14 +463,14 @@ func TestObfuscateSQLErrors(t *testing.T) {
 	helpers.ResetMemoryStats()
 
 	testCases := []struct {
-		input string
-		result string
+		input    string
+		expected string
 	}{
 		{"\"!@\"", "at position 1: expected \"=\" after \"!\", got \"@\" (64)"},
 		{"\"\"", "result is empty"},
 		{"{1: 2}", "argument 1 must be str, not dict"},
 		{"None", "argument 1 must be str, not None"},
-	};
+	}
 
 	for _, c := range testCases {
 		code := fmt.Sprintf(`
@@ -475,8 +481,12 @@ func TestObfuscateSQLErrors(t *testing.T) {
 			f.write(str(e))
 		`, c.input, tmpfile.Name())
 		out, err := run(code)
-		assert.NoError(t, err)
-		assert.Equal(t, c.result, out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out != c.expected {
+			t.Fatalf("expected: '%s', found: '%s'", out, c.expected)
+		}
 	}
 
 	helpers.AssertMemoryUsage(t)
