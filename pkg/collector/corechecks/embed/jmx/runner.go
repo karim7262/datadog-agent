@@ -24,7 +24,6 @@ type runner struct {
 func (r *runner) initRunner() {
 	r.jmxfetch = &jmxfetch.JMXFetch{}
 	r.jmxfetch.LogLevel = config.Datadog.GetString("log_level")
-	r.jmxfetch.LogFile = config.Datadog.GetString("jmx_log_file")
 }
 
 func (r *runner) startRunner() error {

@@ -66,7 +66,6 @@ type JMXFetch struct {
 	JavaToolsJarPath   string
 	JavaCustomJarPaths []string
 	LogLevel           string
-	LogFile            string
 	Command            string
 	Reporter           JMXReporter
 	Checks             []string
@@ -176,11 +175,6 @@ func (j *JMXFetch) setDefaults() {
 	if j.Output == nil {
 		j.Output = log.Info
 	}
-
-	if len(j.LogFile) == 0 {
-		j.LogFile = defaultLogFile
-	}
-
 }
 
 // Start the JMXFetch process
@@ -258,9 +252,12 @@ func (j *JMXFetch) Start(manage bool) error {
 	if !ok {
 		jmxLogLevel = "INFO"
 	}
-	jmxLogFile := j.LogFile
 
-	log.Infof("Logging JMX checks at %s, the default is %s", jmxLogFile, defaultLogFile)
+	jmxLogFile := config.Datadog.GetString("jmx_log_file")
+	if len(jmxLogFile) == 0 {
+		jmxLogFile = defaultLogFile
+
+	}
 
 	ipcHost := config.Datadog.GetString("cmd_host")
 	ipcPort := config.Datadog.GetInt("cmd_port")
@@ -270,6 +267,9 @@ func (j *JMXFetch) Start(manage bool) error {
 	if j.IPCPort != 0 {
 		ipcPort = j.IPCPort
 	}
+
+	//If jmx should log to agent.log
+	logToAgentFile := config.Datadog.GetBool("jmx_log_to_agent_log_file")
 
 	// checks are now enabled via IPC on JMXFetch
 	subprocessArgs = append(subprocessArgs,
@@ -283,15 +283,23 @@ func (j *JMXFetch) Start(manage bool) error {
 		"--reconnection_timeout", fmt.Sprintf("%v", config.Datadog.GetInt("jmx_reconnection_timeout")), // Timeout for instance reconnection in seconds
 		"--reconnection_thread_pool_size", fmt.Sprintf("%v", config.Datadog.GetInt("jmx_reconnection_thread_pool_size")), // Size for the JMXFetch reconnection thread pool
 		"--log_level", jmxLogLevel,
-		"--log_location", jmxLogFile,
-		// "--log_file_max_size", fmt.Sprintf("%v", config.Datadog.GetSizeInBytes("log_file_max_size")),
-		// "--log_file_max_rolls", fmt.Sprintf("v", config.Datadog.GetSizeInBytes("log_file_max_rolls")),
 		"--reporter", reporter, // Reporter to use
 	)
+
+	if !logToAgentFile {
+		subprocessArgs = append(subprocessArgs,
+			"--log_location", jmxLogFile,
+			"--log_file_max_size", fmt.Sprintf("%v", config.Datadog.GetSizeInBytes("log_file_max_size")),
+			"--log_file_max_rolls", fmt.Sprintf("%v", config.Datadog.GetInt("log_file_max_rolls")),
+		)
+		log.Infof("Logging JMX checks at %s", jmxLogFile)
+	}
 
 	subprocessArgs = append(subprocessArgs, j.Command)
 
 	j.cmd = exec.Command(j.JavaBinPath, subprocessArgs...)
+
+	log.Debugf("JMX check running with args: %v", subprocessArgs)
 
 	// set environment + token
 	j.cmd.Env = append(
@@ -299,7 +307,7 @@ func (j *JMXFetch) Start(manage bool) error {
 		fmt.Sprintf("SESSION_TOKEN=%s", api.GetAuthToken()),
 	)
 
-	// forward the standard output to the Agent logger
+	// Forward the standard output to the Agent logger if not log to separate file
 	stdout, err := j.cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -308,9 +316,11 @@ func (j *JMXFetch) Start(manage bool) error {
 	go func() {
 	scan:
 		in := bufio.NewScanner(stdout)
+		// if logToAgentFile {
 		for in.Scan() {
 			j.Output(in.Text())
 		}
+		//}
 		if in.Err() == bufio.ErrTooLong {
 			goto scan
 		}
@@ -324,15 +334,15 @@ func (j *JMXFetch) Start(manage bool) error {
 	go func() {
 	scan:
 		in := bufio.NewScanner(stderr)
+		//if logToAgentFile {
 		for in.Scan() {
 			log.Error(in.Text())
 		}
+		//}
 		if in.Err() == bufio.ErrTooLong {
 			goto scan
 		}
 	}()
-
-	log.Debugf("Args: %v", subprocessArgs)
 
 	err = j.cmd.Start()
 
@@ -344,7 +354,6 @@ func (j *JMXFetch) Start(manage bool) error {
 
 		go j.Monitor()
 	}
-
 	return err
 }
 
