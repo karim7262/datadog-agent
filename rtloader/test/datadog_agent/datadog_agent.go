@@ -239,9 +239,6 @@ func obfuscateSQL(rawQuery *C.char, errResult **C.char) *C.char {
 	case "select * from table where id = 1":
 		return (*C.char)(helpers.TrackedCString("select * from table where id = ?"))
 	// expected error results from obfuscator
-	case "!@":
-		*errResult = (*C.char)(helpers.TrackedCString("at position 1: expected \"=\" after \"!\", got \"@\" (64)"))
-		return nil
 	case "":
 		*errResult = (*C.char)(helpers.TrackedCString("result is empty"))
 		return nil

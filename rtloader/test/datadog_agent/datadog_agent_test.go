@@ -3,6 +3,7 @@ package testdatadogagent
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/DataDog/datadog-agent/rtloader/test/helpers"
@@ -466,10 +467,9 @@ func TestObfuscateSQLErrors(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"\"!@\"", "at position 1: expected \"=\" after \"!\", got \"@\" (64)"},
 		{"\"\"", "result is empty"},
-		{"{1: 2}", "argument 1 must be str, not dict"},
-		{"None", "argument 1 must be str, not None"},
+		{"{1: 2}", "argument 1 must be str(ing)?, not dict"},
+		{"None", "argument 1 must be str(ing)?, not None"},
 	}
 
 	for _, c := range testCases {
@@ -484,7 +484,11 @@ func TestObfuscateSQLErrors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if out != c.expected {
+		matched, err := regexp.MatchString(c.expected, out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !matched {
 			t.Fatalf("expected: '%s', found: '%s'", out, c.expected)
 		}
 	}
