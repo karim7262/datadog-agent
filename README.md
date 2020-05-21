@@ -80,4 +80,4 @@ The file `bin/agent/dist/datadog.yaml` is copied from `dev/dist/datadog.yaml` by
 ## Contributing code
 
 You'll find information and help on how to contribute code to this project under
-[the `docs/dev` directory](docs/dev) of the present repo.
+[the `docs/dev` directory](docs/dev) of the present repo. 
