@@ -40,8 +40,18 @@ type DatadogLogger struct {
 	l     sync.RWMutex
 }
 
-// SetupLogger configure logger singleton with seelog interface
-func SetupLogger(l *DatadogLogger, i seelog.LoggerInterface, level string) {
+// SetupLogger setup agent wide logger
+func SetupLogger(i seelog.LoggerInterface, level string) {
+	SetupCommonLogger(logger, i, level)
+}
+
+// SetupJMXLogger setup jmx specific logger
+func SetupJMXLogger(i seelog.LoggerInterface, level string) {
+	SetupCommonLogger(jmxLogger, i, level)
+}
+
+// SetupCommonLogger configure logger singleton with seelog interface
+func SetupCommonLogger(l *DatadogLogger, i seelog.LoggerInterface, level string) {
 
 	l = &DatadogLogger{
 		inner: i,
@@ -433,7 +443,7 @@ func Error(v ...interface{}) error {
 	return err
 }
 
-// Error Logs for JMX check
+// JMXError Logs for JMX check
 func JMXError(v ...interface{}) error {
 	if jmxLogger != nil && jmxLogger.inner != nil && jmxLogger.shouldLog(seelog.ErrorLvl) {
 		s := buildLogEntry(v...)
