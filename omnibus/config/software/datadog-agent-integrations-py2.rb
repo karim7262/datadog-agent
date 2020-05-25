@@ -68,6 +68,9 @@ blacklist_packages = Array.new
 # We build these manually
 blacklist_packages.push(/^aerospike==/)
 
+# Test
+blacklist_packages.push(/^ddtrace==/)
+
 if suse?
   blacklist_folders.push('aerospike')  # Temporarily blacklist Aerospike until builder supports new dependency
 end
