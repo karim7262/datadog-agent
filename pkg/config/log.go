@@ -32,7 +32,11 @@ var seelogConfig *seelogCfg.Config
 
 // buildCommonFormat returns the log common format seelog string
 func buildCommonFormat(loggerName LoggerName) string {
+	if loggerName == "JMX" {
+		return fmt.Sprint("")
+	}
 	return fmt.Sprintf("%%Date(%s) | %s | %%LEVEL | (%%ShortFilePath:%%Line in %%FuncShort) | %%Msg%%n", logDateFormat, loggerName)
+
 }
 
 func createQuoteMsgFormatter(params string) seelog.FormatterFunc {
@@ -44,6 +48,9 @@ func createQuoteMsgFormatter(params string) seelog.FormatterFunc {
 // buildJSONFormat returns the log JSON format seelog string
 func buildJSONFormat(loggerName LoggerName) string {
 	seelog.RegisterCustomFormatter("QuoteMsg", createQuoteMsgFormatter) //nolint:errcheck
+	if loggerName == "JMX" {
+		return fmt.Sprintf(`{"msg":%%QuoteMsg}%%n`)
+	}
 	return fmt.Sprintf(`{"agent":"%s","time":"%%Date(%s)","level":"%%LEVEL","file":"%%ShortFilePath","line":"%%Line","func":"%%FuncShort","msg":%%QuoteMsg}%%n`, strings.ToLower(string(loggerName)), logDateFormat)
 }
 
@@ -105,19 +112,33 @@ func SetupLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, sys
 		seelogConfig.ConfigureSyslog(syslogURI, useTLS)
 	}
 
-	configTemplate, err := seelogConfig.Render()
-	if err != nil {
+	if loggerName == "JMX" {
+		jmxSeelogConfig := seelogConfig
+		jmxSeelogConfig.ConfigureJMXSpecific("JMX", logFile, buildJSONFormat("JMX"), buildCommonFormat("JMX"))
+		jmxLoggerInterface, err := GenerateLoggerInterface(jmxSeelogConfig)
+		log.SetupJMXLogger(jmxLoggerInterface, seelogLogLevel)
 		return err
+	}
+	loggerInterface, err := GenerateLoggerInterface(seelogConfig)
+	log.SetupLogger(loggerInterface, seelogLogLevel)
+	log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
+	seelog.ReplaceLogger(loggerInterface) //nolint:errcheck
+	return err
+}
+
+//GenerateLoggerInterface return a logger Interface from a log config
+func GenerateLoggerInterface(logConfig *seelogCfg.Config) (seelog.LoggerInterface, error) {
+	configTemplate, err := logConfig.Render()
+	if err != nil {
+		return nil, err
 	}
 
-	logger, err := seelog.LoggerFromConfigAsString(configTemplate)
+	loggerInterface, err := seelog.LoggerFromConfigAsString(configTemplate)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	seelog.ReplaceLogger(logger) //nolint:errcheck
-	log.SetupDatadogLogger(logger, seelogLogLevel)
-	log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
-	return nil
+
+	return loggerInterface, err
 }
 
 // ErrorLogWriter is a Writer that logs all written messages with the global seelog logger

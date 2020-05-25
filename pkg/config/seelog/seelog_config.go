@@ -7,6 +7,7 @@ package seelog
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"strings"
 	"sync"
@@ -39,6 +40,12 @@ func (c *Config) setValue(k string, v interface{}) {
 	c.settings[k] = v
 }
 
+func (c *Config) getValue(k string) interface{} {
+	c.Lock()
+	defer c.Unlock()
+	return c.settings[k]
+}
+
 // Render generates a string containing a valid seelog XML configuration
 func (c *Config) Render() (string, error) {
 	c.Lock()
@@ -68,6 +75,11 @@ func (c *Config) SetLogLevel(l string) {
 	c.setValue("logLevel", l)
 }
 
+// GetLogLevel exports the loglevel
+func (c *Config) GetLogLevel() string {
+	return fmt.Sprintf("%v", c.getValue("logLevel"))
+}
+
 // EnableFileLogging enables and configures file logging if the filename is not empty
 func (c *Config) EnableFileLogging(f string, maxsize, maxrolls uint) {
 	c.Lock()
@@ -84,6 +96,14 @@ func (c *Config) ConfigureSyslog(syslogURI string, usetTLS bool) {
 	c.settings["syslogURI"] = template.URL(syslogURI)
 	c.settings["syslogUseTLS"] = usetTLS
 
+}
+
+//ConfigureJMXSpecific Setting JMX specific settings
+func (c *Config) ConfigureJMXSpecific(loggerName string, f string, jsonFormat string, commonFormat string) {
+	c.setValue("loggerName", loggerName)
+	c.setValue("logfile", f)
+	c.setValue("jsonFormat", jsonFormat)
+	c.setValue("commonFormat", commonFormat)
 }
 
 // NewSeelogConfig returns a SeelogConfig filled with correct parameters

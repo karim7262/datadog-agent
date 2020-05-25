@@ -147,9 +147,15 @@ func StartAgent() error {
 			logFile = common.DefaultLogFile
 		}
 
+		jmxLogFile := config.Datadog.GetString("jmx_log_file")
+		if jmxLogFile == "" {
+			jmxLogFile = common.DefaultJmxLogFile
+		}
+
 		if config.Datadog.GetBool("disable_file_logging") {
 			// this will prevent any logging on file
 			logFile = ""
+			jmxLogFile = ""
 		}
 
 		err = config.SetupLogger(
@@ -161,9 +167,28 @@ func StartAgent() error {
 			config.Datadog.GetBool("log_to_console"),
 			config.Datadog.GetBool("log_format_json"),
 		)
+		err = config.SetupLogger(
+			jmxLoggerName,
+			config.Datadog.GetString("log_level"),
+			jmxLogFile,
+			syslogURI,
+			config.Datadog.GetBool("syslog_rfc"),
+			config.Datadog.GetBool("log_to_console"),
+			config.Datadog.GetBool("log_format_json"),
+		)
+
 	} else {
 		err = config.SetupLogger(
 			loggerName,
+			config.Datadog.GetString("log_level"),
+			"", // no log file on android
+			"", // no syslog on android,
+			false,
+			true,  // always log to console
+			false, // not in json
+		)
+		err = config.SetupLogger(
+			jmxLoggerName,
 			config.Datadog.GetString("log_level"),
 			"", // no log file on android
 			"", // no syslog on android,
