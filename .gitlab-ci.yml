@@ -49,6 +49,7 @@ trigger_release_7:
   trigger:
     project: DataDog/agent-release-management
     branch: master
+  when: manual
 
 trigger_release_6:
   stage: trigger_release
@@ -57,3 +58,4 @@ trigger_release_6:
   trigger:
     project: DataDog/agent-release-management
     branch: master
+  when: manual
