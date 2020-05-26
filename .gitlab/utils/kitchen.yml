@@ -1,0 +1,84 @@
+include:
+ - local: '/.gitlab/utils/main.yml'
+
+# anchor to trigger test kitchen setup, run, and cleanup (so all stages
+# are run if one stage is run).  Triggers as defined:
+# - master
+# - tags (a tagged build)
+# - triggers (as above, when triggered by an external tool like jenkins)
+# - web (when the build is triggered by a specific build request through the
+#        web interface.  This way, if a kitchen run is desired on a specific branch,
+#        it can be triggered by requesting a specific build)
+#
+.run_only_when_testkitchen_triggered: &run_only_when_testkitchen_triggered
+  only:
+    - master
+    - tags
+    - triggers
+    - web
+
+.kitchen_common: &kitchen_common
+  <<: *run_only_when_testkitchen_triggered
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-builders/dd-agent-testing:$DATADOG_AGENT_BUILDERS
+  artifacts:
+    expire_in: 2 weeks
+    when: always
+    paths:
+      - $CI_PROJECT_DIR/kitchen_logs
+  tags: [ "runner:main", "size:large" ]
+  retry: 1
+
+# Kitchen: agents
+# ---------------
+
+.kitchen_agent_a6: &kitchen_agent_a6
+  <<: *kitchen_common
+  <<: *skip_when_unwanted_on_6
+  variables:
+    AGENT_MAJOR_VERSION: 6
+    DD_PIPELINE_ID: $CI_PIPELINE_ID-a6
+
+.kitchen_agent_a7: &kitchen_agent_a7
+  <<: *kitchen_common
+  <<: *skip_when_unwanted_on_7
+  variables:
+    AGENT_MAJOR_VERSION: 7
+    DD_PIPELINE_ID: $CI_PIPELINE_ID-a7
+
+
+# Kitchen: tests
+# --------------
+
+.kitchen_test_chef: &kitchen_test_chef
+  script:
+    - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh chef-test $AGENT_MAJOR_VERSION
+
+.kitchen_test_step_by_step: &kitchen_test_step_by_step
+  script:
+    - AZURE_LOCATION='Central US' bash -l tasks/run-test-kitchen.sh step-by-step-test $AGENT_MAJOR_VERSION
+
+.kitchen_test_install_script: &kitchen_test_install_script
+  script:
+    - AZURE_LOCATION='South Central US' bash -l tasks/run-test-kitchen.sh install-script-test $AGENT_MAJOR_VERSION
+
+.kitchen_test_upgrade5: &kitchen_test_upgrade5
+  script:
+    - AZURE_LOCATION='Central US' bash -l tasks/run-test-kitchen.sh upgrade5-test $AGENT_MAJOR_VERSION
+
+.kitchen_test_upgrade6: &kitchen_test_upgrade6
+  script:
+    - AZURE_LOCATION='South Central US' bash -l tasks/run-test-kitchen.sh upgrade6-test $AGENT_MAJOR_VERSION
+
+.kitchen_test_upgrade7: &kitchen_test_upgrade7
+  script:
+    - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh upgrade7-test $AGENT_MAJOR_VERSION
+
+.kitchen_test_windows_installer: &kitchen_test_windows_installer
+  before_script: # Override kitchen_os_windows default with a smaller set of TEST_PLATFORMS
+    - if [ $AGENT_MAJOR_VERSION == "7" ]; then export WINDOWS_TESTING_S3_BUCKET=$WINDOWS_TESTING_S3_BUCKET_A7; else export WINDOWS_TESTING_S3_BUCKET=$WINDOWS_TESTING_S3_BUCKET_A6; fi
+    - rsync -azr --delete ./ $SRC_PATH
+    - export TEST_PLATFORMS="win2012,urn,MicrosoftWindowsServer:WindowsServer:2012-Datacenter:3.127.20190410"
+    - cd $DD_AGENT_TESTING_DIR
+    - bash -l tasks/kitchen_setup.sh
+  script:
+    - AZURE_LOCATION='North Central US' bash -l tasks/run-test-kitchen.sh windows-install-test $AGENT_MAJOR_VERSION

@@ -1,0 +1,130 @@
+stages:
+  - deps_build
+  - source_tests
+  - binary_build
+
+#
+# Deps build
+#
+
+.build_libbcc_common:
+  stage: deps_build
+  script:
+    - git clone -b "$BCC_VERSION" --depth=1 https://github.com/iovisor/bcc.git /tmp/bcc
+    - mkdir /tmp/bcc/build
+    - cd /tmp/bcc/build
+    - cmake .. -DCMAKE_INSTALL_PREFIX=/opt/libbcc -DCMAKE_EXE_LINKER_FLAGS='-Wl,-rpath,/opt/datadog-agent/embedded/lib' -DCMAKE_SHARED_LINKER_FLAGS='-Wl,-rpath,/opt/datadog-agent/embedded/lib'
+    - make -j 4 #"$(nproc)"
+    - make install
+    - cd /opt/libbcc
+    - chmod go-rwx lib/libbcc*
+    - rm share/bcc/introspection/bps
+    - cp $(ldd lib/libbcc.so | awk '$1 ~ /^libtinfo/ {system("dirname " $3)}')/libtinfo* lib
+    - tar cvaf /tmp/libbcc.tar.xz .
+    - $S3_CP_CMD /tmp/libbcc.tar.xz $S3_ARTIFACTS_URI/libbcc-$ARCH.tar.xz
+
+build_libbcc_x64:
+  extends: .build_libbcc_common
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_x64:$DATADOG_AGENT_BUILDIMAGES
+  tags: [ "runner:main", "size:large" ]
+  variables:
+    ARCH: amd64
+
+build_libbcc_arm64:
+  extends: .build_libbcc_common
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_arm64:$DATADOG_AGENT_ARMBUILDIMAGES
+  tags: ["runner:docker-arm", "platform:arm64"]
+  variables:
+    ARCH: arm64
+
+#
+# Source tests
+#
+
+run_tests_ebpf:
+  stage: source_tests
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_x64:$DATADOG_AGENT_SYSPROBE_BUILDIMAGES
+  tags: [ "runner:main", "size:large" ]
+  needs: [ "build_libbcc_x64" ]
+  before_script:
+    - mkdir -p $CI_PROJECT_DIR/.tmp/binary-ebpf
+    - cd $SRC_PATH
+    - pip3 install -r requirements.txt
+    - inv -e deps --verbose --dep-vendor-only --no-checks
+    # Retrieve libbcc from S3
+    - $S3_CP_CMD $S3_ARTIFACTS_URI/libbcc-amd64.tar.xz /tmp/libbcc.tar.xz
+    - mkdir /opt/libbcc
+    - tar -xvf /tmp/libbcc.tar.xz -C /opt/libbcc
+  script:
+    # For now only check bpf bytes since we don't have a way to run eBPF tests without mounting a debugfs
+    - CGO_CFLAGS='-I/opt/libbcc/include' CGO_LDFLAGS='-Wl,-rpath,/opt/libbcc/lib -L/opt/libbcc/lib' inv -e system-probe.test --only-check-bpf-bytes
+  after_script:
+    - cd $SRC_PATH
+    - cp ./pkg/ebpf/c/tracer-ebpf.o  $CI_PROJECT_DIR/.tmp/binary-ebpf/tracer-ebpf.o
+    - cp ./pkg/ebpf/c/tracer-ebpf-debug.o  $CI_PROJECT_DIR/.tmp/binary-ebpf/tracer-ebpf-debug.o
+
+#
+# Binary build
+#
+
+.system-probe_build_common:
+  before_script:
+    # Hack to work around the cloning issue with arm runners
+    - mkdir -p $GOPATH/src/github.com/DataDog
+    - '[[ "$ARCH" == arm64 ]] && cp -R $GOPATH/src/github.com/*/*/DataDog/datadog-agent $GOPATH/src/github.com/DataDog'
+    - cd $SRC_PATH
+    - inv -e deps --no-checks --verbose --dep-vendor-only
+  script:
+    - inv -e system-probe.build --go-version=$SYSTEM_PROBE_GO_VERSION --no-with-bcc
+    - inv -e system-probe.test --only-check-bpf-bytes
+    - $S3_CP_CMD $SRC_PATH/$SYSTEM_PROBE_BINARIES_DIR/system-probe $S3_ARTIFACTS_URI/system-probe.$ARCH
+
+build_system-probe-x64:
+  extends: .system-probe_build_common
+  stage: binary_build
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_x64:$DATADOG_AGENT_SYSPROBE_BUILDIMAGES
+  tags: [ "runner:main", "size:large" ]
+  variables:
+    ARCH: amd64
+
+build_system-probe-arm64:
+  extends: .system-probe_build_common
+  stage: binary_build
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_arm64:$DATADOG_AGENT_SYSPROBE_BUILDIMAGES
+  tags: ["runner:docker-arm", "platform:arm64"]
+  variables:
+    ARCH: arm64
+
+.system-probe_with-bcc_build_common:
+  before_script:
+    # Hack to work around the cloning issue with arm runners
+    - mkdir -p $GOPATH/src/github.com/DataDog
+    - '[[ "$ARCH" == arm64 ]] && cp -R $GOPATH/src/github.com/*/*/DataDog/datadog-agent $GOPATH/src/github.com/DataDog'
+    - cd $SRC_PATH
+    - inv -e deps --no-checks --verbose --dep-vendor-only
+    # Retrieve libbcc from S3
+    - $S3_CP_CMD $S3_ARTIFACTS_URI/libbcc-$ARCH.tar.xz /tmp/libbcc.tar.xz
+    - mkdir -p /opt/datadog-agent/embedded
+    - tar -xvf /tmp/libbcc.tar.xz -C /opt/datadog-agent/embedded
+  script:
+    - CGO_CFLAGS='-I/opt/datadog-agent/embedded/include' CGO_LDFLAGS='-Wl,-rpath,/opt/datadog-agent/embedded/lib -L/opt/datadog-agent/embedded/lib' inv -e system-probe.build --go-version=$SYSTEM_PROBE_GO_VERSION
+    - CGO_CFLAGS='-I/opt/datadog-agent/embedded/include' CGO_LDFLAGS='-Wl,-rpath,/opt/datadog-agent/embedded/lib -L/opt/datadog-agent/embedded/lib' inv -e system-probe.test --only-check-bpf-bytes
+    - $S3_CP_CMD $SRC_PATH/$SYSTEM_PROBE_BINARIES_DIR/system-probe $S3_ARTIFACTS_URI/system-probe.with-bcc.$ARCH
+
+build_system-probe_with-bcc-x64:
+  extends: .system-probe_with-bcc_build_common
+  stage: binary_build
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_x64:$DATADOG_AGENT_SYSPROBE_BUILDIMAGES
+  tags: [ "runner:main", "size:large" ]
+  needs: [ "build_libbcc_x64" ]
+  variables:
+    ARCH: amd64
+
+build_system-probe_with-bcc-arm64:
+  extends: .system-probe_with-bcc_build_common
+  stage: binary_build
+  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/system-probe_arm64:$DATADOG_AGENT_SYSPROBE_BUILDIMAGES
+  tags: [ "runner:docker-arm", "platform:arm64" ]
+  needs: [ "build_libbcc_arm64" ]
+  variables:
+    ARCH: arm64
