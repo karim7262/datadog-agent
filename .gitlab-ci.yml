@@ -21,7 +21,7 @@ test-job:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:2xlarge" ]
   script:
-    - echo "Hello"
+    - (( $RANDOM >> 14 )) && exit 0 || exit 1
 
 on-success-job:
   stage: on_success_or_failure
