@@ -76,6 +76,7 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.0
+	github.com/elastic/go-libaudit v0.4.0
 	github.com/fatih/color v1.9.0
 	github.com/florianl/go-conntrack v0.1.0
 	github.com/frankban/quicktest v1.9.0 // indirect
