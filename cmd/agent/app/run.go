@@ -158,24 +158,27 @@ func StartAgent() error {
 			jmxLogFile = ""
 		}
 
+		// err = config.SetupLogger(
+		// 	loggerName,
+		// 	config.Datadog.GetString("log_level"),
+		// 	logFile,
+		// 	syslogURI,
+		// 	config.Datadog.GetBool("syslog_rfc"),
+		// 	config.Datadog.GetBool("log_to_console"),
+		// 	config.Datadog.GetBool("log_format_json"),
+		// )
+
 		err = config.SetupLogger(
-			loggerName,
+			"JMX",
 			config.Datadog.GetString("log_level"),
-			logFile,
+			"/var/log/datadog/jmxFetch.log",
 			syslogURI,
 			config.Datadog.GetBool("syslog_rfc"),
 			config.Datadog.GetBool("log_to_console"),
 			config.Datadog.GetBool("log_format_json"),
 		)
-		err = config.SetupLogger(
-			jmxLoggerName,
-			config.Datadog.GetString("log_level"),
-			jmxLogFile,
-			syslogURI,
-			config.Datadog.GetBool("syslog_rfc"),
-			config.Datadog.GetBool("log_to_console"),
-			config.Datadog.GetBool("log_format_json"),
-		)
+
+		fmt.Printf("Logger name: %s, JmxFetch logs are at %s", jmxLoggerName, jmxLogFile)
 
 	} else {
 		err = config.SetupLogger(

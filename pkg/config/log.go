@@ -115,14 +115,17 @@ func SetupLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, sys
 	if loggerName == "JMX" {
 		jmxSeelogConfig := seelogConfig
 		jmxSeelogConfig.ConfigureJMXSpecific("JMX", logFile, buildJSONFormat("JMX"), buildCommonFormat("JMX"))
+		fmt.Printf("%v", jmxSeelogConfig)
 		jmxLoggerInterface, err := GenerateLoggerInterface(jmxSeelogConfig)
 		log.SetupJMXLogger(jmxLoggerInterface, seelogLogLevel)
+		//jmxLoggerInterface is not null and the jmxlogger is not null
+		log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
+		//seelog.ReplaceLogger(jmxLoggerInterface)
 		return err
 	}
 	loggerInterface, err := GenerateLoggerInterface(seelogConfig)
 	log.SetupLogger(loggerInterface, seelogLogLevel)
 	log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
-	seelog.ReplaceLogger(loggerInterface) //nolint:errcheck
 	return err
 }
 

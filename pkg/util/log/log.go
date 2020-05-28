@@ -40,21 +40,10 @@ type DatadogLogger struct {
 	l     sync.RWMutex
 }
 
-// SetupLogger setup agent wide logger
-func SetupLogger(i seelog.LoggerInterface, level string) {
-	SetupCommonLogger(logger, i, level)
-}
-
-// SetupJMXLogger setup jmx specific logger
-func SetupJMXLogger(i seelog.LoggerInterface, level string) {
-	SetupCommonLogger(jmxLogger, i, level)
-}
-
-// SetupCommonLogger configure logger singleton with seelog interface
-func SetupCommonLogger(l *DatadogLogger, i seelog.LoggerInterface, level string) {
-
-	l = &DatadogLogger{
-		inner: i,
+// SetupLogger configure logger singleton with seelog interface
+func SetupLogger(l seelog.LoggerInterface, level string) {
+	logger = &DatadogLogger{
+		inner: l,
 		extra: make(map[string]seelog.LoggerInterface),
 	}
 
@@ -62,7 +51,7 @@ func SetupCommonLogger(l *DatadogLogger, i seelog.LoggerInterface, level string)
 	if !ok {
 		lvl = seelog.InfoLvl
 	}
-	l.level = lvl
+	logger.level = lvl
 
 	// We're not going to call DatadogLogger directly, but using the
 	// exported functions, that will give us two frames in the stack
@@ -71,7 +60,39 @@ func SetupCommonLogger(l *DatadogLogger, i seelog.LoggerInterface, level string)
 	// The fact we need a constant "additional depth" means some
 	// theoretical refactor to avoid duplication in the functions
 	// below cannot be performed.
-	l.inner.SetAdditionalStackDepth(defaultStackDepth) //nolint:errcheck
+	logger.inner.SetAdditionalStackDepth(defaultStackDepth) //nolint:errcheck
+
+	// Flushing logs since the logger is now initialized
+	bufferMutex.Lock()
+	bufferLogsBeforeInit = false
+	defer bufferMutex.Unlock()
+	for _, logLine := range logsBuffer {
+		logLine()
+	}
+	logsBuffer = []func(){}
+}
+
+// SetupJMXLogger configure logger singleton with seelog interface
+func SetupJMXLogger(l seelog.LoggerInterface, level string) {
+	jmxLogger = &DatadogLogger{
+		inner: l,
+		extra: make(map[string]seelog.LoggerInterface),
+	}
+
+	lvl, ok := seelog.LogLevelFromString(level)
+	if !ok {
+		lvl = seelog.InfoLvl
+	}
+	jmxLogger.level = lvl
+
+	// We're not going to call DatadogLogger directly, but using the
+	// exported functions, that will give us two frames in the stack
+	// trace that should be skipped to get to the original caller.
+	//
+	// The fact we need a constant "additional depth" means some
+	// theoretical refactor to avoid duplication in the functions
+	// below cannot be performed.
+	jmxLogger.inner.SetAdditionalStackDepth(defaultStackDepth) //nolint:errcheck
 
 	// Flushing logs since the logger is now initialized
 	bufferMutex.Lock()
@@ -189,7 +210,9 @@ func (sw *DatadogLogger) info(s string) {
 
 	scrubbed := sw.scrub(s)
 	sw.inner.Info(scrubbed)
-
+	if sw.inner == nil {
+		fmt.Println("sw.inner is null")
+	}
 	for _, l := range sw.extra {
 		l.Info(scrubbed)
 	}
@@ -412,9 +435,10 @@ func Info(v ...interface{}) {
 func JMXInfo(v ...interface{}) {
 	if jmxLogger != nil && jmxLogger.inner != nil && jmxLogger.shouldLog(seelog.InfoLvl) {
 		s := buildLogEntry(v...)
+		//jmxlogger.info does now log anything..
 		jmxLogger.info(jmxLogger.scrub(s))
 	} else if bufferLogsBeforeInit && (jmxLogger == nil || jmxLogger.inner == nil) {
-		addLogToBuffer(func() { Info(v...) })
+		addLogToBuffer(func() { JMXInfo(v...) })
 	}
 }
 
@@ -449,7 +473,7 @@ func JMXError(v ...interface{}) error {
 		s := buildLogEntry(v...)
 		return jmxLogger.error(jmxLogger.scrub(s))
 	} else if bufferLogsBeforeInit && (jmxLogger == nil || jmxLogger.inner == nil) {
-		addLogToBuffer(func() { Error(v...) })
+		addLogToBuffer(func() { JMXError(v...) })
 	}
 	// We print the error to Stderr in case the agent exit before initializing the log module
 	err := formatError(v...)
