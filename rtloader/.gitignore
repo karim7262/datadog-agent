@@ -30,9 +30,6 @@ install_manifest.txt
 *.dylib
 *.dll
 
-# Fortran module files
-*.mod
-
 # Compiled Static libraries
 *.lai
 *.la

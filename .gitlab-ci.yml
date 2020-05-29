@@ -280,12 +280,11 @@ run_tests_windows-x86:
     - source /root/.bashrc && conda activate $CONDA_ENV
     - pip install wheel
     - pip install -r requirements.txt
-    - go get gopkg.in/yaml.v2
-    - go get github.com/stretchr/testify
+    - cd rtloader/test && go mod vendor && cd ../.. # download rtloader deps
     - inv -e rtloader.make --install-prefix=$SRC_PATH/dev --python-runtimes "$PYTHON_RUNTIMES"
     - inv -e rtloader.install
     - inv -e rtloader.format --raise-if-changed
-    - inv -e rtloader.test
+    - cd rtloader/test && make run && cd ../.. # run the tests
     - inv -e deps --verbose --dep-vendor-only
 
 # run tests for deb-x64
