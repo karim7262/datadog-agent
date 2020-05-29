@@ -191,9 +191,6 @@ func (sw *DatadogLogger) info(s string) {
 
 	scrubbed := sw.scrub(s)
 	sw.inner.Info(scrubbed)
-	if sw.inner == nil {
-		fmt.Println("sw.inner is null")
-	}
 	for _, l := range sw.extra {
 		l.Info(scrubbed)
 	}
@@ -416,7 +413,6 @@ func Info(v ...interface{}) {
 func JMXInfo(v ...interface{}) {
 	if jmxLogger != nil && jmxLogger.inner != nil && jmxLogger.shouldLog(seelog.InfoLvl) {
 		s := buildLogEntry(v...)
-		//jmxlogger.info does now log anything..
 		jmxLogger.info(jmxLogger.scrub(s))
 	} else if bufferLogsBeforeInit && (jmxLogger == nil || jmxLogger.inner == nil) {
 		addLogToBuffer(func() { JMXInfo(v...) })

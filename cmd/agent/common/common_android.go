@@ -17,7 +17,7 @@ const (
 	// DefaultDCALogFile points to the log file that will be used if not configured
 	DefaultDCALogFile = "/var/log/datadog/cluster-agent.log"
 	//DefaultJmxLogFile points to the jmx fetch log file that will be used if not configured
-	DefaultJmxLogFile = "/var/log/datadog/jmxFetch.log"
+	DefaultJmxLogFile = "/var/log/datadog/jmxfetch.log"
 )
 
 var (

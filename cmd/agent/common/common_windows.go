@@ -47,7 +47,7 @@ var (
 	// DefaultDCALogFile points to the log file that will be used if not configured
 	DefaultDCALogFile = "c:\\programdata\\datadog\\logs\\cluster-agent.log"
 	//DefaultJmxLogFile points to the jmx fetch log file that will be used if not configured
-	DefaultJmxLogFile = "c:\\programdata\\datadog\\logs\\jmxFetch.log"
+	DefaultJmxLogFile = "c:\\programdata\\datadog\\logs\\jmxfetch.log"
 )
 
 func init() {
