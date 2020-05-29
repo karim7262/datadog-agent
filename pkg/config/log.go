@@ -33,7 +33,7 @@ var seelogConfig *seelogCfg.Config
 // buildCommonFormat returns the log common format seelog string
 func buildCommonFormat(loggerName LoggerName) string {
 	if loggerName == "JMX" {
-		return fmt.Sprint("")
+		return fmt.Sprintf("%%Date(%s) | %s | %%Msg%%n", logDateFormat, loggerName)
 	}
 	return fmt.Sprintf("%%Date(%s) | %s | %%LEVEL | (%%ShortFilePath:%%Line in %%FuncShort) | %%Msg%%n", logDateFormat, loggerName)
 
@@ -49,7 +49,7 @@ func createQuoteMsgFormatter(params string) seelog.FormatterFunc {
 func buildJSONFormat(loggerName LoggerName) string {
 	seelog.RegisterCustomFormatter("QuoteMsg", createQuoteMsgFormatter) //nolint:errcheck
 	if loggerName == "JMX" {
-		return fmt.Sprintf(`{"msg":%%QuoteMsg}%%n`)
+		return fmt.Sprintf(`{"agent":"%s","time":"%%Date(%s),"msg":%%QuoteMsg}%%n`, strings.ToLower(string(loggerName)), logDateFormat)
 	}
 	return fmt.Sprintf(`{"agent":"%s","time":"%%Date(%s)","level":"%%LEVEL","file":"%%ShortFilePath","line":"%%Line","func":"%%FuncShort","msg":%%QuoteMsg}%%n`, strings.ToLower(string(loggerName)), logDateFormat)
 }
@@ -115,10 +115,8 @@ func SetupLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, sys
 	if loggerName == "JMX" {
 		jmxSeelogConfig := seelogConfig
 		jmxSeelogConfig.ConfigureJMXSpecific("JMX", logFile, buildJSONFormat("JMX"), buildCommonFormat("JMX"))
-		fmt.Printf("%v", jmxSeelogConfig)
 		jmxLoggerInterface, err := GenerateLoggerInterface(jmxSeelogConfig)
-		log.SetupJMXLogger(jmxLoggerInterface, seelogLogLevel)
-		//jmxLoggerInterface is not null and the jmxlogger is not null
+		log.SetupJmxLogger(jmxLoggerInterface, seelogLogLevel)
 		log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
 		//seelog.ReplaceLogger(jmxLoggerInterface)
 		return err

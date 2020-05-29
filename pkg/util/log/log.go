@@ -40,42 +40,20 @@ type DatadogLogger struct {
 	l     sync.RWMutex
 }
 
-// SetupLogger configure logger singleton with seelog interface
-func SetupLogger(l seelog.LoggerInterface, level string) {
-	logger = &DatadogLogger{
-		inner: l,
-		extra: make(map[string]seelog.LoggerInterface),
-	}
-
-	lvl, ok := seelog.LogLevelFromString(level)
-	if !ok {
-		lvl = seelog.InfoLvl
-	}
-	logger.level = lvl
-
-	// We're not going to call DatadogLogger directly, but using the
-	// exported functions, that will give us two frames in the stack
-	// trace that should be skipped to get to the original caller.
-	//
-	// The fact we need a constant "additional depth" means some
-	// theoretical refactor to avoid duplication in the functions
-	// below cannot be performed.
-	logger.inner.SetAdditionalStackDepth(defaultStackDepth) //nolint:errcheck
-
-	// Flushing logs since the logger is now initialized
-	bufferMutex.Lock()
-	bufferLogsBeforeInit = false
-	defer bufferMutex.Unlock()
-	for _, logLine := range logsBuffer {
-		logLine()
-	}
-	logsBuffer = []func(){}
+// SetupLogger configures agent logger singleton with a seelog interface
+func SetupLogger(i seelog.LoggerInterface, level string) {
+	logger = SetupCommonLogger(i, level)
 }
 
-// SetupJMXLogger configure logger singleton with seelog interface
-func SetupJMXLogger(l seelog.LoggerInterface, level string) {
-	jmxLogger = &DatadogLogger{
-		inner: l,
+// SetupJmxLogger configures the jmx logger singleton with a seelog interface
+func SetupJmxLogger(i seelog.LoggerInterface, level string) {
+	jmxLogger = SetupCommonLogger(i, level)
+}
+
+// SetupCommonLogger returns a Datadoglogger from an logger interface
+func SetupCommonLogger(i seelog.LoggerInterface, level string) *DatadogLogger {
+	l := &DatadogLogger{
+		inner: i,
 		extra: make(map[string]seelog.LoggerInterface),
 	}
 
@@ -83,7 +61,7 @@ func SetupJMXLogger(l seelog.LoggerInterface, level string) {
 	if !ok {
 		lvl = seelog.InfoLvl
 	}
-	jmxLogger.level = lvl
+	l.level = lvl
 
 	// We're not going to call DatadogLogger directly, but using the
 	// exported functions, that will give us two frames in the stack
@@ -92,7 +70,8 @@ func SetupJMXLogger(l seelog.LoggerInterface, level string) {
 	// The fact we need a constant "additional depth" means some
 	// theoretical refactor to avoid duplication in the functions
 	// below cannot be performed.
-	jmxLogger.inner.SetAdditionalStackDepth(defaultStackDepth) //nolint:errcheck
+
+	l.inner.SetAdditionalStackDepth(defaultStackDepth) //nolint:errcheck
 
 	// Flushing logs since the logger is now initialized
 	bufferMutex.Lock()
@@ -102,6 +81,8 @@ func SetupJMXLogger(l seelog.LoggerInterface, level string) {
 		logLine()
 	}
 	logsBuffer = []func(){}
+
+	return l
 }
 
 func addLogToBuffer(logHandle func()) {
