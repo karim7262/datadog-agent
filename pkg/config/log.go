@@ -33,7 +33,7 @@ var seelogConfig *seelogCfg.Config
 // buildCommonFormat returns the log common format seelog string
 func buildCommonFormat(loggerName LoggerName) string {
 	if loggerName == "JMX" {
-		return fmt.Sprintf("%%Date(%s) | %s | %%Msg%%n", logDateFormat, loggerName)
+		return fmt.Sprintf("%%Msg%%n")
 	}
 	return fmt.Sprintf("%%Date(%s) | %s | %%LEVEL | (%%ShortFilePath:%%Line in %%FuncShort) | %%Msg%%n", logDateFormat, loggerName)
 
@@ -49,7 +49,7 @@ func createQuoteMsgFormatter(params string) seelog.FormatterFunc {
 func buildJSONFormat(loggerName LoggerName) string {
 	seelog.RegisterCustomFormatter("QuoteMsg", createQuoteMsgFormatter) //nolint:errcheck
 	if loggerName == "JMX" {
-		return fmt.Sprintf(`{"agent":"%s","time":"%%Date(%s),"msg":%%QuoteMsg}%%n`, strings.ToLower(string(loggerName)), logDateFormat)
+		return fmt.Sprintf(`{"msg":%%QuoteMsg}%%n`)
 	}
 	return fmt.Sprintf(`{"agent":"%s","time":"%%Date(%s)","level":"%%LEVEL","file":"%%ShortFilePath","line":"%%Line","func":"%%FuncShort","msg":%%QuoteMsg}%%n`, strings.ToLower(string(loggerName)), logDateFormat)
 }
