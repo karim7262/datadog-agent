@@ -89,10 +89,11 @@ require (
 	github.com/google/gopacket v1.1.17
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/consul/api v1.4.0
-	github.com/hashicorp/golang-lru v0.5.3
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/ianlancetaylor/cgosymbolizer v0.0.0-00010101000000-000000000000 // indirect
 	github.com/iovisor/gobpf v0.0.0-20200329161226-8b2cce9dac28
+	github.com/itchyny/gojq v0.10.2
 	github.com/json-iterator/go v1.1.9
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/kubernetes-incubator/custom-metrics-apiserver v0.0.0-00010101000000-000000000000
@@ -114,7 +115,7 @@ require (
 	github.com/samuel/go-zookeeper v0.0.0-20190923202752-2cc03de413da
 	github.com/shirou/gopsutil v2.20.3+incompatible
 	github.com/shirou/w32 v0.0.0-20160930032740-bb4de0191aa4
-	github.com/sirupsen/logrus v1.5.0 // indirect
+	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/soniah/gosnmp v1.26.0
 	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v0.0.5
@@ -135,7 +136,7 @@ require (
 	golang.org/x/mobile v0.0.0-20190719004257-d2bd2a29d028
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
+	golang.org/x/sys v0.0.0-20200331124033-c3d80250170d
 	golang.org/x/text v0.3.2
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	google.golang.org/grpc v1.27.1

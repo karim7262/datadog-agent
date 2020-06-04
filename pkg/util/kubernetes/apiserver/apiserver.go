@@ -8,6 +8,7 @@
 package apiserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -76,6 +78,7 @@ type APIClient struct {
 	// used to setup the APIClient
 	initRetry      retry.Retrier
 	Cl             kubernetes.Interface
+	DynamicCl      dynamic.Interface
 	timeoutSeconds int64
 }
 
@@ -100,6 +103,31 @@ func GetAPIClient() (*APIClient, error) {
 	}
 	return globalAPIClient, nil
 }
+
+func WaitForAPIClient(ctx context.Context) (*APIClient, error) {
+	if globalAPIClient == nil {
+		_, _ = GetAPIClient()
+	}
+
+	for {
+		_ = globalAPIClient.initRetry.TriggerRetry()
+		switch globalAPIClient.initRetry.RetryStatus() {
+		case retry.OK:
+			return globalAPIClient, nil
+		case retry.PermaFail:
+			return nil, fmt.Errorf("Permanent failure while waiting for Kubernetes APIServer")
+		default:
+			sleepFor := time.Now().UTC().Sub(globalAPIClient.initRetry.NextRetry().UTC()) + time.Second
+			log.Debugf("Waiting for APIServer, next retry: %v", sleepFor)
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("Context deadline reached while waiting for Kubernetes APIServer")
+			case <-time.After(sleepFor):
+			}
+		}
+	}
+}
+
 func getClientConfig() (*rest.Config, error) {
 	var clientConfig *rest.Config
 	var err error
@@ -143,6 +171,15 @@ func getWPAClient(timeout time.Duration) (wpa_client.Interface, error) {
 	return wpa_client.NewForConfig(clientConfig)
 }
 
+func getKubeDynamicClient(timeout time.Duration) (dynamic.Interface, error) {
+	clientConfig, err := getClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientConfig.Timeout = timeout
+	return dynamic.NewForConfig(clientConfig)
+}
+
 func getWPAInformerFactory() (wpa_informers.SharedInformerFactory, error) {
 	// default to 300s
 	resyncPeriodSeconds := time.Duration(config.Datadog.GetInt64("kubernetes_informers_resync_period"))
@@ -181,6 +218,12 @@ func (c *APIClient) connect() error {
 		log.Infof("Could not get apiserver client: %v", err)
 		return err
 	}
+	c.DynamicCl, err = getKubeDynamicClient(time.Duration(c.timeoutSeconds) * time.Second)
+	if err != nil {
+		log.Infof("Could not get apiserver dynamic client: %v", err)
+		return err
+	}
+
 	// informer factory uses its own clientset with a larger timeout
 	c.InformerFactory, err = getInformerFactory()
 	if err != nil {
