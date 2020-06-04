@@ -206,82 +206,82 @@ func (z *Span) DecodeMsg(dc *msgp.Reader) (err error) {
 func (z *Span) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 12
 	// write "service"
-	err = en.Append(0x8c, 0xa7, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0x8c, 0xa7, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteString(z.Service)
 	if err != nil {
 		return
 	}
 	// write "name"
-	err = en.Append(0xa4, 0x6e, 0x61, 0x6d, 0x65)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa4, 0x6e, 0x61, 0x6d, 0x65)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteString(z.Name)
 	if err != nil {
 		return
 	}
 	// write "resource"
-	err = en.Append(0xa8, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa8, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteString(z.Resource)
 	if err != nil {
 		return
 	}
 	// write "trace_id"
-	err = en.Append(0xa8, 0x74, 0x72, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa8, 0x74, 0x72, 0x61, 0x63, 0x65, 0x5f, 0x69, 0x64)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteUint64(z.TraceID)
 	if err != nil {
 		return
 	}
 	// write "span_id"
-	err = en.Append(0xa7, 0x73, 0x70, 0x61, 0x6e, 0x5f, 0x69, 0x64)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa7, 0x73, 0x70, 0x61, 0x6e, 0x5f, 0x69, 0x64)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteUint64(z.SpanID)
 	if err != nil {
 		return
 	}
 	// write "start"
-	err = en.Append(0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa5, 0x73, 0x74, 0x61, 0x72, 0x74)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteInt64(z.Start)
 	if err != nil {
 		return
 	}
 	// write "duration"
-	err = en.Append(0xa8, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa8, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteInt64(z.Duration)
 	if err != nil {
 		return
 	}
 	// write "error"
-	err = en.Append(0xa5, 0x65, 0x72, 0x72, 0x6f, 0x72)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa5, 0x65, 0x72, 0x72, 0x6f, 0x72)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteInt32(z.Error)
 	if err != nil {
 		return
 	}
 	// write "meta"
-	err = en.Append(0xa4, 0x6d, 0x65, 0x74, 0x61)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa4, 0x6d, 0x65, 0x74, 0x61)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteMapHeader(uint32(len(z.Meta)))
 	if err != nil {
 		return
@@ -297,10 +297,10 @@ func (z *Span) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 	// write "metrics"
-	err = en.Append(0xa7, 0x6d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa7, 0x6d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteMapHeader(uint32(len(z.Metrics)))
 	if err != nil {
 		return
@@ -316,19 +316,19 @@ func (z *Span) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 	}
 	// write "parent_id"
-	err = en.Append(0xa9, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x64)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa9, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x64)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteUint64(z.ParentID)
 	if err != nil {
 		return
 	}
 	// write "type"
-	err = en.Append(0xa4, 0x74, 0x79, 0x70, 0x65)
-	if err != nil {
-		return err
-	}
+	//err = en.Append(0xa4, 0x74, 0x79, 0x70, 0x65)
+	//if err != nil {
+	//return err
+	//}
 	err = en.WriteString(z.Type)
 	if err != nil {
 		return

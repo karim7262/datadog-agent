@@ -557,6 +557,7 @@ func BenchmarkHandleTracesFromMultipleApps(b *testing.B) {
 	// benchmark
 	b.ResetTimer()
 	b.ReportAllocs()
+	b.SetBytes(int64(buf.Len()))
 	for n := 0; n < b.N; n++ {
 		b.StopTimer()
 		// consume the traces channel without doing anything
@@ -603,6 +604,17 @@ func BenchmarkDecoderJSON(b *testing.B) {
 	}
 }
 
+func TestNewEncode(t *testing.T) {
+	assert := assert.New(t)
+	want := testutil.GetTestTraces(1000, 100, true)
+	var buf bytes.Buffer
+	err := msgp.Encode(&buf, want)
+	assert.NoError(err)
+	var traces pb.Traces
+	directDecodeTraces(buf.Bytes(), &traces)
+	assert.Equal(want, traces)
+}
+
 func BenchmarkDecodeRequest(b *testing.B) {
 	assert := assert.New(b)
 	f, err := ioutil.TempFile("", "decodeRequest-*") //(f *os.File, err error)
@@ -630,7 +642,7 @@ func BenchmarkDecodeRequest(b *testing.B) {
 
 		b.StartTimer()
 		err = decodeRequest(req, &traces)
-		assert.NoError(err)		
+		assert.NoError(err)
 	}
 }
 

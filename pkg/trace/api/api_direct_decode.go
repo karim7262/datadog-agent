@@ -1,45 +1,47 @@
 package api
 
 import (
-//	"context"
-//	"encoding/json"
-//	"expvar"
-//	"fmt"
-//	"io"
-//	"io/ioutil"
-//	stdlog "log"
+	//	"context"
+	//	"encoding/json"
+	//	"expvar"
+	//	"fmt"
+	//	"io"
+	//	"io/ioutil"
+	//	stdlog "log"
+
 	"math"
-//	"mime"
-//	"net"
-//	"net/http"
-//	"net/http/pprof"
-//	"os"
-//	"runtime"
-//	"sort"
-//	"strconv"
-//	"strings"
-//	"sync"
-//	"sync/atomic"
-//	"time"
-//	"bufio"
+
+	//	"mime"
+	//	"net"
+	//	"net/http"
+	//	"net/http/pprof"
+	//	"os"
+	//	"runtime"
+	//	"sort"
+	//	"strconv"
+	//	"strings"
+	//	"sync"
+	//	"sync/atomic"
+	//	"time"
+	//	"bufio"
 	"encoding/binary"
 	"errors"
 
 	"github.com/tinylib/msgp/msgp"
 
-//	mainconfig "github.com/DataDog/datadog-agent/pkg/config"
-//	"github.com/DataDog/datadog-agent/pkg/tagger"
-//	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
-//	"github.com/DataDog/datadog-agent/pkg/trace/config"
-//	"github.com/DataDog/datadog-agent/pkg/trace/info"
-//	"github.com/DataDog/datadog-agent/pkg/trace/logutil"
-//	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
-//	"github.com/DataDog/datadog-agent/pkg/trace/metrics/timing"
-//	"github.com/DataDog/datadog-agent/pkg/trace/osutil"
+	//	mainconfig "github.com/DataDog/datadog-agent/pkg/config"
+	//	"github.com/DataDog/datadog-agent/pkg/tagger"
+	//	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/config"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/info"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/logutil"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/metrics"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/metrics/timing"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/osutil"
 	"github.com/DataDog/datadog-agent/pkg/trace/pb"
-//	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
-//	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
-//	"github.com/DataDog/datadog-agent/pkg/util/log"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/sampler"
+	//	"github.com/DataDog/datadog-agent/pkg/trace/watchdog"
+	//	"github.com/DataDog/datadog-agent/pkg/util/log"
 )
 
 // size of every object on the wire,
@@ -115,10 +117,10 @@ func init() {
 // non-zero 'size' and
 // non-zero 'typ'
 type bytespec struct {
-	size  uint8   // prefix size information
-	extra varmode // extra size information
-	typ   msgp.Type    // type
-	_     byte    // makes bytespec 4 bytes (yes, this matters)
+	size  uint8     // prefix size information
+	extra varmode   // extra size information
+	typ   msgp.Type // type
+	_     byte      // makes bytespec 4 bytes (yes, this matters)
 }
 
 const (
@@ -421,7 +423,7 @@ func readString(p []byte) (s string, bs []byte, err error) {
 	lead = bs[0]
 	if isfixstr(lead) {
 		read = int64(rfixstr(lead))
-		bs=bs[1:]
+		bs = bs[1:]
 		goto fill
 	}
 
@@ -816,7 +818,7 @@ func getSize(b []byte) (uintptr, uintptr, error) {
 		return 0, 0, msgp.ErrShortBytes
 	}
 	lead := b[0]
-	var big = binary.BigEndian 
+	var big = binary.BigEndian
 	spec := &sizes[lead] // get type information
 	size, mode := spec.size, spec.extra
 	if size == 0 {
@@ -857,7 +859,7 @@ func skip(p []byte) ([]byte, error) {
 		v   uintptr // bytes
 		o   uintptr // objects
 		err error
-		bs []byte
+		bs  []byte
 	)
 
 	v, o, err = getSize(bs[:5])
@@ -955,20 +957,10 @@ func parseFloat64(p []byte) (float64, []byte, error) {
 }
 
 func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
-	var sz uint32
-	sz, bs, err = readMapHeader(p)
-	if err != nil {
-		return nil, err
-	}
-	for sz > 0 {
-		sz--
-		p, bs, err = readMapKeyPtr(bs)
-		if err != nil {
-			return nil, err
-		}
-		
-		switch msgp.UnsafeString(p) {
-		case "service":
+	bs = p
+	for i := uint32(0); i <= 11; i++ {
+		switch i {
+		case 0:
 			if bs[0] == mnil {
 				z.Service, err = "", nil
 				break
@@ -977,7 +969,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "name":
+		case 1:
 			if bs[0] == mnil {
 				z.Name, err = "", nil
 				break
@@ -986,7 +978,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "resource":
+		case 2:
 			if bs[0] == mnil {
 				z.Resource, err = "", nil
 				break
@@ -995,7 +987,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "trace_id":
+		case 3:
 			if bs[0] == mnil {
 				z.TraceID, err = 0, nil
 				break
@@ -1004,7 +996,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "span_id":
+		case 4:
 			if bs[0] == mnil {
 				z.SpanID, err = 0, nil
 				break
@@ -1013,7 +1005,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "start":
+		case 5:
 			if bs[0] == mnil {
 				z.Start, err = 0, nil
 				break
@@ -1022,7 +1014,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "duration":
+		case 6:
 			if bs[0] == mnil {
 				z.Duration, err = 0, nil
 				break
@@ -1031,7 +1023,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "error":
+		case 7:
 			if bs[0] == mnil {
 				z.Error, err = 0, nil
 				break
@@ -1040,7 +1032,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "meta":
+		case 8:
 			if bs[0] == mnil {
 				z.Meta, err = nil, nil
 				break
@@ -1072,7 +1064,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 				}
 				z.Meta[zxvk] = zbzg
 			}
-		case "metrics":
+		case 9:
 			if bs[0] == mnil {
 				z.Metrics, err = nil, nil
 				break
@@ -1104,7 +1096,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 				}
 				z.Metrics[zbai] = zcmr
 			}
-		case "parent_id":
+		case 10:
 			if bs[0] == mnil {
 				z.ParentID, err = 0, nil
 				break
@@ -1114,7 +1106,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 			if err != nil {
 				return
 			}
-		case "type":
+		case 11:
 			if bs[0] == mnil {
 				z.Type, err = "", nil
 				break
@@ -1125,10 +1117,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 				return
 			}
 		default:
-			bs, err = skip(bs)
-			if err != nil {
-				return
-			}
+			return bs, errors.New("unexpected entries in span map")
 		}
 	}
 	return
@@ -1148,7 +1137,7 @@ func directDecodeSpan(p []byte, z *pb.Span) (bs []byte, err error) {
 //		return err
 //	}
 
-func directDecodeTraces(bs []byte, ts *pb.Traces) error {	
+func directDecodeTraces(bs []byte, ts *pb.Traces) error {
 	//var sz uint32
 	//pb.Traces starts with an array header.
 	//fmt.Println("DIRECTDECODETRACES")
