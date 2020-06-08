@@ -30,8 +30,6 @@ import (
 	"github.com/DataDog/datadog-agent/pkg/api/security"
 	"github.com/DataDog/datadog-agent/pkg/api/util"
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/tagger"
-	"github.com/DataDog/datadog-agent/pkg/tagger/collectors"
 	"github.com/gorilla/mux"
 )
 
@@ -45,11 +43,6 @@ type server struct {
 
 func (s *server) GetHostname(ctx context.Context, in *pb.HostnameRequest) (*pb.HostnameReply, error) {
 	return &pb.HostnameReply{Hostname: "random-hostname"}, nil
-}
-
-func (s *server) GetTags(ctx context.Context, in *pb.TagRequest) (*pb.TagReply, error) {
-	tags, _ := tagger.Tag(in.GetEntity(), collectors.HighCardinality)
-	return &pb.TagReply{Tags: tags}, nil
 }
 
 // StartServer creates the router and starts the HTTP server
@@ -85,14 +78,15 @@ func StartServer() error {
 	}
 
 	// grpc server
-	go func() {
-		lis, _ := net.Listen("tcp", ":50051")
-		s := grpc.NewServer()
-		pb.RegisterAgentServer(s, &server{})
-		if err := s.Serve(lis); err != nil {
-			panic(err)
-		}
-	}()
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		return err
+	}
+	s := grpc.NewServer()
+	pb.RegisterAgentServer(s, &server{})
+	if err := s.Serve(lis); err != nil {
+		return err
+	}
 
 	go func() {
 		// starting gateway
