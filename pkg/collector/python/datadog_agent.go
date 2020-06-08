@@ -203,3 +203,20 @@ func ObfuscateSQL(rawQuery *C.char, errResult **C.char) *C.char {
 	// memory will be freed by caller
 	return TrackedCString(obfuscatedQuery.Query)
 }
+
+// ObfuscateSQLExecPlan obfuscates the provided json query execution plan, writing the error into errResult if the
+// operation fails
+//export ObfuscateSQLExecPlan
+func ObfuscateSQLExecPlan(jsonPlan *C.char, normalize C.bool, errResult **C.char) *C.char {
+	obfuscatedJsonPlan, err := obfuscator.ObfuscateSQLExecPlan(
+		C.GoString(jsonPlan),
+		normalize == C.bool(true),
+	)
+	if err != nil {
+		// memory will be freed by caller
+		*errResult = TrackedCString(err.Error())
+		return nil
+	}
+	// memory will be freed by caller
+	return TrackedCString(obfuscatedJsonPlan)
+}

@@ -342,3 +342,97 @@ func (o *Obfuscator) obfuscateSQL(span *pb.Span) {
 	}
 	traceutil.SetMeta(span, sqlQueryTag, oq.Query)
 }
+
+// sqlPlanNormalizeSettings are JSON obfuscator settings for both obfuscating and normalizing SQL execution plans
+var sqlPlanNormalizeSettings = JSONSettings{
+	Enabled: true,
+	TransformValues: []string{
+		// mysql
+		"attached_condition",
+		// postgres
+		"Recheck Cond",
+		"Merge Cond",
+		"Hash Cond",
+		"Join Filter",
+	},
+	KeepValues: []string{
+		// mysql
+		"select_id",
+		"using_filesort",
+		"table_name",
+		"access_type",
+		"possible_keys",
+		"key",
+		"key_length",
+		"used_key_parts",
+		"used_columns",
+		"ref",
+		"update",
+		// postgres
+		"Node Type",
+		"Parallel Aware",
+		"Scan Direction",
+		"Index Name",
+		"Relation Name",
+		"Alias",
+		"Parent Relationship",
+		"Sort Key",
+	},
+}
+
+// sqlPlanObfuscateSettings are like sqlPlanNormalizeSettings except that all cost & row estimate information is left
+// unobfuscated
+var sqlPlanObfuscateSettings = JSONSettings{
+	Enabled: true,
+	KeepValues: append([]string{
+		// mysql
+		"cost_info",
+		// postgres
+		"Startup Cost",
+		"Total Cost",
+		"Plan Rows",
+		"Plan Width",
+	}, sqlPlanNormalizeSettings.KeepValues...),
+	TransformValues: sqlPlanNormalizeSettings.TransformValues,
+}
+
+func keySet(keys []string) map[string]bool {
+	m := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		m[k] = true
+	}
+	return m
+}
+
+var sqlPlanNormalizeKeepKeys = keySet(sqlPlanNormalizeSettings.KeepValues)
+var sqlPlanObfuscateKeepKeys = keySet(sqlPlanObfuscateSettings.KeepValues)
+var sqlPlanObfuscateKeys = keySet(sqlPlanObfuscateSettings.TransformValues)
+
+// ObfuscateSqlStringSafe obfuscates the sql string, returning either the successfully obfuscated string or a string
+// containing an error message explaining why the obfuscation failed
+func (o *Obfuscator) ObfuscateSqlStringSafe(sqlString string) string {
+	result, err := o.ObfuscateSQLString(sqlString)
+	if err != nil {
+		log.Debugf("failed to obfuscate sql string: %s", err.Error())
+		return "datadog-agent failed to obfuscate sql string. enable agent debug logs for more info."
+	}
+	return result.Query
+}
+
+// ObfuscateSQLExecPlan obfuscates query conditions in the provided JSON encoded execution plan. If normalize=True,
+// then cost and row estimates are also obfuscated away.
+func (o *Obfuscator) ObfuscateSQLExecPlan(jsonPlan string, normalize bool) (string, error) {
+	// jsonObfuscator is not thread safe so we need a new instance for plan
+	jsonObf := &jsonObfuscator{
+		closures:      []bool{},
+		transformKeys: sqlPlanObfuscateKeys,
+		transformer:   o.ObfuscateSqlStringSafe,
+		scan:          &scanner{},
+	}
+	if normalize {
+		jsonObf.keepKeys = sqlPlanNormalizeKeepKeys
+	} else {
+		jsonObf.keepKeys = sqlPlanObfuscateKeepKeys
+	}
+	return jsonObf.obfuscate([]byte(jsonPlan))
+}
