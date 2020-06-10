@@ -12,6 +12,7 @@ import (
 	"expvar"
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -144,6 +145,16 @@ func NewServer(aggregator *aggregator.BufferedAggregator) (*Server, error) {
 	// sharedPacketPool is used by the packet assembler to retrieve already allocated
 	// buffer in order to avoid allocation. The packets are pushed back by the server.
 	sharedPacketPool := listeners.NewPacketPool(config.Datadog.GetInt("dogstatsd_buffer_size"))
+
+	pipeName := os.Getenv("DD_NAME_PIPE_ENV")
+	if len(pipeName) > 0 {
+		namedPipeListener, err := listeners.NewNamedPipeListener(pipeName, packetsChannel, sharedPacketPool)
+		if err != nil {
+			log.Errorf(err.Error())
+		} else {
+			tmpListeners = append(tmpListeners, namedPipeListener)
+		}
+	}
 
 	socketPath := config.Datadog.GetString("dogstatsd_socket")
 	if len(socketPath) > 0 {
