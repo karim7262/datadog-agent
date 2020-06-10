@@ -10,6 +10,7 @@ import (
 	"errors"
 )
 
+// NamedPipeListener implements the StatsdListener interface for named pipe protocol.
 type NamedPipeListener struct{}
 
 // NewNamedPipeListener returns an named pipe Statsd listener
