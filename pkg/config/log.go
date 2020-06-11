@@ -29,6 +29,7 @@ const logDateFormat = "2006-01-02 15:04:05 MST" // see time.Format for format sy
 var syslogTLSConfig *tls.Config
 
 var seelogConfig *seelogCfg.Config
+var jmxSeelogConfig *seelogCfg.Config
 
 // buildCommonFormat returns the log common format seelog string
 func buildCommonFormat(loggerName LoggerName) string {
@@ -110,11 +111,13 @@ func SetupLogger(loggerName LoggerName, logLevel, logFile, syslogURI string, sys
 			}
 		}
 		seelogConfig.ConfigureSyslog(syslogURI, useTLS)
+		jmxSeelogConfig.ConfigureSyslog(syslogURI, useTLS)
 	}
 
 	if loggerName == "JMX" {
-		jmxSeelogConfig := seelogConfig
-		jmxSeelogConfig.ConfigureJMXSpecific("JMX", logFile, buildJSONFormat("JMX"), buildCommonFormat("JMX"))
+		jmxSeelogConfig = seelogCfg.NewSeelogConfig("JMX", seelogLogLevel, formatID, buildJSONFormat("JMX"), buildCommonFormat("JMX"), syslogRFC)
+		jmxSeelogConfig.EnableConsoleLog(logToConsole)
+		jmxSeelogConfig.EnableFileLogging(logFile, Datadog.GetSizeInBytes("log_file_max_size"), uint(Datadog.GetInt("log_file_max_rolls")))
 		jmxLoggerInterface, err := GenerateLoggerInterface(jmxSeelogConfig)
 		log.SetupJmxLogger(jmxLoggerInterface, seelogLogLevel)
 		log.AddStrippedKeys(Datadog.GetStringSlice("flare_stripped_keys"))
