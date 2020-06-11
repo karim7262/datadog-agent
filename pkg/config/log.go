@@ -33,7 +33,7 @@ var seelogConfig *seelogCfg.Config
 // buildCommonFormat returns the log common format seelog string
 func buildCommonFormat(loggerName LoggerName) string {
 	if loggerName == "JMX" {
-		return fmt.Sprintf("%%Msg%%n")
+		return "%Msg%n"
 	}
 	return fmt.Sprintf("%%Date(%s) | %s | %%LEVEL | (%%ShortFilePath:%%Line in %%FuncShort) | %%Msg%%n", logDateFormat, loggerName)
 
