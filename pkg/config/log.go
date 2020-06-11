@@ -49,7 +49,7 @@ func createQuoteMsgFormatter(params string) seelog.FormatterFunc {
 func buildJSONFormat(loggerName LoggerName) string {
 	seelog.RegisterCustomFormatter("QuoteMsg", createQuoteMsgFormatter) //nolint:errcheck
 	if loggerName == "JMX" {
-		return fmt.Sprintf(`{"msg":%%QuoteMsg}%%n`)
+		return `{"msg":%QuoteMsg}%n`
 	}
 	return fmt.Sprintf(`{"agent":"%s","time":"%%Date(%s)","level":"%%LEVEL","file":"%%ShortFilePath","line":"%%Line","func":"%%FuncShort","msg":%%QuoteMsg}%%n`, strings.ToLower(string(loggerName)), logDateFormat)
 }
