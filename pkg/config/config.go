@@ -61,6 +61,7 @@ var (
 //Values for AgentFlavor below
 const (
 	DefaultAgentFlavor = "agent"
+	ClusterAgentFlavor = "cluster_agent"
 	IotAgentFlavor     = "iot_agent"
 	DogstatsdFlavor    = "dogstatsd"
 )
