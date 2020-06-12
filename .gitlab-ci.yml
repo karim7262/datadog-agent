@@ -1,5 +1,3 @@
-include: 'https://gitlab-templates.ddbuild.io/slack-notifier/v1/template.yml'
-
 default:
   retry:
     max: 2
@@ -10,7 +8,6 @@ default:
       - api_failure
 
 stages:
-  - image_build
   - image_deploy
 
 variables:
@@ -72,125 +69,12 @@ variables:
   BCC_VERSION: v0.12.0
   SYSTEM_PROBE_GO_VERSION: 1.13.8
 
-#
-# Trigger conditions
-#
 
-# run job only when triggered by an external tool (ex: Jenkins). This is used
-# for jobs that run both on nightlies and tags
-.run_only_when_triggered: &run_only_when_triggered
-  only:
-    - triggers
-
-
-# anchor to trigger test kitchen setup, run, and cleanup (so all stages
-# are run if one stage is run).  Triggers as defined:
-# - master
-# - tags (a tagged build)
-# - triggers (as above, when triggered by an external tool like jenkins)
-# - web (when the build is triggered by a specific build request through the
-#        web interface.  This way, if a kitchen run is desired on a specific branch,
-#        it can be triggered by requesting a specific build)
-#
-.run_only_when_testkitchen_triggered: &run_only_when_testkitchen_triggered
-  only:
-    - master
-    - tags
-    - triggers
-    - web
 
 # run job only when triggered by an external tool (ex: Jenkins) and when
 # RELEASE_VERSION_X is NOT "nightly". In this setting we are building either a
 # new tagged version of the agent (an RC for example). In both cases the
 # artifacts should be uploaded to our staging repository.
-
-.run_only_when_triggered_on_tag_6: &run_only_when_triggered_on_tag_6
-  only:
-    refs:
-      - triggers
-  except: # we have to use except since gitlab doens't handle '!=' operator
-    variables:
-      - $RELEASE_VERSION_6 == "nightly"
-      - $RELEASE_VERSION_6 == "" # no  RELEASE_VERSION means a nightly build for omnibus
-
-.run_only_when_triggered_on_tag_7: &run_only_when_triggered_on_tag_7
-  only:
-    refs:
-      - triggers
-  except: # we have to use except since gitlab doens't handle '!=' operator
-    variables:
-      - $RELEASE_VERSION_7 == "nightly-a7"
-      - $RELEASE_VERSION_7 == "" # no  RELEASE_VERSION means a nightly build for omnibus
-
-# run job only when triggered by an external tool (ex: Jenkins) and when
-# RELEASE_VERSION_X is "nightly". In this setting we build from master and update
-# the nightly build for windows, linux and docker.
-
-.run_only_when_triggered_on_nightly: &run_only_when_triggered_on_nightly
-  only:
-    refs:
-      - triggers
-    variables:
-      - $RELEASE_VERSION_6 == "nightly"
-      - $RELEASE_VERSION_7 == "nightly-a7"
-
-# run when not triggered (for jobs we don't want to run on release pipelines)
-.skip_when_triggered: &skip_when_triggered
-  # TODO (with rules?): exclude triggered pipelines but not nightlies
-  except:
-    refs:
-      - triggers
-
-# Skip job only when RELEASE_VERSION_X is not set
-.skip_when_unwanted_on_6: &skip_when_unwanted_on_6
-  except:
-    variables:
-      - $RELEASE_VERSION_6 == ""
-
-.skip_when_unwanted_on_7: &skip_when_unwanted_on_7
-  except:
-    variables:
-      - $RELEASE_VERSION_7 == ""
-
-# Fail if we're running a pipeline on a non-triggered tag build
-# NOTE: All jobs with 'needs' dependencies should also 'need' this to workaround a Gitlab issue: https://gitlab.com/gitlab-org/gitlab/issues/31526
-fail_on_non_triggered_tag:
-  stage: fail_on_tag
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
-  tags: [ "runner:main", "size:2xlarge" ]
-  script:
-    - echo CI_PIPELINE_SOURCE=$CI_PIPELINE_SOURCE CI_COMMIT_TAG=$CI_COMMIT_TAG
-    - '[[ $CI_COMMIT_TAG == dca-* || $CI_COMMIT_TAG == "" || $CI_PIPELINE_SOURCE != "push" ]]'
-
-
-# package_build
-#
-#
-#
-# image_build
-#
-
-.docker_build_job_definition: &docker_build_job_definition
-  stage: image_build
-  script:
-    - aws s3 sync --only-show-errors $S3_ARTIFACTS_URI $BUILD_CONTEXT
-    - TAG_SUFFIX=${TAG_SUFFIX:-}
-    - BUILD_ARG=${BUILD_ARG:-}
-    - TARGET_TAG=$IMAGE:v$CI_PIPELINE_ID-${CI_COMMIT_SHA:0:7}$TAG_SUFFIX-$ARCH
-    # Pull base image(s) with content trust enabled
-    - pip install -r requirements.txt
-    - inv -e docker.pull-base-images --signed-pull $BUILD_CONTEXT/$ARCH/Dockerfile
-    # Build testing stage if provided
-    - test "$TESTING_ARG" && docker build --file $BUILD_CONTEXT/$ARCH/Dockerfile $TESTING_ARG $BUILD_CONTEXT
-    # Build release stage and push to ECR
-    - docker build $BUILD_ARG --file $BUILD_CONTEXT/$ARCH/Dockerfile --pull --tag $TARGET_TAG $BUILD_CONTEXT
-    - docker push $TARGET_TAG
-
-.docker_build_job_definition_amd64: &docker_build_job_definition_amd64
-  image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/docker:v1907756-26d65dc-18.09.6
-  tags: ["runner:docker", "size:large"]
-  variables:
-    ARCH: amd64
 
 #
 # Docker dev image deployments
@@ -233,15 +117,7 @@ fail_on_non_triggered_tag:
     - notary -d ~/.docker/trust key import /tmp/docker.key; rm /tmp/docker.key
 
 dev_master_docker_hub-a6:
-  <<: *skip_when_unwanted_on_6
   <<: *docker_tag_job_definition
-  needs:
-    - fail_on_non_triggered_tag
-    - docker_build_agent6
-    - docker_build_agent6_jmx
-    - docker_build_agent6_py2py3_jmx
-  only:
-    - master
   script:
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-6-amd64       datadog/agent-dev:master
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-6-amd64       datadog/agent-dev:master-py2
@@ -249,15 +125,7 @@ dev_master_docker_hub-a6:
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-6-jmx-amd64   datadog/agent-dev:master-py2-jmx
 
 dev_master_docker_hub-a7:
-  <<: *skip_when_unwanted_on_7
   <<: *docker_tag_job_definition
-  needs:
-    - fail_on_non_triggered_tag
-    - docker_build_agent7
-    - docker_build_agent7_jmx
-  only:
-    - master
   script:
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-7-amd64       datadog/agent-dev:master-py3
     - inv -e docker.publish --signed-push ${SRC_AGENT}:${SRC_TAG}-7-jmx-amd64   datadog/agent-dev:master-py3-jmx
-
