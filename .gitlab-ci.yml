@@ -177,6 +177,10 @@ fail_on_non_triggered_tag:
   image: 486234852809.dkr.ecr.us-east-1.amazonaws.com/ci/datadog-agent-buildimages/deb_x64:$DATADOG_AGENT_BUILDIMAGES
   tags: [ "runner:main", "size:2xlarge" ]
   script:
+    - echo "$PWD"
+    - ls $PWD
+    - echo "$GIT_CLONE_PATH"
+    - echo "$CI_BUILDS_DIR"
     - echo CI_PIPELINE_SOURCE=$CI_PIPELINE_SOURCE CI_COMMIT_TAG=$CI_COMMIT_TAG
     - '[[ $CI_COMMIT_TAG == dca-* || $CI_COMMIT_TAG == "" || $CI_PIPELINE_SOURCE != "push" ]]'
 
