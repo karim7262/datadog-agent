@@ -160,7 +160,7 @@ def publish(ctx, src, dst, signed_pull=False, signed_push=False):
     push_env = {}
     if signed_push:
         push_env["DOCKER_CONTENT_TRUST"] = "1"
-    retry_run(ctx, "docker push {dst}".format(dst=dst),
+    retry_run(ctx, "docker -D push {dst}".format(dst=dst),
               env=push_env,
     )
 
