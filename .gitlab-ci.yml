@@ -115,6 +115,7 @@ variables:
     - export NOTARY_DELEGATION_PASSPHRASE="$DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE"
     - aws ssm get-parameter --region us-east-1 --name ci.datadog-agent.$DELEGATION_KEY_SSM_KEY --with-decryption --query "Parameter.Value" --out text > /tmp/docker.key
     - notary -d ~/.docker/trust key import /tmp/docker.key; rm /tmp/docker.key
+    - notary -d ~/.docker/trust status docker.io/datadog/agent-dev
 
 dev_master_docker_hub-a6:
   <<: *docker_tag_job_definition
